@@ -37,15 +37,15 @@ class ServerMethodCaller : public QObject
 	WSClient* _transport;
 public:
 	explicit ServerMethodCaller(WSClient* transport, QObject* parent = nullptr);
-	QFuture<RoomList> getUserRooms(ulong userID);
-	//QFuture<MethodReturn<UserInfo>> getRoomUsers(const QString& userToken, ulong roomID);
-	QFuture<QList<ChatRoomMessage>> getRoomHistory(const QString& userToken, ulong roomID);
+	QFuture<RoomList> getUserRooms(int userID);
+	//QFuture<MethodReturn<UserInfo>> getRoomUsers(const QString& userToken, int roomID);
+	QFuture<QList<ChatRoomMessage>> getRoomHistory(const QString& userToken, int roomID);
 	QFuture<UserInfo> getUserInfo(const QString& username);
-	QFuture<UserInfo> getUserInfo(ulong id);
+	QFuture<UserInfo> getUserInfo(int id);
 	QFuture<UserInfo> getCurrentUserInfo(const QString& userToken);
 	//QFuture<QStringList> getAvailableServerMethods();
-	QFuture<bool> sendChatMessage(const QString& userToken, ulong roomID, const QString& message);
-	//QFuture<bool> addUserToRoom(const QString& UserToken, ulong roomID, ulong usserID);
+	QFuture<bool> sendChatMessage(const QString& userToken, int roomID, const QString& message);
+	//QFuture<bool> addUserToRoom(const QString& UserToken, int roomID, int usserID);
 	QFuture<QString> registerUser(const UserCredentials& cr);
 	QFuture<QString> loginUser(const UserCredentials& cr);
 

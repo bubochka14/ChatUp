@@ -8,6 +8,7 @@
 #include <QQuickview.h>
 #include <qqmlcomponent.h>
 #include <qqmlincubator.h>
+#include <qdir.h>
 #include <qqmlcontext.h>
 class ChatWindow : public QQuickWindow
 {
@@ -15,12 +16,12 @@ class ChatWindow : public QQuickWindow
 	QSharedPointer<QObject> _content;
 	QQmlContext*            _context;
 public:
-	explicit ChatWindow(QAbstractListModel* roomModel,QQmlEngine* engine = nullptr, QWindow* parent = nullptr);
+	explicit ChatWindow(QQmlEngine* engine, QWindow* parent = nullptr);
 public slots:
 	//void setRoomModel(QAbstractListModel * model);
 
 signals:
-	void chatMessage(const QString& message, ulong roomID);
+	void chatMessage(const QString& message, int roomID);
 private slots:
 	void _proxySlot(const QString& message, int roomID);
 };

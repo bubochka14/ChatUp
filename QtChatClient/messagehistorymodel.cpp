@@ -38,12 +38,18 @@ QVariant MessageHistoryModel::data(const QModelIndex& index, int role) const
 bool MessageHistoryModel::upload(const MessageList& list)
 {
 
-	_messages = list;
+	for (auto& i : list)
+	{
+		pushMessage(i);
+	}
 	return true;
 }
 
 bool  MessageHistoryModel::pushMessage(const ChatRoomMessage& mess)
 {
+	beginInsertRows(QModelIndex(), rowCount(), rowCount());
 	_messages.push_back(mess);
+	endInsertRows();
+	qDebug() << "Inserted new message to history model, now row count is " << rowCount();
 	return true;
 }

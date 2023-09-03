@@ -3,53 +3,61 @@ Q_LOGGING_CATEGORY(LC_ChatClient, "ChatClient")
 
 ChatClient::ChatClient(QObject* parent)
 	:QObject(parent)
-	,_WSClient(new WSClient(QWebSocketProtocol::VersionLatest,this))
-	, _qmlEngine(new QQmlApplicationEngine(this))
+	, _WSClient(QSharedPointer<WSClient>::create(QWebSocketProtocol::VersionLatest))
+	//, _qmlEngine(QQmlApplicationEngine(this))
 {
+	_qmlEngine.rootContext()->setContextProperty("roomModel",&_model);
+	_window = QSharedPointer<ChatWindow>::create(&_qmlEngine);
 }
 
-void ChatClient::setHostUrl(const QUrl& other)
-{
-	if (_hostUrl != other)
-	{
-		_hostUrl = other;
-		emit hostUrlChanged();
-	}
-	return;
-}
-QUrl ChatClient::hostUrl() const
-{
-	return _hostUrl;
-}
 void ChatClient::run(const QUrl& url)
 {
-	setHostUrl(url);
-	setupWSClient(hostUrl());
-	_userToken= authenticateUser();
+	setupWSClient(url);
+	authenticateUser();
 	qDebug() << "TOKEN " << authMaster->userToken();
-	qDebug() << "Username " << authMaster->userInfo().username;
-	ChatRoomModel* model = new ChatRoomModel(this);
-	ChatWindow* window = new ChatWindow(model);
-	window->show();
-	ServerMethodCaller* caller = new ServerMethodCaller(_WSClient);
-	RoomList rooms = caller->getUserRooms(authMaster->userInfo().userID).result();
-	model->extractFromRoomList(rooms);
-
-	connect(window, &ChatWindow::chatMessage,this, [caller](const QString& m, long id)
+	qDebug() << "Username " << authMaster->userInfo().name;
+	_window->show();
+	auto rr = _WSClient.get();;
+	ServerMethodCaller caller(rr);
+	RoomList rooms = caller.getUserRooms(authMaster->userInfo().id).result();
+	_model.extractFromRoomList(rooms);
+	connect(_WSClient.get(), &WSClient::postMessage, [=](int roomID, const ChatRoomMessage& m)
 		{
-			return caller->sendChatMessage(authMaster->userToken(), id, m);
+
+			try{
+				qDebug() << "Trying to upload message to roomID: " << roomID << " MESSAGE " << m.body << " FROM " << m.user.name << " TIME " << m.time;
+				QModelIndexList list = _model.match(_model.index(0), ChatRoomModel::IDRole, QVariant::fromValue(roomID));
+				_model.data(list.at(0), ChatRoomModel::HistoryModelRole).value<MessageHistoryModel*>()->pushMessage(m);
+				qDebug() << "UPLOADED";
+			}
+			catch (...)
+			{
+				qDebug() << "EXCEPTION ERROR";
+			}
 		});
+	for (size_t i = 0; i < _model.rowCount(); i++)
+	{
+		auto historyModel = _model.data(_model.index(i), ChatRoomModel::HistoryModelRole).value<MessageHistoryModel*>();
+		historyModel->upload(caller.getRoomHistory(authMaster->userToken(),
+			_model.data(_model.index(i), ChatRoomModel::IDRole).value<int>()).result());
+	}
+	connect(_window.get(), &ChatWindow::chatMessage, this, [&](const QString& m, long id)
+		{
+			ServerMethodCaller caller(_WSClient.get());
+			 caller.sendChatMessage(authMaster->userToken(), id, m);
+		});
+	
 }
 QString ChatClient::authenticateUser()
 {
-	QSharedPointer<UserVerifyDialog> startDialog( new UserVerifyDialog(_qmlEngine));
+	QSharedPointer<UserVerifyDialog> startDialog = QSharedPointer<UserVerifyDialog>::create(&_qmlEngine);
 	startDialog->show();
 		QEventLoop eLoop;
 
 	connect(startDialog.get(), &UserVerifyDialog::loginPassed, this, [&](const QString& username, const QString& password)
 		{
 			startDialog->setLoadingScreen(true);
-			if (authMaster->loginUser(_WSClient, { username,password }, AUTH_CONNECTION_SEC))
+			if (authMaster->loginUser(_WSClient.get(), {username,password}, AUTH_CONNECTION_SEC))
 			{
 				startDialog->close();
 				eLoop.exit();
@@ -62,7 +70,7 @@ QString ChatClient::authenticateUser()
 	connect(startDialog.get(), &UserVerifyDialog::registerPassed, this, [&](const QString& username, const QString& password)
 	{
 		startDialog->setLoadingScreen(true);
-		if (authMaster->registerUser(_WSClient, { username,password }, AUTH_CONNECTION_SEC))
+		if (authMaster->registerUser(_WSClient.get(), {username,password}, AUTH_CONNECTION_SEC))
 		{
 			eLoop.exit();
 		}

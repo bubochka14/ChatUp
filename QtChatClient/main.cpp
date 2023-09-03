@@ -3,6 +3,7 @@
 
 #include <QGuiApplication>
 #include <QCommandlineparser>
+#include <QProcessEnvironment>
 #include "chatclient.h"
 int main(int argc, char ** argv)
 {
@@ -11,7 +12,7 @@ int main(int argc, char ** argv)
 	QGuiApplication gApp(argc, argv);
     QGuiApplication::setApplicationName(APP_NAME);
     QGuiApplication::setApplicationVersion(CLIENT_VERSION);
-
+    qputenv("QT_QUICK_CONTROLS_MATERIAL_VARIANT ", "Dense");
     QCommandLineParser parser;
     parser.addVersionOption();
 
@@ -33,8 +34,8 @@ int main(int argc, char ** argv)
     qDebug() << "host: " << host << ", port: " << port;
     QUrl url;
     url.setScheme(u"ws"_s);
-    url.setHost("localhost");
-    url.setPort(7071);
+    url.setHost("185.244.51.214");
+    url.setPort(port);
 	ChatClient client;
 	client.run(url);
 	return gApp.exec();

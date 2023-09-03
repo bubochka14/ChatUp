@@ -19,7 +19,7 @@ QSharedPointer<WSMessage> WSResponse::message() const
 {
     return _message;
 }
-//FutureResponse::FutureResponse(WSClient* wsCLient,ulong responseTo)
+//FutureResponse::FutureResponse(WSClient* wsCLient,int responseTo)
 //    :_wsCLient(wsCLient)
 //    ,_status(Expected)
 //{
@@ -32,7 +32,7 @@ QSharedPointer<WSMessage> WSResponse::message() const
 //    }
 //    else
 //    {
-//        connect(_wsCLient, &WSClient::responseReceived,this, [=](ulong rt)
+//        connect(_wsCLient, &WSClient::responseReceived,this, [=](int rt)
 //            {
 //                if (rt == responseTo)
 //
@@ -108,6 +108,7 @@ bool WSClient::connect2Server(const QUrl& url)
 }
 void WSClient::onConnected()
 {
+    qCDebug(LC_WSClient) << "Request " << _webSocket->request().url();
     qCDebug(LC_WSClient) << "WebSocket connected";
     connect(_webSocket, &QWebSocket::textMessageReceived,
         this, &WSClient::onTextMessageReceived);
@@ -127,7 +128,7 @@ void WSClient::onTextMessageReceived(QString textMessage)
             qCCritical(LC_WSClient) << "Cannot find 'responseTo' field in response message from server";
             return;
         }
-        ulong responseTo = recMess->data().value("responseTo").toInt();
+        int responseTo = recMess->data().value("responseTo").toInt();
         if (_serverResponses.contains(responseTo))
         {
             qCWarning(LC_WSClient) << "Re-response to " << responseTo << " received, it will be ignored. ";
@@ -139,7 +140,16 @@ void WSClient::onTextMessageReceived(QString textMessage)
         emit responseReceived(recMess->data().value("responseTo").toUInt());
     }
     break;
+    case WSMessage::MethodCall :
+    {
+        QHash rhash = recMess->data().value("args").toList().at(1).toHash();
+        ChatRoomMessage mess(UserInfo(rhash.value("user").toHash().value("name").toString(), rhash.value("user").toHash().value("id").toInt()),
+            rhash.value("time").toDateTime(), rhash.value("body").toByteArray());
+        emit postMessage(recMess->data().value("args").toList().first().toInt(), mess);
+    }
+    break;
     default:
+        qCCritical(LC_WSClient) << "Unknown message type received";
         break;
     }
 }
@@ -151,33 +161,36 @@ bool WSClient::sendMessage(WSMessage * message, QJsonDocument::JsonFormat format
     qCDebug(LC_WSClient) <<_webSocket->sendBinaryMessage(jDoc) << " bytes were sent.";
     return true;
 }
-QFuture<WSResponse>  WSClient::getResponse(ulong responseTo,int awaitTime)
+QFuture<WSResponse>  WSClient::getResponse(int responseTo,int awaitTime)
 {
-    QPromise<WSResponse> *promise = new QPromise<WSResponse>;
-    QFuture<WSResponse> future = promise->future();
-    promise->start();
+    QPromise<WSResponse> promise;
+    //promise.create();
+    QFuture<WSResponse> future = promise.future();
+    promise.start();
     if (_serverResponses.contains(responseTo))
     {
-        promise->addResult(WSResponse(QNetworkReply::NoError, _serverResponses[responseTo]));
-        promise->finish();
+        promise.addResult(WSResponse(QNetworkReply::NoError, _serverResponses[responseTo]));
+        promise.finish();
         return future;
     }
     MessageExpectant* e = new MessageExpectant;
     e->moveToThread(&_thread);
-    connect(e, &MessageExpectant::received,this, [&,promise,e]() {
-        promise->addResult(WSResponse(QNetworkReply::NoError, _serverResponses[responseTo]));
-        promise->finish();
+    connect(e, &MessageExpectant::received, this, [&, p = std::move(promise)]() mutable {
+        p.addResult(WSResponse(QNetworkReply::NoError, _serverResponses[responseTo]));
+        p.finish();
         _thread.quit();
-        e->deleteLater();
+        sender()->deleteLater();
+        //delete promise;
         }, Qt::SingleShotConnection);
-    connect(e, &MessageExpectant::timeout,this, [&,promise,e]() {
-        promise->addResult(WSResponse(QNetworkReply::TimeoutError));
-        promise->finish();
+    connect(e, &MessageExpectant::timeout,this, [&, p = std::move(promise)]() mutable {
+        p.addResult(WSResponse(QNetworkReply::TimeoutError));
+        p.finish();
         _thread.quit();
-        e->deleteLater();
+        sender()->deleteLater();
+        //delete promise;
         }, Qt::SingleShotConnection);
     _thread.start();
-    e->expectResponseTo(this, responseTo, 4);
+    e->expectResponseTo(this, responseTo, awaitTime);
     return future;
 }
 void WSClient::onError(QAbstractSocket::SocketError error)
@@ -197,12 +210,12 @@ MessageExpectant::MessageExpectant()
 {
     qDebug(LC_MessageExpectant) << "created";
 }
-void MessageExpectant::expectResponseTo(WSClient* ws, ulong id, int time)
+void MessageExpectant::expectResponseTo(WSClient* ws, int id, int time)
 {
     QEventLoop loop;
     QTimer timer;
     timer.setSingleShot(true);
-    auto con1 = connect(ws, &WSClient::responseReceived, [&](ulong id_)
+    auto con1 = connect(ws, &WSClient::responseReceived, [&](int id_)
         {
             if (id == id_)
             {
@@ -223,4 +236,9 @@ void MessageExpectant::expectResponseTo(WSClient* ws, ulong id, int time)
     loop.exec();
     disconnect(con1);
     disconnect(con2);
+}
+
+void WSClient::onDisconnect()
+{
+    qCDebug(LC_WSClient) << "Socket disconected ";
 }

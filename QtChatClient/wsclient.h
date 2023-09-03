@@ -6,6 +6,7 @@
 #include <QtWebSockets/QWebSocket>
 #include <qscopeguard.h>
 #include "messageconstructor.h"
+#include "chatroomstructs.h"
 #include "singletonholder.h"
 #include <qnetworkreply.h>
 #include <QtConcurrent>
@@ -29,8 +30,8 @@ class WSClient : public QObject
 {
     Q_OBJECT
 public:
-    explicit WSClient(QWebSocketProtocol::Version ver, QObject* parent);
-    QFuture<WSResponse> getResponse(ulong responseTo, int awaitTime);
+    explicit WSClient(QWebSocketProtocol::Version ver, QObject* parent = nullptr);
+    QFuture<WSResponse> getResponse(int responseTo, int awaitTime);
     QString lastError() const;
 public slots:
     bool sendMessage(WSMessage*, 
@@ -39,10 +40,11 @@ public slots:
 signals:
     void closed();
     void errorReceived(QAbstractSocket::SocketError error);
-    void responseReceived(ulong id);
+    void responseReceived(int id);
+    void postMessage(int roomID, const ChatRoomMessage&);
 
 private:
-    QMap<ulong, QSharedPointer<WSMessage>> _serverResponses;
+    QMap<int, QSharedPointer<WSMessage>> _serverResponses;
     QWebSocket *_webSocket;
     QString _lastError;
     QThread _thread;
@@ -50,6 +52,8 @@ private slots:
     void onError(QAbstractSocket::SocketError error);
     void onConnected();
     void onTextMessageReceived(QString message);
+    void onDisconnect();
+
 };
 class MessageExpectant : public QObject
 {
@@ -58,7 +62,7 @@ public:
     explicit MessageExpectant();
     virtual ~MessageExpectant();
 public slots:
-    void expectResponseTo(WSClient* ws, ulong id, int time);
+    void expectResponseTo(WSClient* ws, int id, int time);
 signals:
     void received();
     void timeout();

@@ -17,14 +17,14 @@ public:
 	};
 	Q_ENUM(MessageType);
 private:
-	WSMessage() = default;
 	QString _apiVersion;
-	ulong	_messageID = 0;
+	int	_messageID = 0;
 	MessageType _type = Undefined;
 	QVariantHash _data;
 public:
+	WSMessage() = default;
 	QString apiVersion() const;
-	ulong messageID() const;
+	int messageID() const;
 	MessageType type() const;
 	QVariantHash data() const;
 	//Case insensitive compare.
@@ -36,7 +36,7 @@ public:
 class MessageConstructor
 {
 public:
-	static QSharedPointer<WSMessage> responseMsg(ulong responseTo, const QVariantHash& data = QVariantHash());
+	static QSharedPointer<WSMessage> responseMsg(int responseTo, const QVariantHash& data = QVariantHash());
 	static QSharedPointer<WSMessage> methodCallMsg(const QString& method, const QVariantList & args=QVariantList(),
 		const QVariantHash& data = QVariantHash());
 	static QSharedPointer<WSMessage> emptyMsg();
@@ -44,5 +44,5 @@ public:
 	static WSMessage::MessageType typeMapper(const QString& type);
 	static QString typeMapper(WSMessage::MessageType);
 private:
-	static ulong generateID();
+	static int generateID();
 };

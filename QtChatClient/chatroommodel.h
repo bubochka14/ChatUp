@@ -8,7 +8,7 @@ Q_DECLARE_LOGGING_CATEGORY(LC_ROOM_MODEL)
 struct RoomData
 {
 public:
-	explicit RoomData(const ChatRoom& room = ChatRoom(), QSharedPointer<MessageHistoryModel> model = QSharedPointer<MessageHistoryModel>::create());
+    explicit RoomData(QSharedPointer<MessageHistoryModel> model, const ChatRoom& room = ChatRoom());
 	ChatRoom roomInfo;
 	QSharedPointer<MessageHistoryModel> history;
 };
@@ -24,10 +24,12 @@ public:
 		IDRole,
 		RoomInfoRole,
 		HistoryModelRole
+
 	};
 	explicit ChatRoomModel(QObject* parent = nullptr);
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-	QVariant data(const QModelIndex& index, int role = NameRole) const override;
+	Q_INVOKABLE  QVariant data(const QModelIndex& index, int role = NameRole) const override;
+	Q_INVOKABLE MessageHistoryModel* getRoomHistory(int index);
 	bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	void extractFromRoomList(const RoomList& list);

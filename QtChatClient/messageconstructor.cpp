@@ -7,7 +7,7 @@ QString WSMessage::apiVersion() const
 {
 	return _apiVersion;
 }
-ulong WSMessage::messageID() const
+int WSMessage::messageID() const
 {
 	return _messageID;
 }
@@ -36,20 +36,20 @@ bool WSMessage::compareData(const QString& key, const QString& value) const
 		return false;
 	return data().value(key).toString().toUpper() == value.toUpper();
 }
-ulong MessageConstructor::generateID()
+int MessageConstructor::generateID()
 {
-	static ulong i = 1;
+	static int i = 1;
 	return ++i;
 }
 QSharedPointer<WSMessage> MessageConstructor::emptyMsg()
 {
-	auto out = QSharedPointer<WSMessage>(new WSMessage);
+	auto out = QSharedPointer<WSMessage>::create();
 	out->_type = WSMessage::Undefined;
 	return out;
 }
-QSharedPointer<WSMessage> MessageConstructor::responseMsg(ulong responseTo, const QVariantHash& data)
+QSharedPointer<WSMessage> MessageConstructor::responseMsg(int responseTo, const QVariantHash& data)
 {
-	auto out = QSharedPointer<WSMessage>(new WSMessage);
+	auto out = QSharedPointer<WSMessage>::create();
 	out->_apiVersion = API_VERSION;
 	out->_type = WSMessage::Response;
 	out->_messageID = generateID();
@@ -59,7 +59,7 @@ QSharedPointer<WSMessage> MessageConstructor::responseMsg(ulong responseTo, cons
 }
 QSharedPointer<WSMessage> MessageConstructor::methodCallMsg(const QString& method,const QVariantList& args, const QVariantHash& data)
 {
-	auto out = QSharedPointer<WSMessage>(new WSMessage);
+	auto out = QSharedPointer<WSMessage>::create();
 	out->_apiVersion = API_VERSION;
 	out->_type = WSMessage::MethodCall;
 	out->_messageID = generateID();

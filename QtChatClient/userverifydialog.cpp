@@ -4,10 +4,17 @@ UserVerifyDialog::UserVerifyDialog(QQmlEngine* engine, QWindow* parent)
 	:QQuickWindow(parent)
 {
 	QQmlEngine* mEngine = engine;
-	if (!mEngine)
-		mEngine = new QQmlEngine(this);
-	QQmlComponent component(mEngine, (QUrl("qrc:/qml/AuthorizationDialog.qml")));
+	//if (!mEngine)
+	//	mEngine = new QQmlEngine(this);
+	QQmlComponent component(mEngine, (QUrl("qrc:qt/qml/components/AuthorizationDialog.qml")));
+	//QQmlComponent component(mEngine, (QUrl("qrc:/components/AuthorizationDialog.qml")));
+
 	_content.reset(component.create());
+	if (_content.isNull())
+	{
+		qCritical() << "Unable to load dialog: " << component.errorString();
+		qApp->quit();
+	}
 	qobject_cast<QQuickItem*>(_content.get())->setParentItem(contentItem());
 
 	connect(_content.get(), SIGNAL(registerUser(QString, QString)), this, SIGNAL(registerPassed(QString, QString)));
@@ -83,7 +90,7 @@ UserVerifyDialog::UserVerifyDialog(QQmlEngine* engine, QWindow* parent)
 void UserVerifyDialog::setLoadingScreen(bool st)
 {
 	QMetaObject::invokeMethod(_content.get(), "setLoadingScreen",
-		Q_ARG(bool, st));
+		Q_ARG(QVariant, st));
 }
 //void UserVerifyDialog::close()
 //{
@@ -124,5 +131,5 @@ void UserVerifyDialog::setLoadingScreen(bool st)
 void UserVerifyDialog::setErrorString(const QString& error)
 {
 	QMetaObject::invokeMethod(_content.get(), "setError",
-		Q_ARG(QString, error));
+		Q_ARG(QVariant, error));
 }

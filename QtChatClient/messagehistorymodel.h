@@ -7,10 +7,9 @@
 class MessageHistoryModel : public QAbstractListModel
 {
 	Q_OBJECT;
-	//Q_PROPERTY(int selectedRoom READ selectedRoom WRITE setSelectedRoom NOTIFY selectedRoomChanged);
+	//Q_PROPERTY( READ selectedRoom WRITE setSelectedRoom NOTIFY selectedRoomChanged);
 	//QHash<RoomHistoryInfo> _data;
 	QVector<ChatRoomMessage>   _messages;
-	bool _uploaded = false;
 	static const QHash<int, QByteArray> _roleNames;
 
 public:
@@ -27,14 +26,19 @@ public:
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
 	QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 	bool pushMessage(const ChatRoomMessage& mess);
+	void setUploaded(bool st);
 	bool upload( const MessageList& list);
+	~MessageHistoryModel()
+	{
+		qDebug() << "MODEL DELETED";
+	}
 public slots:
 	//void addRooms(const QList<int> id);
 	//void removeRooms(const QList<int> id);
 private:
 	QHash<int, QByteArray> roleNames() const;
 signals:
-	void needToUpload(ulong roomID);
+	void needToUpload() const;
 
 };
 Q_DECLARE_OPAQUE_POINTER(MessageHistoryModel)

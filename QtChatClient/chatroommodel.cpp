@@ -1,17 +1,20 @@
 #include "chatroommodel.h"
 Q_LOGGING_CATEGORY(LC_ROOM_MODEL, "ChatRoomModel");
-RoomData::RoomData(const ChatRoom& room , QSharedPointer<MessageHistoryModel> model)
+RoomData::RoomData(QSharedPointer<MessageHistoryModel> model,const ChatRoom& room )
 	:roomInfo(room)
 	,history(model)
 {
 
 }
-
+MessageHistoryModel* ChatRoomModel::getRoomHistory(int row)
+{
+	return data(index(row), HistoryModelRole).value<MessageHistoryModel*>();
+}
 const QHash<int, QByteArray> ChatRoomModel::_roleNames = QHash<int, QByteArray>({
 	{NameRole,"roomName" },
 	{IDRole,"roomID"},
 	{RoomInfoRole, "roomObj"},
-	{HistoryModelRole, "historyModel"}
+	{HistoryModelRole, "messagesModel"}
 	}
 );
 ChatRoomModel::ChatRoomModel(QObject* parent)
@@ -59,9 +62,8 @@ bool ChatRoomModel::insertRows(int row, int count, const QModelIndex& parent)
 
 	beginInsertRows(parent,row, row + count - 1);
 	for (size_t n = 0; n < count; n++)
-	{
-		_rooms.insert(row + n, RoomData{});
-		_rooms.at(row + n).history.create();
+    {
+        _rooms.insert(row + n, RoomData{ QSharedPointer<MessageHistoryModel>::create(this)});
 		qCDebug(LC_ROOM_MODEL) << "Inserted new row in pos: " << row + n << " row count is: " << rowCount();
 	}
 	endInsertRows();

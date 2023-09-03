@@ -5,7 +5,7 @@ ServerMethodCaller::ServerMethodCaller(WSClient* transport, QObject* parent)
 {
 	_transport = transport;
 }
-QFuture<RoomList>ServerMethodCaller::getUserRooms(ulong userID)
+QFuture<RoomList>ServerMethodCaller::getUserRooms(int userID)
 {
 	return customMethod<RoomList>("getUserRooms", [](QVariantHash data)
 		{
@@ -36,12 +36,12 @@ QString MethodCallFailure::errorString() const noexcept
 {
 	return _message;
 }
-//QFuture<QList<UserInfo>> ServerMethodCaller::getRoomUsers(const QString& userToken, ulong roomID)
+//QFuture<QList<UserInfo>> ServerMethodCaller::getRoomUsers(const QString& userToken, int roomID)
 //{
 //	auto outMsg = MessageConstructor::methodCallMsg("getRoomUsers", QVariantList(roomID), QVariantHash({ {"userToken",userToken} }));
 //	return _transport->sendMessage(outMsg.get());
 //}
-//QFuture<QList<ChatRoomMessage>> ServerMethodCaller::getRoomHistory(const QString& userToken, ulong roomID)
+//QFuture<QList<ChatRoomMessage>> ServerMethodCaller::getRoomHistory(const QString& userToken, int roomID)
 //{
 //	auto outMsg = MessageConstructor::methodCallMsg("getRoomHistory", QVariantList(roomID), QVariantHash({ {"userToken",userToken} }));
 //	return _transport->sendMessage(outMsg.get());
@@ -56,13 +56,13 @@ QString MethodCallFailure::errorString() const noexcept
 //	auto outMsg = MessageConstructor::methodCallMsg("getAvailableServerMethods");
 //	return _transport->sendMessage(outMsg.get());
 //}
-QFuture<bool> ServerMethodCaller::sendChatMessage(const QString& userToken, ulong roomID, const QString& message)
+QFuture<bool> ServerMethodCaller::sendChatMessage(const QString& userToken, int roomID, const QString& message)
 {
 	return customMethod<bool>("sendChatMessage", [](QVariantHash data) {return true; }, QVariantList() << userToken << QString::number(roomID) << message);
 
 }
 
-QFuture<QList<ChatRoomMessage>> ServerMethodCaller::getRoomHistory(const QString& userToken, ulong roomID)
+QFuture<QList<ChatRoomMessage>> ServerMethodCaller::getRoomHistory(const QString& userToken, int roomID)
 {
 	return customMethod<QList<ChatRoomMessage>>("getRoomHistory", [](QVariantHash data) {
 		QList<ChatRoomMessage> list;
@@ -70,8 +70,8 @@ QFuture<QList<ChatRoomMessage>> ServerMethodCaller::getRoomHistory(const QString
 		for (auto& i : data.value("messages").toList())
 		{
 			rhash = i.toHash();
-			list << ChatRoomMessage(UserInfo(),
-				data.value("time").toDateTime(), data.value("body").toByteArray());
+			list << ChatRoomMessage(UserInfo(rhash.value("user").toHash().value("name").toString(), rhash.value("user").toHash().value("id").toInt()),
+				rhash.value("time").toDateTime(), rhash.value("body").toByteArray());
 		}
 		return list;
 
@@ -79,7 +79,7 @@ QFuture<QList<ChatRoomMessage>> ServerMethodCaller::getRoomHistory(const QString
 
 
 }
-//QFuture<bool> ServerMethodCaller::addUserToRoom(const QStrin\g& userToken, ulong userID, ulong roomID)
+//QFuture<bool> ServerMethodCaller::addUserToRoom(const QStrin\g& userToken, int userID, int roomID)
 //{
 //	auto outMsg = MessageConstructor::methodCallMsg("addUserToRoom", QVariantList()<< userToken<< roomID << userID);
 //	return _transport->sendMessage(outMsg.get());
@@ -102,7 +102,7 @@ QFuture<UserInfo> ServerMethodCaller::getUserInfo(const QString& username)
 				data.value("id").toInt());
 		},QVariantList() << username);
 }
-QFuture<UserInfo> ServerMethodCaller::getUserInfo(ulong id)
+QFuture<UserInfo> ServerMethodCaller::getUserInfo(int id)
 {
 	return customMethod<UserInfo>("getUserInfoById", [](QVariantHash data)
 		{
