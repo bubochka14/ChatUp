@@ -1,28 +1,31 @@
-// Copyright (C) 2016 Kurt Pattyn <pattyn.kurt@gmail.com>.
-// SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
-#ifndef ECHOCLIENT_H
-#define ECHOCLIENT_H
-#include <QtCore/QObject>
-#include <QtWebSockets/QWebSocket>
-
+#pragma once
+#include <QObject>
+#include <QQmlApplicationEngine>
+#include <qeventloop.h>
+#include "userverifydialog.h"
+#include <QtConcurrent/qtconcurrentrun.h>
+#include <qfuture.h>
+#include "chatroommodel.h"
+#include "chatwindow.h"
+#include <QQmlContext>
+#define AUTH_CONNECTION_SEC 5
+Q_DECLARE_LOGGING_CATEGORY(LC_ChatClient)
 class ChatClient : public QObject
 {
-    Q_OBJECT
+	Q_OBJECT;
+	QQmlApplicationEngine *_qmlEngine;
+	WSClient* _WSClient;
+	QString   _userToken;
+	QUrl      _hostUrl;
 public:
-    explicit ChatClient(const QUrl& url, bool debug = false, QObject* parent = nullptr);
+	explicit ChatClient(QObject* parent = nullptr);
+	void run(const QUrl&);
+	void setHostUrl(const QUrl& other);
+	QUrl hostUrl() const;
+signals:
+	void hostUrlChanged();
+protected:
+	virtual bool setupWSClient(const QUrl&);
+	virtual QString authenticateUser();
 
-Q_SIGNALS:
-    void closed();
-
-private Q_SLOTS:
-    void onConnected();
-    void onTextMessageReceived(QString message);
-    void sendMessage(const QString& message);
-
-private:
-    QWebSocket m_webSocket;
-    QUrl m_url;
-    bool m_debug;
 };
-
-#endif // ECHOCLIENT_H

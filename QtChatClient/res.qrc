@@ -1,5 +1,9 @@
 <RCC>
     <qresource prefix="/">
-        <file>MainWindow.qml</file>
+        <file>qml/MainWindow.qml</file>
+        <file>qml/AuthorizationDialog.qml</file>
+        <file>qml/RoomList.qml</file>
+        <file>qml/InputBox.qml</file>
+        <file>qml/ChatInput.qml</file>
     </qresource>
 </RCC>
