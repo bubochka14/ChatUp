@@ -2,13 +2,13 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 
-Item {
+Pane {
     id: root
     anchors.fill: parent
     signal registerUser(string username, string passw)
     signal loginUser(string username, string passw)
     Component.onCompleted: {
-        setLoadingScreen(false);
+        setLoadingScreen(false)
     }
     Item {
         id: inputScreen
@@ -25,48 +25,37 @@ Item {
         }
         Text {
             id: errorField
-            anchors.top: bar.bottom
-            anchors.topMargin: 10
-            font.family: "Helvetica"
-            font.pointSize: 10
-            color: "red"
+            y: bar.contentHeight + 5
+            color: Material.color(Material.Red)
             anchors.horizontalCenter: bar.horizontalCenter
         }
+
         StackLayout {
             id: layout
-            y: bar.contentHeight
-            anchors.fill: parent
             currentIndex: bar.currentIndex
+            anchors.horizontalCenter: bar.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.top: errorField.bottom
+            anchors.topMargin: 8
             Item {
                 id: signUpPage
-
                 Column {
-                    id: signUpFields
-                    spacing: 5
-                    anchors.centerIn: parent
-                    Label {
-                        id: signUpUsernameLabel
-                        text: qsTr("Username:")
-                    }
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing:15
                     TextField {
                         id: signUpUsernameField
+                        placeholderText : qsTr("Username:")
                         maximumLength: 255
-                    }
-                    Label {
-                        id: signUpPasswordLabel
-                        text: qsTr("Password:")
                     }
                     TextField {
                         id: signUpPasswordField
+                        placeholderText : qsTr("Password:")
                         echoMode: TextInput.Password
                         maximumLength: 255
                     }
-                    Label {
-                        id: signUpRepeatPasswordLabel
-                        text: qsTr("Repeat password:")
-                    }
                     TextField {
                         id: signUpRepeatPasswordField
+                        placeholderText : qsTr("Repeat password:")
                         echoMode: TextInput.Password
                         maximumLength: 255
                     }
@@ -74,87 +63,83 @@ Item {
                 Button {
                     id: signUpButton
                     anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 10
                     anchors.horizontalCenter: parent.horizontalCenter
-                    implicitWidth: parent.width - 40
                     text: qsTr("Sign Up")
+                    width:200
+                    Material.elevation: 6
                     onClicked: {
                         if (signUpPasswordField.text == signUpRepeatPasswordField.text) {
-                            root.registerUser(signUpUsernameField.text, signUpPasswordField.text);
+                            root.registerUser(signUpUsernameField.text,
+                                              signUpPasswordField.text)
                         } else
-                            setError(qsTr("Password missmatch!"));
+                            setError(qsTr("Password missmatch!"))
                     }
                 }
             }
             Item {
                 id: loginPage
+                Layout.alignment: Qt.AlignVCenter
                 Column {
-                    id: loginFields
-                    spacing: 5
-                    anchors.centerIn: parent
-                    Label {
-                        id: loginUsernameLabel
-                        text: qsTr("Username:")
-                    }
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 20
+
                     TextField {
                         id: loginUsernameField
+                        placeholderText : qsTr("Username:")
+
                         maximumLength: 255
-                    }
-                    Label {
-                        id: loginPasswordLabel
-                        text: qsTr("Password:")
                     }
                     TextField {
                         id: loginPasswordField
+                        placeholderText : qsTr("Password:")
                         echoMode: TextInput.Password
                         maximumLength: 255
                     }
                 }
                 Button {
                     id: loginButton
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 10
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    implicitWidth: parent.width - 40
                     text: qsTr("Sign In")
+                    width: 200
+                    Material.elevation: 6
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
                     onClicked: {
-                        root.loginUser(loginUsernameField.text, loginPasswordField.text);
+                        root.loginUser(loginUsernameField.text,
+                                       loginPasswordField.text)
                     }
                 }
             }
         }
     }
-    Item {
+
+    Pane {
         id: loadingScreen
         anchors.fill: parent
-        Rectangle {
-            color: "lightgreen"
-            anchors.fill: parent
-            Text {
-                text: qsTr("CONNECTING")
-                font.pixelSize: 45
-                color: "white"
-                anchors.centerIn: parent
-                RotationAnimator on rotation  {
-                    running: true
-                    loops: Animation.Infinite
-                    from: 0
-                    to: 360
-                    duration: 2500
-                }
+        Text {
+
+            text: qsTr("CONNECTING")
+            font.pixelSize: 45
+            color: Material.color(Material.Grey)
+            anchors.centerIn: parent
+            RotationAnimator on rotation {
+                running: true
+                loops: Animation.Infinite
+                from: 0
+                to: 360
+                duration: 2500
             }
         }
     }
-    function setError(error: string) {
-        errorField.text = error;
+    function setError(error) {
+        errorField.text = error
     }
     function close() {
-        Qt.callLater(Qt.quit);
+        Qt.callLater(Qt.quit)
     }
-    function setLoadingScreen(st: bool) {
-        inputScreen.enabled = !st;
-        inputScreen.visible = !st;
-        loadingScreen.visible = st;
-        loadingScreen.enabled = st;
+    function setLoadingScreen(st) {
+        inputScreen.enabled = !st
+        inputScreen.visible = !st
+        loadingScreen.visible = st
+        loadingScreen.enabled = st
     }
 }
