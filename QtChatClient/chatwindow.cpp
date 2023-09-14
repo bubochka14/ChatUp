@@ -12,10 +12,12 @@ ChatWindow::ChatWindow(QQmlEngine* engine, QWindow* parent)
 	if (_content.isNull())
 	{
 		qCritical() << "Unable to load MainWindow: " << component.errorString();
+
 		qApp->quit();
 	}
 	qobject_cast<QQuickItem*>(_content.get())->setParentItem(contentItem());
 	connect(_content.get(), SIGNAL(messageSent(QString, int)), this, SLOT(_proxySlot(QString, int)));
+	connect(_content.get(), SIGNAL(languageSet(QString)), this, SIGNAL(languageChanged(QString)));
 
 	setWidth(960);
 	setHeight(560);

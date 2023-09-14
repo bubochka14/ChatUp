@@ -28,10 +28,6 @@ public:
 	bool pushMessage(const ChatRoomMessage& mess);
 	void setUploaded(bool st);
 	bool upload( const MessageList& list);
-	~MessageHistoryModel()
-	{
-		qDebug() << "MODEL DELETED";
-	}
 public slots:
 	//void addRooms(const QList<int> id);
 	//void removeRooms(const QList<int> id);

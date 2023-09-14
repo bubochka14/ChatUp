@@ -12,9 +12,9 @@ QString ApplicationSettings::language() const
 }
 QString ApplicationSettings::defaultLanguage() const
 {
-	return QString("ENG");
+	return QString("en");
 }
 void ApplicationSettings::setLanguage(const QString& other)
 {
-	setValue("ENG", other);
+	setValue("language", other);
 }
