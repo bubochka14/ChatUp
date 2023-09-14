@@ -22,6 +22,7 @@ public slots:
 
 signals:
 	void chatMessage(const QString& message, int roomID);
+	void languageChanged(const QString& message);
 private slots:
 	void _proxySlot(const QString& message, int roomID);
 };

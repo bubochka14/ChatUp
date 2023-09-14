@@ -5,18 +5,23 @@
 #include "userverifydialog.h"
 #include <QtConcurrent/qtconcurrentrun.h>
 #include <qfuture.h>
-
+#include <qtranslator.h>
 #include "chatroommodel.h"
 #include "chatwindow.h"
+#include "applicationsettings.h"
 #include <QQmlContext>
+#include <QGuiApplication>
 #define AUTH_CONNECTION_SEC 5
 Q_DECLARE_LOGGING_CATEGORY(LC_ChatClient)
 class ChatClient : public QObject
 {
 	Q_OBJECT;
-	QQmlApplicationEngine _qmlEngine;
+	QQmlEngine* _qmlEngine;
 	QSharedPointer<ChatWindow> _window;
+	QSharedPointer <UserVerifyDialog> _dialog;
 	QSharedPointer<WSClient> _WSClient;
+	QTranslator* _currentTranslator;
+	QHash<QString, QTranslator*> _translators;
 	ChatRoomModel _model;
 	//QString   _userToken;
 	//QUrl      _hostUrl;
@@ -25,6 +30,8 @@ public:
 	void run(const QUrl&);
 	//void setHostUrl(const QUrl& other);
 	//QUrl hostUrl() const;
+public slots:
+	void setAppLanguage(const QString& lan = QString());
 signals:
 	void hostUrlChanged();
 protected:

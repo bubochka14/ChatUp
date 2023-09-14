@@ -50,6 +50,5 @@ bool  MessageHistoryModel::pushMessage(const ChatRoomMessage& mess)
 	beginInsertRows(QModelIndex(), rowCount(), rowCount());
 	_messages.push_back(mess);
 	endInsertRows();
-	qDebug() << "Inserted new message to history model, now row count is " << rowCount();
 	return true;
 }

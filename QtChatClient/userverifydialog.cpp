@@ -3,6 +3,7 @@ Q_LOGGING_CATEGORY(LC_VERIFY_DIALOG, "UserVerifyDialog")
 UserVerifyDialog::UserVerifyDialog(QQmlEngine* engine, QWindow* parent)
 	:QQuickWindow(parent)
 {
+
 	QQmlEngine* mEngine = engine;
 	//if (!mEngine)
 	//	mEngine = new QQmlEngine(this);

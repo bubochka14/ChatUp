@@ -7,6 +7,7 @@ Frame {
     property int selectedRoomID: -1
     property int selectedRoomIndex: -1
     property alias roomIndex: listView.currentIndex
+
     //background :Rectangle{ color: "#6F7D73"}
     ListView {
         id: listView
@@ -22,10 +23,11 @@ Frame {
         ItemDelegate  {
             width: listView.width
             height: 50
-            Label {
-                anchors.centerIn: parent
-                text: roomName + " " + roomID
+            Label
+            {
+                text: roomName
             }
+
             MouseArea {
                 hoverEnabled: true
                 anchors.fill: parent
