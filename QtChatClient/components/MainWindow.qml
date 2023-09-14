@@ -4,7 +4,6 @@ import QtQuick.Layouts
 
 Page {
     id: root
-
     anchors.fill: parent
     signal languageSet(string language)
     signal messageSent(string message, int roomID)
@@ -35,10 +34,12 @@ Page {
         }
         Menu {
             title: qsTr("&Account")
-
+            Action {
+                text: "da."
+            }
         }
     }
-    SplitView {
+    RowLayout {
         id: mainLayout
         orientation: Qt.Horizontal
         anchors.fill: parent

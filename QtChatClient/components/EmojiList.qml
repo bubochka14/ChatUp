@@ -12,6 +12,12 @@ Menu
 
         id:view
         anchors.fill: parent
+        //model:Qt.resolvedUrl("emojies/emojies.txt")
+        model:"123"
+        delegate:
+        Item{
+            Text{ text:display }
+        }
     }
     Repeater
     {
