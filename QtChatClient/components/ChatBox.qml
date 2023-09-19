@@ -1,9 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-
+import "./ui"
 Pane {
-    Material.background: "#39423B"
     id: root
     property alias model: listView.model
     function showStartMessage(st) {

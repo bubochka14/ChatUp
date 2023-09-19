@@ -110,7 +110,6 @@ Pane {
     FileDialog {
         id: fileDialog
         fileMode: FileDialog.OpenFiles
-        currentFolder: StandardPaths.standardLocations(StandardPaths.PicturesLocation)
         title: "Please choose a file"
         onAccepted: {
             console.log("You chose: " + selectedFiles)

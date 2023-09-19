@@ -6,6 +6,9 @@
 #include <QtConcurrent/qtconcurrentrun.h>
 #include <qfuture.h>
 #include <qtranslator.h>
+#include "wsclient.h"
+#include "authenticationmaster.h"
+#include "servermethodcaller.h"
 #include "chatroommodel.h"
 #include "chatwindow.h"
 #include "applicationsettings.h"

@@ -54,7 +54,7 @@
 <context>
     <name>ChatBox</name>
     <message>
-        <location filename="../ChatBox.qml" line="18"/>
+        <location filename="../ChatBox.qml" line="19"/>
         <source>Select ChatRoom to start messaging</source>
         <translation>Выберите комнату чтобы написать сообщение</translation>
     </message>
