@@ -62,7 +62,7 @@
 <context>
     <name>ChatInput</name>
     <message>
-        <location filename="../ChatInput.qml" line="90"/>
+        <location filename="../ChatInput.qml" line="72"/>
         <source>Send</source>
         <translation>Отправить</translation>
     </message>
@@ -70,22 +70,22 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="../MainWindow.qml" line="13"/>
+        <location filename="../MainWindow.qml" line="12"/>
         <source>&amp;Settings</source>
         <translation>&amp;Настройки</translation>
     </message>
     <message>
-        <location filename="../MainWindow.qml" line="16"/>
+        <location filename="../MainWindow.qml" line="15"/>
         <source>&amp;Language</source>
         <translation>&amp;Язык</translation>
     </message>
     <message>
-        <location filename="../MainWindow.qml" line="33"/>
+        <location filename="../MainWindow.qml" line="32"/>
         <source>&amp;Room</source>
         <translation>&amp;Комната</translation>
     </message>
     <message>
-        <location filename="../MainWindow.qml" line="37"/>
+        <location filename="../MainWindow.qml" line="36"/>
         <source>&amp;Account</source>
         <translation>&amp;Аккаунт</translation>
     </message>
