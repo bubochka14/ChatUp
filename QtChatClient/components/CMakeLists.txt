@@ -6,6 +6,7 @@ set(QML_FILES
 	"RoomList.qml"
     "UserList.qml"
     "EmojiList.qml"
+	"AttachmentFileDialog.qml"
     )
 set(QML_RESOURCES 
 	"pics/clear.png"
