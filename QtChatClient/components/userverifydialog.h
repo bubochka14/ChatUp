@@ -1,16 +1,16 @@
 #pragma once
 #include <QObject>
-#include "authenticationmaster.h"
 #include <qqmlapplicationengine.h>
 #include <QLoggingCategory>
 #include <qquickwindow.h>
 #include <QQuickitem>
+#include "components_global.h"
 #include <QQuickview.h>
 #include <qqmlcomponent.h>
 #include <qqmlincubator.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_VERIFY_DIALOG);
 //Interlayer between qml AuthorizationDialog and AuthenticationMaster class		
-class UserVerifyDialog : public QQuickWindow
+class COMP_EXPORT UserVerifyDialog : public QQuickWindow
 {
 	Q_OBJECT;
 	QSharedPointer<QObject> _content;

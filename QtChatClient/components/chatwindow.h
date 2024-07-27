@@ -5,12 +5,12 @@
 #include <QLoggingCategory>
 #include <qquickwindow.h>
 #include <QQuickitem>
-#include <QQuickview.h>
+#include "components_global.h"
 #include <qqmlcomponent.h>
 #include <qqmlincubator.h>
 #include <qdir.h>
 #include <qqmlcontext.h>
-class ChatWindow : public QQuickWindow
+class COMP_EXPORT ChatWindow : public QQuickWindow
 {
 	Q_OBJECT;
 	QSharedPointer<QObject> _content;

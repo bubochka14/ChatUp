@@ -1,11 +1,12 @@
-set(QML_FILES 	"AuthorizationDialog.qml"
+set(QML_FILES 	
+	"AuthorizationDialog.qml"
 	"ChatBox.qml"
 	"ChatInput.qml"
 	"MainWindow.qml"
 	"RoomList.qml"
-	"RoundedFrame.qml"
-        "UserList.qml"
-        "EmojiList.qml"
+    "UserList.qml"
+    "EmojiList.qml"
+	"AttachmentFileDialog.qml"
     )
 set(QML_RESOURCES 
 	"pics/clear.png"
@@ -14,18 +15,29 @@ set(QML_RESOURCES
 	"emojies/emojies.txt"
 )
 set(tr_dir "${CMAKE_CURRENT_SOURCE_DIR}/translations")
-
-QT_ADD_LIBRARY(components STATIC)
 QT_ADD_QML_MODULE(components
 	URI components
-	NO_PLUGIN
 	QML_FILES
 		${QML_FILES}
 	RESOURCES
 		${QML_RESOURCES}
+	SOURCES
+		chatwindow.cpp
+	chatwindow.h
+	userverifydialog.cpp
+	userverifydialog.h
+	components_global.h
+	DEPENDENCIES 
+		Quick
+	IMPORT_PATH
+		"${CMAKE_CURRENT_BINARY_DIR}/ui"
 
 )
+target_link_libraries(components PRIVATE Qt::QmlPrivate Qt::QuickPrivate componentsUI)
+target_compile_definitions(components PRIVATE SHARED=true)
+
 file(MAKE_DIRECTORY ${tr_dir}) 
+
 
 #qt_create_translation(QM_FILES ${QML_FILES} "${tr_dir}/comp_en.ts" "${tr_dir}/comp_ru.ts")
 qt_add_lupdate(components TS_FILES "${tr_dir}/comp_en.ts" "${tr_dir}/comp_ru.ts")
@@ -34,13 +46,6 @@ set_source_files_properties("${tr_dir}/comp_en.ts" "${tr_dir}/comp_ru.ts"
 qt_add_lrelease(components 
     TS_FILES "${tr_dir}/comp_en.ts" "${tr_dir}/comp_ru.ts"
     QM_FILES_OUTPUT_VARIABLE qm_files)
-
-##install(FILES ${qm_files} DESTINATION "${CMAKE_BINARY_DIR}/translations")
-#add_custom_target(comp_translates  DEPENDS ${QM_FILES})
+target_include_directories(components PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} PRIVATE  ${CMAKE_CURRENT_BINARY_DIR})
 add_dependencies(components components_lupdate components_lrelease)
-
-
-#install(FILES ${QM_FILES} DESTINATION ${APP_QM_DIR})
-#add_custom_command(TARGET components POST_BUILD
-#    COMMAND ${CMAKE_COMMAND} -E copy ${QM_FILES} ${APP_QM_DIR}
-#)
+add_subdirectory(ui)
