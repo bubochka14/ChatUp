@@ -1,4 +1,4 @@
-﻿find_package(Qt6 REQUIRED COMPONENTS Core  Qml Quick WebSockets Network Concurrent QuickControls2 LinguistTools) 
+﻿find_package(Qt6 REQUIRED COMPONENTS Core  Qml Quick WebSockets Network Concurrent) 
 set(LIB_RESOURCES 
 )
 set(LIB_SOURCES
@@ -60,5 +60,4 @@ target_link_libraries(ChatClient  PRIVATE
 	Qt6::WebSockets 
 	Qt6::Network
 	Qt6::Concurrent
-	Qt6::QuickControls2	
 )

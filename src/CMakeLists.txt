@@ -27,7 +27,6 @@ target_link_libraries(app PRIVATE
 	Qt6::Core 
 	Qt6::Qml 
 	Qt6::Quick 
-	LinguistTools
 	ChatClient	
 )
 

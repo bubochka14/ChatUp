@@ -16,12 +16,13 @@ class ChatClient : public QObject
 {
 	Q_OBJECT;
 	QQmlEngine* _qmlEngine;
-	QSharedPointer<ChatWindow> _window;
-	QSharedPointer <UserVerifyDialog> _dialog;
-	QSharedPointer<WSClient> _WSClient;
+	ChatWindow* _window;
+	UserVerifyDialog* _dialog;
+	WSClient _wsClient;
 	QTranslator* _currentTranslator;
 	QHash<QString, QTranslator*> _translators;
 	ChatRoomModel _model;
+	AuthenticationMaster* _authMaster;
 	//QString   _userToken;
 	//QUrl      _hostUrl;
 public:
