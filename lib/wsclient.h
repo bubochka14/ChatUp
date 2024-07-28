@@ -7,9 +7,7 @@
 #include <qscopeguard.h>
 #include "messageconstructor.h"
 #include "chatroomstructs.h"
-#include "singletonholder.h"
 #include <qnetworkreply.h>
-#include <QtConcurrent>
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(LC_WSClient);
 Q_DECLARE_LOGGING_CATEGORY(LC_MessageExpectant);

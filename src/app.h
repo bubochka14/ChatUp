@@ -11,7 +11,6 @@
 #include "applicationsettings.h"
 #include <QQmlContext>
 #include <QGuiApplication>
-#define AUTH_CONNECTION_SEC 5
 Q_DECLARE_LOGGING_CATEGORY(LC_ChatClient)
 class ChatClient : public QObject
 {

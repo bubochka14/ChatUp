@@ -4,7 +4,7 @@
 #include <QGuiApplication>
 #include <QCommandlineparser>
 #include <QProcessEnvironment>
-#include "chatclient.h"
+#include "app.h"
 #include "qtranslator.h"
 int main(int argc, char ** argv)
 {

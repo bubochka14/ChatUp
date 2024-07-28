@@ -50,7 +50,7 @@ QSharedPointer<WSMessage> MessageConstructor::emptyMsg()
 QSharedPointer<WSMessage> MessageConstructor::responseMsg(int responseTo, const QVariantHash& data)
 {
 	auto out = QSharedPointer<WSMessage>::create();
-	out->_apiVersion = API_VERSION;
+	//out->_apiVersion = API_VERSION;
 	out->_type = WSMessage::Response;
 	out->_messageID = generateID();
 	out->_data.insert("responseTo", QVariant::fromValue(responseTo));
@@ -60,7 +60,7 @@ QSharedPointer<WSMessage> MessageConstructor::responseMsg(int responseTo, const 
 QSharedPointer<WSMessage> MessageConstructor::methodCallMsg(const QString& method,const QVariantList& args, const QVariantHash& data)
 {
 	auto out = QSharedPointer<WSMessage>::create();
-	out->_apiVersion = API_VERSION;
+	//out->_apiVersion = API_VERSION;
 	out->_type = WSMessage::MethodCall;
 	out->_messageID = generateID();
 	out->_data.insert("method", method);

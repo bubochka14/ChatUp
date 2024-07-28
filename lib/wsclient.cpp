@@ -240,5 +240,5 @@ void MessageExpectant::expectResponseTo(WSClient* ws, int id, int time)
 
 void WSClient::onDisconnect()
 {
-    qCDebug(LC_WSClient) << "Socket disconected ";
+    qCDebug(LC_WSClient) << "Socket disconnected ";
 }

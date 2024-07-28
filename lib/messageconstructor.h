@@ -1,8 +1,8 @@
 #pragma once
 #include <QObject>
 #include <QJsonDocument>
+#include <qmetatype.h>
 #include <QJsonObject>
-#define API_VERSION "1.0"
 class WSMessage
 {
 	Q_GADGET

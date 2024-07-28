@@ -4,7 +4,9 @@
 #include "chatroomstructs.h"
 #include "messageconstructor.h"
 #include <QNetworkReply>
+#include <QMetaEnum>
 #include <functional>
+#include <QFuture>
 template <class T>
 struct MethodReturn
 {
@@ -51,7 +53,7 @@ public:
 
 
 	template<class T>
-	QFuture<T> customMethod(const char* method, std::function<T(QVariantHash)> f, QVariantList args = QVariantList)
+	QFuture<T> customMethod(const char* method, std::function<T(QVariantHash)> f, QVariantList args = QVariantList())
 	{
 		auto outMsg = MessageConstructor::methodCallMsg(method, args);
 		_transport->sendMessage(outMsg.get());

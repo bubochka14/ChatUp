@@ -1,4 +1,4 @@
-#include "chatclient.h"
+#include "app.h"
 Q_LOGGING_CATEGORY(LC_ChatClient, "ChatClient")
 
 ChatClient::ChatClient(QObject* parent)
