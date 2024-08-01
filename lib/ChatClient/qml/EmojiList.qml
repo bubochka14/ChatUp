@@ -16,7 +16,6 @@ Menu
         model:"123"
         delegate:
         Item{
-            Text{ text:display }
         }
     }
     Repeater

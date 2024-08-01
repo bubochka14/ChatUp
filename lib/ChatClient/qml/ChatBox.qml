@@ -1,7 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-
+import QtQuick.Controls.Material
 Pane {
     Material.background: "#39423B"
     id: root

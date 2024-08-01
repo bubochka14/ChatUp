@@ -7,12 +7,11 @@ Frame {
     property int selectedRoomID: -1
     property int selectedRoomIndex: -1
     property alias roomIndex: listView.currentIndex
-
+    property alias roomModel: listView.model
     //background :Rectangle{ color: "#6F7D73"}
     ListView {
         id: listView
         currentIndex: -1
-        model : roomModel
         height: parent.height
         width: parent.width
         delegate: roomListDelegate

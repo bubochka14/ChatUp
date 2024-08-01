@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Dialogs
-
+import QtQuick.Controls.Material
 Pane {
     layer.enabled: true
     function clear() {
@@ -37,7 +37,7 @@ Pane {
             anchors.right: parent.right
             Image {
                 id: emojiBtn
-                source: Qt.resolvedUrl("pics/emoji")
+                source: Qt.resolvedUrl("resources/pics/emoji")
                 opacity: 0.5
                 sourceSize.width: 25
                 sourceSize.height: 25
@@ -53,7 +53,7 @@ Pane {
             }
             Image{
                 id:addFileBtn
-                source: Qt.resolvedUrl("pics/fileicon")
+                source: Qt.resolvedUrl("resources/pics/file")
                 sourceSize.width:25
                 sourceSize.height:25
                 MouseArea
@@ -67,7 +67,7 @@ Pane {
                 id: clearBtn
                 enabled: inputBox.text == "" ? 0 : 1
                 visible: enabled
-                source: Qt.resolvedUrl("pics/clear")
+                source: Qt.resolvedUrl("resources/pics/clear")
                 opacity: 0.5
                 width: 25
                 height: 25
@@ -110,7 +110,6 @@ Pane {
     FileDialog {
         id: fileDialog
         fileMode: FileDialog.OpenFiles
-        currentFolder: StandardPaths.standardLocations(StandardPaths.PicturesLocation)
         title: "Please choose a file"
         onAccepted: {
             console.log("You chose: " + selectedFiles)

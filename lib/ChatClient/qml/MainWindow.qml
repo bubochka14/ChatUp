@@ -1,10 +1,12 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-
-Page {
+import ChatClient
+ApplicationWindow {
     id: root
-    anchors.fill: parent
+    width:400
+    height:600
+    visible: true
     signal languageSet(string language)
     signal messageSent(string message, int roomID)
     header: MenuBar {
@@ -41,7 +43,6 @@ Page {
     }
     RowLayout {
         id: mainLayout
-        orientation: Qt.Horizontal
         anchors.fill: parent
 
         RoomList {

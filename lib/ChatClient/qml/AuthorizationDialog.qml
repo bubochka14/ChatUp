@@ -1,10 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-
-Pane {
+import QtQuick.Controls.Material
+Window {
     id: root
-    anchors.fill: parent
     signal registerUser(string username, string passw)
     signal loginUser(string username, string passw)
     Component.onCompleted: {
