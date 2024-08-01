@@ -2,8 +2,9 @@
 
 ServerMethodCaller::ServerMethodCaller(WSClient* transport, QObject* parent)
 	:QObject(parent)
+	,_transport(transport)
+	,_exp(transport)
 {
-	_transport = transport;
 }
 QFuture<RoomList>ServerMethodCaller::getUserRooms(int userID)
 {

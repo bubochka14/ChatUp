@@ -4,14 +4,14 @@ Q_LOGGING_CATEGORY(LC_ChatClient, "ChatClient")
 ChatClient::ChatClient(QObject* parent)
 	:QObject(parent)
 	,_wsClient(WSClient(QWebSocketProtocol::VersionLatest))
-	,_qmlEngine(new QQmlEngine(this))
+	,_qmlEngine(new QQmlApplicationEngine(this))
 	,_currentTranslator(nullptr)
 	,_window(new ChatWindow(_qmlEngine))
-	,_dialog(new UserVerifyDialog(_qmlEngine))
+	,_dialog(new UserVerifierDialog(_qmlEngine))
+	,_authMaster(new AuthenticationMaster(this))
 {
 	setAppLanguage();
 	_qmlEngine->rootContext()->setContextProperty("roomModel",&_model);
-
 
 
 }
@@ -51,36 +51,33 @@ QString ChatClient::authenticateUser()
 	_dialog->show();
 	QEventLoop eLoop;
 
-	connect(_dialog, &UserVerifyDialog::loginPassed, this, [&](const QString& username, const QString& password)
+	connect(_dialog, &UserVerifierDialog::loginPassed, this, [&](const QString& username, const QString& password)
 		{
-			_dialog->setLoadingScreen(true);
+			_dialog->setState(UserVerifierDialog::Loading);
 			if (_authMaster->loginUser(&_wsClient, {username,password}, 5
 			))
 			{
-				_dialog->close();
+				_dialog->hide();
 				eLoop.exit();
 			}
 			else {
-				_dialog->setLoadingScreen(false);
+				_dialog->setState(UserVerifierDialog::Error);
 				_dialog->setErrorString(tr("Unable to login: ") + _authMaster->errorString());
 			}
 	});
-	connect(_dialog, &UserVerifyDialog::registerPassed, this, [&](const QString& username, const QString& password)
+	connect(_dialog, &UserVerifierDialog::registerPassed, this, [&](const QString& username, const QString& password)
 	{
-		_dialog->setLoadingScreen(true);
+		_dialog->setState(UserVerifierDialog::Loading);
 		if (_authMaster->registerUser(&_wsClient, {username,password}, 5))
 		{
 			eLoop.exit();
 		}
 		else {
-			_dialog->setLoadingScreen(false);
+			_dialog->setState(UserVerifierDialog::Error);
 			_dialog->setErrorString(tr("Unable to register: ") + _authMaster->errorString());
 		}
 	});
-	while (!_authMaster->isAuthenticated()) {
-		eLoop.exec();
-	}
-	_dialog->close();
+	eLoop.exec();
 	return _authMaster->userToken(); 
 
 }

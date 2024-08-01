@@ -37,4 +37,3 @@ protected slots:
 	void setUserToken(const QString& other);
 	void setUserInfo(const UserInfo& other);
 };
-#define authMaster SingletonHolder<AuthenticationMaster>::instance()

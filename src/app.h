@@ -2,12 +2,14 @@
 #include <QObject>
 #include <QQmlApplicationEngine>
 #include <qeventloop.h>
-#include "userverifydialog.h"
+#include "userverifierdialog.h"
 #include <QtConcurrent/qtconcurrentrun.h>
 #include <qfuture.h>
 #include <qtranslator.h>
 #include "chatroommodel.h"
 #include "chatwindow.h"
+#include "authenticationmaster.h"
+#include "wsclient.h"
 #include "applicationsettings.h"
 #include <QQmlContext>
 #include <QGuiApplication>
@@ -17,7 +19,7 @@ class ChatClient : public QObject
 	Q_OBJECT;
 	QQmlEngine* _qmlEngine;
 	ChatWindow* _window;
-	UserVerifyDialog* _dialog;
+	UserVerifierDialog* _dialog;
 	WSClient _wsClient;
 	QTranslator* _currentTranslator;
 	QHash<QString, QTranslator*> _translators;

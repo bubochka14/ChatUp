@@ -1,26 +1,28 @@
 #include "chatwindow.h"
 ChatWindow::ChatWindow(QQmlEngine* engine, QWindow* parent)
 	:QQuickWindow(parent)
+	,_content(nullptr)
 {
 	QQmlEngine* mEngine = engine;
 	/*if (!mEngine)
 		mEngine = new QQmlEngine(this)*/;
 
-	QQmlComponent component(mEngine, (":qt/qml/components/MainWindow.qml"));
+	QQmlComponent component(mEngine);
+	component.loadUrl(QUrl("qrc:/qt/qml/ChatClient/MainWindow.qml"));
 	//QQmlComponent component(mEngine, (":/components/MainWindow.qml"));
 	_content.reset(component.create());
-	if (_content.isNull())
+	if (!_content)
 	{
 		qCritical() << "Unable to load MainWindow: " << component.errorString();
 
 		qApp->quit();
 	}
-	qobject_cast<QQuickItem*>(_content.get())->setParentItem(contentItem());
-	connect(_content.get(), SIGNAL(messageSent(QString, int)), this, SLOT(_proxySlot(QString, int)));
-	connect(_content.get(), SIGNAL(languageSet(QString)), this, SIGNAL(languageChanged(QString)));
+	else
+	{
+		connect(_content.get(), SIGNAL(messageSent(QString, int)), this, SLOT(_proxySlot(QString, int)));
+		connect(_content.get(), SIGNAL(languageSet(QString)), this, SIGNAL(languageChanged(QString)));
+	}
 
-	setWidth(960);
-	setHeight(560);
 }
 
 void  ChatWindow::_proxySlot(const QString& message, int roomID)

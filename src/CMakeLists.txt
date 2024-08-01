@@ -3,7 +3,6 @@ set(APP_SOURCES
 	main.cpp
 	app.cpp
 	app.h
-	
 )
 add_executable (app
 	${APP_SOURCES}

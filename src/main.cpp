@@ -4,8 +4,10 @@
 #include <QGuiApplication>
 #include <QCommandlineparser>
 #include <QProcessEnvironment>
-#include "app.h"
 #include "qtranslator.h"
+#include <qdiriterator.h>
+#include "app.h"
+#include <QUrl>
 int main(int argc, char ** argv)
 {
 	using namespace Qt::Literals::StringLiterals;
@@ -36,7 +38,7 @@ int main(int argc, char ** argv)
     url.setScheme(u"ws"_s);
     url.setHost("185.244.51.214");
     url.setPort(port);
-	ChatClient client;
-	client.run(url);
+    ChatClient client;
+    client.run(url);
 	return gApp.exec();
 }

@@ -3,6 +3,7 @@
 #include "messagehistorymodel.h"
 #include "chatroomstructs.h"
 #include <QLoggingCategory>
+#include <qqmlengine.h>
 #include "messagehistorymodel.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_ROOM_MODEL)
 struct RoomData
@@ -15,6 +16,7 @@ public:
 class ChatRoomModel : public QAbstractListModel
 {
 	Q_OBJECT;
+	QML_ELEMENT;
 	QList<RoomData> _rooms;
 	static const QHash<int, QByteArray> _roleNames;
 public:

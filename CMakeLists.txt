@@ -6,9 +6,12 @@ set(ORG_NAME "MyOrg")
 
 find_package(Qt6 REQUIRED COMPONENTS Core  Qml Quick WebSockets Network Concurrent QuickControls2 LinguistTools)
 set(CMAKE_AUTORCC ON)
-
-
-qt_standard_project_setup(REQUIRES 6.5)
+set(CMAKE_AUTOMOC ON)
+if (POLICY CMP0141)
+  cmake_policy(SET CMP0141 NEW)
+  set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
+endif()
+qt_policy(SET QTP0001 NEW)
 add_subdirectory (src)
 add_subdirectory (lib)
 #qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} appp_ru.ts)configure_file(${QM_FILES} ${CMAKE_SOURCE_DIR} COPYONLY)

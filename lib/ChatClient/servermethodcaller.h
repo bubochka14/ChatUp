@@ -7,6 +7,7 @@
 #include <QMetaEnum>
 #include <functional>
 #include <QFuture>
+#include "responseexpectant.h"
 template <class T>
 struct MethodReturn
 {
@@ -37,6 +38,7 @@ class ServerMethodCaller : public QObject
 {
 	Q_OBJECT;
 	WSClient* _transport;
+	ResponseExpectant _exp;
 public:
 	explicit ServerMethodCaller(WSClient* transport, QObject* parent = nullptr);
 	QFuture<RoomList> getUserRooms(int userID);
@@ -57,7 +59,7 @@ public:
 	{
 		auto outMsg = MessageConstructor::methodCallMsg(method, args);
 		_transport->sendMessage(outMsg.get());
-		return _transport->getResponse(outMsg->messageID(), 5)
+		return _exp.expectResponse(outMsg->messageID(), 5000)
 			.then([&f](WSResponse resp)
 				{
 					auto message = resp.message();

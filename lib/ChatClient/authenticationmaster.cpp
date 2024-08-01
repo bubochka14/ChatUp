@@ -98,9 +98,9 @@ bool AuthenticationMaster::registerUser(WSClient* cl,const UserCredentials& cr, 
 					setUserInfo(user);
 					setAuthenticated(true);
 					return true;
-				});
-				call.waitForFinished();
-				return call.result();
+			});
+		call.waitForFinished();
+		return call.takeResult();
 	}
 	catch (const MethodCallFailure& err)
 	{
