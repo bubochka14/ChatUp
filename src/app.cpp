@@ -1,131 +1,106 @@
 #include "app.h"
 Q_LOGGING_CATEGORY(LC_ChatClient, "ChatClient")
-
-ChatClient::ChatClient(QObject* parent)
+ChatClient::ChatClient(const QString& host, int port, QObject* parent)
 	:QObject(parent)
-	,_wsClient(WSClient(QWebSocketProtocol::VersionLatest))
-	,_qmlEngine(new QQmlApplicationEngine(this))
-	,_currentTranslator(nullptr)
-	,_window(new ChatWindow(_qmlEngine))
-	,_dialog(new UserVerifierDialog(_qmlEngine))
-	,_authMaster(new AuthenticationMaster(this))
+	,_appFactory(new WSApplicationFactory(host,port,this))
 {
+	_settings = _appFactory->createApplicationSettings();
+	_windowFactory = _appFactory->createWindowFactory(_settings);
+	_chatController = _appFactory->createChatController();
+	_authMaster = _appFactory->createAuthenticationMaster();
 	setAppLanguage();
-	_qmlEngine->rootContext()->setContextProperty("roomModel",&_model);
-
-
+}
+ChatClient::ChatClient(ApplicationFactory* factory, QObject* parent)
+	:QObject(parent)
+	,_appFactory(factory)
+	, _currentTranslator(nullptr)
+{
+	_settings = _appFactory->createApplicationSettings();
+	_windowFactory = _appFactory->createWindowFactory(_settings);
+	_chatController = _appFactory->createChatController();
+	_authMaster = _appFactory->createAuthenticationMaster();
+	setAppLanguage();
 }
 
-void ChatClient::run(const QUrl& url)
+int ChatClient::run()
 {
-	setupWSClient(url);
-	authenticateUser();
-	_window->show();
-	ServerMethodCaller caller(&_wsClient);
-	RoomList rooms = caller.getUserRooms(_authMaster->userInfo().id).result();
-	_model.extractFromRoomList(rooms);
-	connect(&_wsClient, &WSClient::postMessage, [=](int roomID, const ChatRoomMessage& m)
-		{
+	StartupWindow* startup = _windowFactory->createStartupWindow();
+	AbstractChatWindow* chat = _windowFactory->createChatWindow(_chatController);
 
-			QModelIndexList list = _model.match(_model.index(0), ChatRoomModel::IDRole, QVariant::fromValue(roomID));
-			_model.data(list.at(0), ChatRoomModel::HistoryModelRole).value<MessageHistoryModel*>()->pushMessage(m);
-
+	if (!startup || !chat)
+		return 0;
+	startup->setParent(this);
+	connect(_authMaster, &AuthenticationMaster::authentificated, this, [=](UserInfo* userInfo) {
+			_chatController->initializeUser(userInfo);
+			startup->setStatus("Initialization...");
+			startup->setLoadingProgress(0.5);
 		});
-	for (size_t i = 0; i < _model.rowCount(); i++)
-	{
-		auto historyModel = _model.data(_model.index(i), ChatRoomModel::HistoryModelRole).value<MessageHistoryModel*>();
-		historyModel->upload(caller.getRoomHistory(_authMaster->userToken(),
-			_model.data(_model.index(i), ChatRoomModel::IDRole).value<int>()).result());
-	}
-	connect(_window, &ChatWindow::languageChanged, this, &ChatClient::setAppLanguage);
-	connect(_window, &ChatWindow::chatMessage, this, [&](const QString& m, long id)
-		{
-			ServerMethodCaller caller(&_wsClient);
-			caller.sendChatMessage(_authMaster->userToken(), id, m);
+	connect(_authMaster, &AuthenticationMaster::errorReceived, this, [=](const QString& error) {
+		startup->clear();
+		startup->setErrorString(error);
 		});
-	
-}
-QString ChatClient::authenticateUser()
-{
-
-	_dialog->show();
-	QEventLoop eLoop;
-
-	connect(_dialog, &UserVerifierDialog::loginPassed, this, [&](const QString& username, const QString& password)
-		{
-			_dialog->setState(UserVerifierDialog::Loading);
-			if (_authMaster->loginUser(&_wsClient, {username,password}, 5
-			))
-			{
-				_dialog->hide();
-				eLoop.exit();
-			}
-			else {
-				_dialog->setState(UserVerifierDialog::Error);
-				_dialog->setErrorString(tr("Unable to login: ") + _authMaster->errorString());
-			}
-	});
-	connect(_dialog, &UserVerifierDialog::registerPassed, this, [&](const QString& username, const QString& password)
-	{
-		_dialog->setState(UserVerifierDialog::Loading);
-		if (_authMaster->registerUser(&_wsClient, {username,password}, 5))
-		{
-			eLoop.exit();
-		}
-		else {
-			_dialog->setState(UserVerifierDialog::Error);
-			_dialog->setErrorString(tr("Unable to register: ") + _authMaster->errorString());
-		}
-	});
-	eLoop.exec();
-	return _authMaster->userToken(); 
-
-}
-bool ChatClient::setupWSClient(const QUrl& url)
-{
-	return _wsClient.connect2Server(url);
-	
+	connect(_chatController, &AbstractChatController::initialized, this, [=]() {
+			startup->clear();
+			chat->show();
+			startup->hide();
+		});
+	connect(startup, &StartupWindow::registerPassed, this, [=](const QString& login, const  QString& pass) {
+			startup->clear();
+			startup->setState(StartupWindow::Loading);
+			startup->setStatus("Connecting...");
+			startup->setLoadingProgress(0.1);
+			_authMaster->registerUser(login, pass);
+		});
+	connect(startup, &StartupWindow::loginPassed, this, [=](const QString& login, const  QString& pass) {
+			startup->clear();
+			startup->setState(StartupWindow::Loading);
+			startup->setStatus("Connecting...");
+			startup->setLoadingProgress(0.1);
+			_authMaster->loginUser(login, pass);
+		});
+	startup->show();
+	return 1;
 }
 void ChatClient::setAppLanguage(const QString& lan)
 {
-	QString tmp = lan;
-	ApplicationSettings settings(APP_NAME,ORG_NAME);
+	//QString tmp = lan;
+	//ApplicationSettings settings(APP_NAME,ORG_NAME);
 
-	if (lan.isEmpty())
-		tmp = settings.language();
+	//if (lan.isEmpty())
+	//	tmp = settings.language();
 
-	QTranslator* tr = _translators.value(tmp);
-	if (!tr)
-	{
-		tr = new QTranslator(this);
-		if (!tr->load(QLocale(tmp), QLatin1String("comp"), QLatin1String("_"), QString(QM_DIR)))
-		{
-			qCCritical(LC_ChatClient) << "Unable to find translation files";
-			tr->deleteLater();
-			return;
-		}
-		_translators.insert(tmp, tr); 
-	}
-	if (tr == _currentTranslator)
-	{
-		qCDebug(LC_ChatClient) << "Received same translator";
-		return;
-	}
-	if(QCoreApplication::installTranslator(tr))
-	{
-		if(_currentTranslator)
-			QCoreApplication::removeTranslator(_currentTranslator);
-		_currentTranslator = tr;
-		_qmlEngine->retranslate();
-		_qmlEngine->setUiLanguage(tmp);
-		settings.setLanguage(tmp);
-		qCDebug(LC_ChatClient) << "Language was set to " << tmp;
-	}
-	else
-	{
-		qCCritical(LC_ChatClient) << "Unable to set language: " << tmp;
+	//QTranslator* tr = _translators.value(tmp);
+	//if (!tr)
+	//{
+	//	tr = new QTranslator(this);
+	//	if (!tr->load(QLocale(tmp), QLatin1String("comp"), QLatin1String("_"), QString(QM_DIR)))
+	//	{
+	//		qCCritical(LC_ChatClient) << "Unable to find translation files";
+	//		tr->deleteLater();
+	//		return;
+	//	}
+	//	_translators.insert(tmp, tr); 
+	//}
+	//if (tr == _currentTranslator)
+	//{
+	//	qCDebug(LC_ChatClient) << "Received same translator";
+	//	return;
+	//}
+	//if(QCoreApplication::installTranslator(tr))
+	//{
+	//	if(_currentTranslator)
+	//		QCoreApplication::removeTranslator(_currentTranslator);
+	//	_currentTranslator = tr;
+	//	_qmlEngine->retranslate();
+	//	_qmlEngine->setUiLanguage(tmp);
+	//	settings.setLanguage(tmp);
+	//	qCDebug(LC_ChatClient) << "Language was set to " << tmp;
+	//}
+	//else
+	//{
+	//	qCCritical(LC_ChatClient) << "Unable to set language: " << tmp;
 
-	}
+	//}
 
 	
 }

@@ -9,6 +9,7 @@ ApplicationWindow {
     visible: true
     signal languageSet(string language)
     signal messageSent(string message, int roomID)
+    required property AbstractChatController controller
     header: MenuBar {
         Menu {
             title: qsTr("&Settings")
@@ -41,18 +42,20 @@ ApplicationWindow {
             }
         }
     }
-    RowLayout {
+    SplitView  {
         id: mainLayout
         anchors.fill: parent
 
         RoomList {
             id: roomList
             SplitView.minimumWidth: 120
-            SplitView.preferredWidth: Math.max(220,parent.width/4)
+            // Layout.preferredWidth: Math.max(220,parent.width/4)
             SplitView.maximumWidth: 420
+            roomModel: controller.userRooms
             onSelectedRoomIndexChanged: {
-                chatBox.model = roomModel.getRoomHistory(selectedRoomIndex)
+                Future fut = controller.getRoomHistory(selectedRoomID).result()
                 chatBox.showStartMessage(false)
+                 chatBox.model
             }
         }
         ColumnLayout {
@@ -73,15 +76,11 @@ ApplicationWindow {
 
                 visible: roomList.selectedRoomIndex == -1 ? false : true
                 onMessageEntered: textMessage => {
-                                      if (textMessage && roomList.selectedRoomID
-                                          && roomList.selectedRoomID != -1) {
-                                          root.messageSent(
+                                      if (textMessage && roomList.selectedRoomID != -1) {
+                                          controller.createMessage(
                                               textMessage,
                                               roomList.selectedRoomID)
                                           inputBox.clear()
-                                          console.log(
-                                              "Send message: " + textMessage
-                                              + " to " + roomList.selectedRoomID)
                                       }
                                   }
             }

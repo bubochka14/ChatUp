@@ -2,10 +2,12 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Controls.Material
+import ChatClient
+
 Pane {
     Material.background: "#39423B"
     id: root
-    property alias model: listView.model
+    property MessageModel model
     function showStartMessage(st) {
         startMessage.visible = st
     }
@@ -21,7 +23,7 @@ Pane {
     ListView {
         anchors.fill: parent
         id: listView
-
+        model: root.model
         spacing: 15
         ScrollBar.vertical: ScrollBar {
             id: bar
@@ -32,7 +34,7 @@ Pane {
         }
 
         delegate: Item {
-            id :fr
+            id: fr
             height: messageBox.height
             property var side
             width: listView.width
@@ -40,7 +42,7 @@ Pane {
             RowLayout {
                 id: messageBox
                 anchors.top: parent.top
-                width: parent.width*0.8
+                width: parent.width * 0.8
                 spacing: 10
                 TextEdit {
                     id: userLabel
@@ -55,15 +57,16 @@ Pane {
                 Item {
                     id: messageFrame
 
-                    Layout.preferredHeight:  messageBody.contentHeight + messageTime.contentHeight+16
+                    Layout.preferredHeight: messageBody.contentHeight
+                                            + messageTime.contentHeight + 16
                     Layout.preferredWidth: parent.width
-                   Column {
-                       id:col
-                       anchors.fill: parent
-                       anchors.margins: 8
-                       width:parent.width
+                    Column {
+                        id: col
+                        anchors.fill: parent
+                        anchors.margins: 8
+                        width: parent.width
                         TextEdit {
-                           Material.foreground: "Grey"
+                            Material.foreground: "Grey"
                             id: messageBody
                             text: body
                             width: parent.width
@@ -79,22 +82,24 @@ Pane {
                             id: messageTime
                             selectByMouse: true
                             readOnly: true
-                            text: time.toLocaleString(Qt.locale(Qt.uiLanguage),"dddd MM-dd hh:mm")
+                            text: time.toLocaleString(
+                                      Qt.locale(Qt.uiLanguage),
+                                      "dddd MM-dd hh:mm")
                             font.pointSize: 6
                         }
                     }
 
-                RoundedFrame
-                {
-                    anchors.fill: messageFrame
-                    rightInset: parent.width-Math.max( messageBody.contentWidth , messageTime.contentWidth)-20
-                    radius: 15
-                    z:-1
-                    Material.elevation: 50
-                    Material.background: "DarkGrey"
-
+                    RoundedFrame {
+                        anchors.fill: messageFrame
+                        rightInset: parent.width - Math.max(
+                                        messageBody.contentWidth,
+                                        messageTime.contentWidth) - 20
+                        radius: 15
+                        z: -1
+                        Material.elevation: 50
+                        Material.background: "DarkGrey"
+                    }
                 }
-}
                 Item {
                     id: spacer
                     Layout.fillWidth: true

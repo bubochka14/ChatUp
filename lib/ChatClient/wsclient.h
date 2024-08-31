@@ -6,32 +6,32 @@
 #include <QtWebSockets/QWebSocket>
 #include <qscopeguard.h>
 #include "messageconstructor.h"
-#include "chatroomstructs.h"
 #include <qnetworkreply.h>
 #include <QLoggingCategory>
+#include <QtConcurrent/qtconcurrentrun.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_WSClient);
-using NetworkError = QNetworkReply::NetworkError;
 class WSClient : public QObject
 {
-    Q_OBJECT
+    Q_OBJECT;
 public:
     explicit WSClient(QWebSocketProtocol::Version ver, QObject* parent = nullptr);
     QString lastError() const;
+    bool isConnected() const;
     virtual ~WSClient();
 public slots:
-    bool sendMessage(WSMessage*, 
-        QJsonDocument::JsonFormat = QJsonDocument::Indented);
+    bool sendMessage(const WSMessage&);
     bool connect2Server(const QUrl& url);
 signals:
     void closed();
+    void connected();
     void errorReceived(QAbstractSocket::SocketError error);
-    void responseReceived(int id, const QSharedPointer<WSMessage> resp);
-    void postMessage(int roomID, const ChatRoomMessage&);
-    void proxy(int responseTo, int awaitTime);
+    void responseReceived(const WSMessage& resp,size_t id);
+    //void postMessage(int roomID, const ChatRoomMessage&);
 private:
     QHash<int, QFuture<WSMessage>> _expectants;
     QWebSocket *_webSocket;
     QString _lastError;
+    bool _connected;
 private slots:
     void onError(QAbstractSocket::SocketError error);
     void onConnected();

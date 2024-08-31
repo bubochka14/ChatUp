@@ -1,14 +1,24 @@
-﻿find_package(Qt6 REQUIRED COMPONENTS Core  Qml Quick WebSockets Network Concurrent) 
+﻿find_package(Qt6 REQUIRED COMPONENTS Core  Qml Quick WebSockets Network Concurrent QuickControls2) 
 
-file(GLOB ABS_QML_SOURCES ./qml/*.qml)
-foreach(file IN LISTS ABS_QML_SOURCES)
-	file(RELATIVE_PATH QML_SOURCE ${CMAKE_CURRENT_SOURCE_DIR} ${file})
-	get_filename_component(QML_FILENAME ${file}	NAME)
-	set_source_files_properties(${QML_SOURCE} PROPERTIES
-		QT_RESOURCE_ALIAS ${QML_FILENAME}
-	)
+set(REL_QML_SOURCES
+    "qml/AuthorizationPage.qml"
+    "qml/ChatBox.qml"
+    "qml/ChatInput.qml"
+    "qml/ChatWindow.qml"
+    "qml/EmojiList.qml"
+    "qml/RoomList.qml"
+    "qml/RoundedFrame.qml"
+    "qml/StartupWindow.qml"
+    "qml/UserList.qml"
+    "qml/LoadingPage.qml"
+)
+foreach(file IN LISTS REL_QML_SOURCES)
+    get_filename_component(QML_FILENAME ${file}	NAME)
+    set_source_files_properties(${file} PROPERTIES
+            QT_RESOURCE_ALIAS ${QML_FILENAME}
+    )
 
-	list(APPEND QML_SOURCES ${QML_SOURCE})
+    list(APPEND QML_SOURCES ${file})
 endforeach()
 set(LIB_NAME "ChatClient")
 
@@ -16,37 +26,61 @@ set(LIB_RESOURCES
 	"resources/pics/clear.png"
 	"resources/pics/emoji.svg"
 	"resources/pics/file.png"
-)
+    "resources/gif/duck.gif"
+    "qtquickcontrols2.conf"
+
+    )
 set(LIB_SOURCES
 	"wsclient.cpp" 
 	"wsclient.h" 
 	"authenticationmaster.h" 
 	"messageconstructor.cpp"
-	"abstractuserverifier.h"
-	"abstractuserverifier.cpp"
+	"startupwindow.h"
+	"startupwindow.cpp"
 	"messageconstructor.h"
 	"authenticationmaster.cpp"
-	"chatroommodel.h"
-	"chatroommodel.cpp"
-	"chatroomstructs.h" 
-	"chatroomstructs.cpp" 
-	"responseexpectant.h"
-	"responseexpectant.cpp"
+	"roommodel.h"
+	"roommodel.cpp"
+	"usersmodel.cpp"
+	"usersmodel.h"
+	"userinfo.h" 
+	"userinfo.cpp" 
+	"applicationfactory.h"
+	"applicationfactory.cpp"
+	"qmlchatwindow.h"
+	"qmlchatwindow.cpp"
 	"applicationsettings.h" 
 	"applicationsettings.cpp"
-	"UserVerifierDialog.h"
-	"UserVerifierDialog.cpp"
     "servermethodcaller.h" 
 	"servermethodcaller.cpp" 
-	"chatwindow.h" 
-	"chatwindow.cpp" 
-	"MessageHistoryModel.h" 
-	"MessageHistoryModel.cpp"
-)
+	"abstractchatwindow.h" 
+	"abstractchatwindow.cpp" 
+	"callerauthentificationmaster.h"
+	"callerauthentificationmaster.cpp"
+	"messagemodel.h" 
+	"messagemodel.cpp"
+	"offlineservermethodcaller.h"
+	"offlineservermethodcaller.cpp"
+	"qmlstartupwindow.cpp"
+	"abstractwindowfactory.cpp"
+	"qmlstartupwindow.h"
+	"abstractwindowfactory.h"
+	"qmlwindowfactory.cpp"
+	"authentificationmaster.h"
+	"qmlwindowfactory.h"
+	"chatcontroller.h"
+	"chatcontroller.cpp"
+	"qmlfuturemapper.h"
+	"qmlfuturemapper.cpp"
+	"clientmethoddispatcher.h"
+	"clientmethoddispatcher.cpp"
+	"wsservermethodcaller.h"
+	"wsservermethodcaller.cpp"
+	)
 
 qt_add_qml_module(ChatClient STATIC
     URI ChatClient
-	NO_PLUGIN
+        PLUGIN_TARGET ChatClient
     SOURCES ${LIB_SOURCES}
     RESOURCES ${LIB_RESOURCES}
 	QML_FILES ${QML_SOURCES}
@@ -87,4 +121,5 @@ target_link_libraries(${LIB_NAME}  PRIVATE
 	Qt6::WebSockets 
 	Qt6::Network
 	Qt6::Concurrent
+	Qt6::QuickControls2
 )

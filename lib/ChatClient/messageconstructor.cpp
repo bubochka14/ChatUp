@@ -1,90 +1,71 @@
 #include "messageconstructor.h"
 bool WSMessage::isValid() const
 {
-	return _type != WSMessage::Undefined;
+	return type != WSMessage::Undefined;
 }
-QString WSMessage::apiVersion() const
+WSMessage::WSMessage()
+	:type(Undefined)
+	,messageID(0)
 {
-	return _apiVersion;
-}
-int WSMessage::messageID() const
-{
-	return _messageID;
-}
-WSMessage::MessageType WSMessage::type() const
-{
-	return _type;
-}
-QVariantHash WSMessage::data() const
-{
-	return _data;
+
 }
 QJsonObject WSMessage::toJsonObject() const
 {
 	QJsonObject jObj;
-	jObj.insert("apiVersion", _apiVersion);
-	jObj.insert("type", MessageConstructor::typeMapper(_type));
-	jObj.insert("messageID", QJsonValue::fromVariant(QVariant::fromValue(_messageID)));
-	jObj.insert("data", QJsonObject::fromVariantHash(_data));
+	jObj.insert("apiVersion", apiVersion);
+	jObj.insert("type", MessageConstructor::typeMapper(type));
+	jObj.insert("messageID", QJsonValue::fromVariant(QVariant::fromValue(messageID)));
+	jObj.insert("data", QJsonObject::fromVariantHash(data));
 
 	return jObj;
 }
 
 bool WSMessage::compareData(const QString& key, const QString& value) const
 {
-	if (!data().contains(key))
+	if (!data.contains(key))
 		return false;
-	return data().value(key).toString().toUpper() == value.toUpper();
+	return data.value(key).toString().toUpper() == value.toUpper();
 }
 int MessageConstructor::generateID()
 {
 	static int i = 1;
 	return ++i;
 }
-QSharedPointer<WSMessage> MessageConstructor::emptyMsg()
+WSMessage MessageConstructor::responseMsg(int responseTo, const QVariantHash& data)
 {
-	auto out = QSharedPointer<WSMessage>::create();
-	out->_type = WSMessage::Undefined;
-	return out;
-}
-QSharedPointer<WSMessage> MessageConstructor::responseMsg(int responseTo, const QVariantHash& data)
-{
-	auto out = QSharedPointer<WSMessage>::create();
+	WSMessage out;
 	//out->_apiVersion = API_VERSION;
-	out->_type = WSMessage::Response;
-	out->_messageID = generateID();
-	out->_data.insert("responseTo", QVariant::fromValue(responseTo));
-	out->_data.insert(data);
+	out.type = WSMessage::Response;
+	out.messageID = generateID();
+	out.data.insert("responseTo", QVariant::fromValue(responseTo));
+	out.data.insert(data);
 	return out;
 }
-QSharedPointer<WSMessage> MessageConstructor::methodCallMsg(const QString& method,const QVariantList& args, const QVariantHash& data)
+WSMessage MessageConstructor::methodCallMsg(const QString& method, const QVariantHash& args)
 {
-	auto out = QSharedPointer<WSMessage>::create();
+	WSMessage out;
 	//out->_apiVersion = API_VERSION;
-	out->_type = WSMessage::MethodCall;
-	out->_messageID = generateID();
-	out->_data.insert("method", method);
-	out->_data.insert("args",args);
-	out->_data.insert(data);
+	out.type = WSMessage::MethodCall;
+	out.messageID = generateID();
+	out.data.insert("method", method);
+	out.data.insert("args",args);
 	return out;
 }
-QSharedPointer<WSMessage> MessageConstructor::fromJson(QByteArray array)
+WSMessage MessageConstructor::fromJson(QByteArray array)
 {
-	auto out = QSharedPointer<WSMessage>(new WSMessage);
+	WSMessage out;
 	QJsonDocument doc = QJsonDocument::fromJson(array);
 	QJsonObject obj = doc.object();
-	out->_apiVersion = obj.value("apiVersion").toString();
-	out->_type = typeMapper(obj.value("type").toString());
-	out->_messageID = obj.value("messageID").toInteger();
-	out->_data = obj.value("data").toObject().toVariantHash();
+	out.apiVersion = obj.value("apiVersion").toString();
+	out.type = typeMapper(obj.value("type").toString());
+	out.messageID = obj.value("messageID").toInteger();
+	out.data = obj.value("data").toObject().toVariantHash();
 
 	return out;
 }
 WSMessage::MessageType MessageConstructor::typeMapper(const QString& type)
 {
-	if (type == "authentication")
-		return WSMessage::Authentication;
-	else if (type == "methodCall")
+	if (type == "methodCall")
 		return WSMessage::MethodCall;
 	else if (type == "response")
 		return WSMessage::Response;
@@ -93,9 +74,7 @@ WSMessage::MessageType MessageConstructor::typeMapper(const QString& type)
 }
 QString MessageConstructor::typeMapper(WSMessage::MessageType type)
 {
-	if (type == WSMessage::Authentication)
-		return "authentication";
-	else if (type == WSMessage::MethodCall)
+	if (type == WSMessage::MethodCall)
 		return "methodCall";
 	else if (type == WSMessage::Response)
 		return "response";

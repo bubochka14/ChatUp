@@ -1,43 +1,31 @@
 #pragma once
-#include <QObject>
 #include <QQmlApplicationEngine>
-#include <qeventloop.h>
-#include "userverifierdialog.h"
-#include <QtConcurrent/qtconcurrentrun.h>
-#include <qfuture.h>
+#include <QGuiApplication>
 #include <qtranslator.h>
-#include "chatroommodel.h"
-#include "chatwindow.h"
-#include "authenticationmaster.h"
+#include "servermethodcaller.h"
+#include "RoomModel.h"
 #include "wsclient.h"
 #include "applicationsettings.h"
-#include <QQmlContext>
-#include <QGuiApplication>
+#include "qmlwindowfactory.h"
+#include "clientmethoddispatcher.h"
+#include "applicationfactory.h"
+#include "chatcontroller.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_ChatClient)
 class ChatClient : public QObject
 {
 	Q_OBJECT;
-	QQmlEngine* _qmlEngine;
-	ChatWindow* _window;
-	UserVerifierDialog* _dialog;
-	WSClient _wsClient;
+	AuthenticationMaster* _authMaster;
+	ApplicationFactory* _appFactory;
+	AbstractWindowFactory* _windowFactory;
+	AbstractChatController* _chatController;
 	QTranslator* _currentTranslator;
 	QHash<QString, QTranslator*> _translators;
-	ChatRoomModel _model;
-	AuthenticationMaster* _authMaster;
-	//QString   _userToken;
-	//QUrl      _hostUrl;
+	ApplicationSettings* _settings;
 public:
-	explicit ChatClient(QObject* parent = nullptr);
-	void run(const QUrl&);
-	//void setHostUrl(const QUrl& other);
-	//QUrl hostUrl() const;
+	explicit ChatClient(const QString& host,int port,QObject* parent = nullptr);
+	explicit ChatClient(ApplicationFactory* factory, QObject* parent = nullptr);
+	int run();
 public slots:
 	void setAppLanguage(const QString& lan = QString());
-signals:
-	void hostUrlChanged();
-protected:
-	virtual bool setupWSClient(const QUrl&);
-	virtual QString authenticateUser();
 
 };

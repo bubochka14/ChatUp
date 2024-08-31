@@ -24,7 +24,7 @@ Frame {
             height: 50
             Label
             {
-                text: roomName
+                text: name
             }
 
             MouseArea {
@@ -34,14 +34,11 @@ Frame {
                 onEntered: listView.currentIndex = index
                 onClicked:
                 {
-                    selectedRoomID = roomID;
+                    selectedRoomID = id;
                     selectedRoomIndex   = listView.currentIndex;
                 }
                // onExited: listView.currentIndex = -1
             }
         }
-    }
-    function selectRoomID(roomID: int) {
-        selectedRoomID = roomID;
     }
 }

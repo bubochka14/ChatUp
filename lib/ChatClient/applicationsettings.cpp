@@ -1,6 +1,6 @@
 #include "applicationsettings.h"
-ApplicationSettings::ApplicationSettings(const QString& appName, const QString& orgName)
-	:QSettings(appName, orgName)
+ApplicationSettings::ApplicationSettings(const QString& appName, const QString& orgName, QObject *parent)
+	:QSettings(appName, orgName, parent)
 {
 	
 
