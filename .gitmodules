@@ -1,3 +1,6 @@
 [submodule "tests/googletest"]
 	path = tests/googletest
 	url = https://github.com/google/googletest.git
+[submodule "lib/quickfuture"]
+	path = lib/quickfuture
+	url = https://github.com/bubochka14/quickfuture
