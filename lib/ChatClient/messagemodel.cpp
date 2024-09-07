@@ -4,6 +4,7 @@ MessageModel::MessageData::MessageData()
 	:id(-1)
 	,roomId(-1)
 	,userId(-1)
+	,status(Loading)
 {
 
 }
@@ -13,7 +14,8 @@ const QHash<int, QByteArray> MessageModel::_roleNames = QHash<int, QByteArray>({
 	{RoomIdRole,"roomId"},
 	{BodyRole,"body"},
 	{TimeRole,"time"},
-	{HashRole,"hash"}
+	{HashRole,"hash"},
+	{StatusRole,"messageStatus"}
 	}
 );
 QModelIndex MessageModel::idToIndex(int id) const
@@ -30,6 +32,7 @@ QVariantHash MessageModel::MessageData::toHash() const
 {
 	QVariantHash out;
 	out["id"] = id;
+	out["status"] = QMetaEnum::fromType<MessageStatus>().valueToKey(status);
 	out["time"] = time;
 	out["body"] = body;
 	out["userId"] = userId;
@@ -47,7 +50,10 @@ void MessageModel::MessageData::extractFromHash(const QVariantHash& other)
 	if (other.contains("time"))
 		time = other["time"].toDateTime();
 	if (other.contains("body"))
-		body = other["body"].toByteArray();
+		body = other["body"].toByteArray();	
+	if (other.contains("status"))
+		status = MessageStatus(QMetaEnum::fromType<MessageStatus>().
+			keyToValue(other["status"].toString().toStdString().c_str()));
 }
 MessageModel::MessageModel(QObject* parent )
 	:QAbstractListModel(parent)
@@ -80,6 +86,8 @@ QVariant MessageModel::data(const QModelIndex& index, int role) const
 		return _messages.at(index.row()).time;
 	case HashRole:
 		return _messages.at(index.row()).toHash();
+	case StatusRole:
+		return _messages.at(index.row()).status;
 	default:
 		return QVariant();
 	}
@@ -148,6 +156,12 @@ bool MessageModel::setData(const QModelIndex& index, const QVariant& value, int 
 		if (value.canConvert<QVariantHash>()) {
 			_messages[index.row()].extractFromHash(value.value<QVariantHash>());
 			emit dataChanged(index, index);
+			return true;
+		}
+	case StatusRole:
+		if (value.canConvert<MessageStatus>()) {
+			_messages[index.row()].status = value.value<MessageStatus>();
+			emit dataChanged(index, index, QList<int>() << StatusRole);
 			return true;
 		}
 	};
