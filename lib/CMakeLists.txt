@@ -1,0 +1,2 @@
+add_subdirectory(ChatClient)
+add_subdirectory(UpdateManager)
