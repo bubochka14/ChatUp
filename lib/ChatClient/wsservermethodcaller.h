@@ -1,7 +1,8 @@
 #pragma once
 #include "servermethodcaller.h"
 #include "wsclient.h"
-class WSServerMethodCaller : public ServerMethodCaller
+#include "chatclient_include.h"
+class CHAT_CLIENT_EXPORT WSServerMethodCaller : public ServerMethodCaller
 {
 	Q_OBJECT;
 public:
@@ -18,14 +19,14 @@ public:
 	QFuture<QVariantHash> updateRoom(const QVariantHash&);
 	QFuture<QVariantHash> createMessage(const QVariantHash&) override;
 	QFuture<QVariantHash> updateMessage(const QVariantHash&) override;
-	QFuture<QVariantHash> deleteMessage(const QVariantHash&) override;
+	QFuture<QVariantHash> deleteMessage(int roomId, int messageId) override;
 	QFuture<QVariantHash> updateUser(const QVariantHash&) override;
 	QFuture<QVariantHash> deleteUser(int id) override;
 	QFuture<QVariantHash> registerUser(const QString& login, const QString& pass) override;
 	QFuture<QVariantHash> loginUser(const QString& login, const QString& pass) override;
 signals:
 	void connectionAttempt(const QUrl&);
-	void transferMessage(const WSMessage& msg);
+	void transferMessage(WSMessage* msg);
 private:
 	WSClient* _transport;
 	QUrl  _server;

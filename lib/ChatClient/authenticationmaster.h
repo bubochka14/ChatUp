@@ -5,8 +5,10 @@
 #include "servermethodcaller.h"
 #include <QLoggingCategory>
 #include "userinfo.h"
+#include "chatclient_include.h"
+
 Q_DECLARE_LOGGING_CATEGORY(LC_AuthMaster)
-class AuthenticationMaster : public QObject
+class CHAT_CLIENT_EXPORT AuthenticationMaster : public QObject
 {
 	Q_OBJECT;
 public:

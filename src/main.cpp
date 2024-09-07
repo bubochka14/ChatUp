@@ -11,7 +11,6 @@
 int main(int argc, char ** argv)
 {
 	using namespace Qt::Literals::StringLiterals;
-
 	QGuiApplication gApp(argc, argv);
     QGuiApplication::setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;

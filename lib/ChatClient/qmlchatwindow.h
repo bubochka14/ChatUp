@@ -3,8 +3,9 @@
 #include <QQuickWindow>
 #include <qurl.h>
 #include <qqmlengine.h>
+#include "chatclient_include.h"
 
-class QmlChatWindow : public AbstractChatWindow
+class CHAT_CLIENT_EXPORT QmlChatWindow : public AbstractChatWindow
 {
 	Q_OBJECT;
 	QML_ELEMENT;

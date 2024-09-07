@@ -11,7 +11,8 @@
 #include <qqmlcontext.h>
 #include "chatcontroller.h"
 #include "applicationsettings.h"
-class AbstractChatWindow : public QObject
+#include "chatclient_include.h"
+class CHAT_CLIENT_EXPORT AbstractChatWindow : public QObject
 {
 	Q_OBJECT;
 	Q_PROPERTY(AbstractChatController* controller READ controller WRITE setController NOTIFY controllerChanged);

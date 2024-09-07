@@ -3,35 +3,74 @@
 #include <QJsonDocument>
 #include <qmetatype.h>
 #include <QJsonObject>
-class WSMessage
+#include "chatclient_include.h"
+#include <QMetaEnum>
+class CHAT_CLIENT_EXPORT WSMessage : public QObject
 {
-	Q_GADGET
+	Q_OBJECT;
 public:
-	enum MessageType
-	{
-		Undefined =0,
-		Response,
-		MethodCall,
-
-	}; Q_ENUM(MessageType);
-	explicit WSMessage();
-	QString apiVersion;
-	int	messageID;
-	MessageType type;
-	QVariantHash data;
-	//Case insensitive compare.
-	bool compareData(const QString& key, const QString& value) const;
-	bool isValid() const;
-	QJsonObject toJsonObject() const;
+	QString apiVersion() const;
+	int messageId() const;
+	void setApiVersion(const QString&);
+	void setMessageId(int other);
+	virtual QVariantHash toHash() const;
+	virtual bool extractFromHash(const QVariantHash&);
+	explicit WSMessage(QObject* parent = nullptr);
+private:
+	QString _api;
+	int     _id;
 };
-class MessageConstructor
+class CHAT_CLIENT_EXPORT WSReply : public WSMessage
+{
+	Q_OBJECT;
+public:
+	enum ReplyStatus{
+		unknown,
+		success,
+		error
+	}; Q_ENUM(ReplyStatus);
+	explicit WSReply(QObject* parent = nullptr);
+	int replyTo() const;
+	ReplyStatus status() const;
+	QList<QVariantHash> reply() const;
+	QString errorString() const;
+	void setErrorString(const QString& other);
+	void setReplyTo(int other);
+	void setStatus(ReplyStatus other);
+	void setReply(const QList<QVariantHash>& other);
+	void setReply(QList<QVariantHash>&& other);
+	bool extractFromHash(const QVariantHash&) override;
+	QVariantHash toHash() const override;
+
+private:
+	int _repTo;
+	QString _error;
+	ReplyStatus _status;
+	QList<QVariantHash> _reply;
+};
+class CHAT_CLIENT_EXPORT WSMethodCall : public WSMessage
 {
 public:
-	static WSMessage responseMsg(int responseTo, const QVariantHash& data = QVariantHash());
-	static WSMessage methodCallMsg(const QString& method, const QVariantHash& args = QVariantHash());
-	static WSMessage fromJson(QByteArray array);
-	static WSMessage::MessageType typeMapper(const QString& type);
-	static QString typeMapper(WSMessage::MessageType);
+	explicit WSMethodCall(QObject* parent = nullptr);
+	QString method() const;
+	QVariantHash args() const;
+	void setArgs(const QVariantHash& other);
+	void setArgs(QVariantHash&& other);
+	void setMethod(const QString& other);
+	QVariantHash toHash() const override;
+	bool extractFromHash(const QVariantHash&) override;
+
+private:
+	QString _method;
+	QVariantHash _args;
+};
+class CHAT_CLIENT_EXPORT WSMessageConstructor
+{
+public:
+	static WSReply* replyMsg(int replyTo, const QList<QVariantHash>& reply = QList<QVariantHash>());
+	static WSMethodCall* methodCallMsg(const QString& method,const QVariantHash& args = QVariantHash());
+protected:
+	static void defaultMsgInstallation(WSMessage* other);
 private:
 	static int generateID();
 };

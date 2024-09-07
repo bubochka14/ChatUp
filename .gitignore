@@ -34,4 +34,4 @@
 .vs
 out/*
 build/*
-CMakeLists.txt.user
+*.user

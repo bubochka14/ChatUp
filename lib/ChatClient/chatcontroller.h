@@ -8,16 +8,9 @@
 #include "qfuturewatcher.h"
 #include "usersmodel.h"
 #include <qloggingcategory.h>
+#include "chatclient_include.h"
+#include <qffuture.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_CHAT_CONTROLLER);
-Q_DECLARE_METATYPE(QFuture<MessageModel*>)
-struct Foreign
-{
-	Q_GADGET
-	QML_FOREIGN(QFuture<MessageModel*>)
-	QML_NAMED_ELEMENT(Future);
-		// QML_EXTENDED, QML_SINGLETON ...
-};
-
 //class RoomController : public QObject
 //{
 //	Q_OBJECT;
@@ -54,7 +47,7 @@ struct Foreign
 //	void deleteUser();
 //
 //};
-class AbstractChatController : public QObject
+class CHAT_CLIENT_EXPORT AbstractChatController : public QObject
 {
 	Q_OBJECT;
 	QML_ELEMENT;
@@ -71,9 +64,9 @@ public:
 	Q_INVOKABLE virtual QFuture<void> addUserToRoom(int roomID, int userID) = 0;
 	Q_INVOKABLE virtual QFuture<void> createMessage(const QString& body, int roomId) = 0;
 	Q_INVOKABLE virtual QFuture<void> createRoom(const QString& name) = 0;
-	Q_INVOKABLE virtual QFuture<void> updateRoom(int id,const QVariantHash&) = 0;
-	Q_INVOKABLE virtual QFuture<void> updateMessage(int roomId,int messageId, const QVariantHash&) = 0;
-	Q_INVOKABLE virtual QFuture<void> updateUser(int id, const QVariantHash&) = 0;
+	Q_INVOKABLE virtual QFuture<void> updateRoom(const QVariantHash&) = 0;
+	Q_INVOKABLE virtual QFuture<void> updateMessage(const QVariantHash&) = 0;
+	Q_INVOKABLE virtual QFuture<void> updateUser(const QVariantHash&) = 0;
 	Q_INVOKABLE virtual QFuture<void> deleteUser() = 0;
 	Q_INVOKABLE virtual QFuture<void> deleteMessage(int roomId,int messId) = 0;
 	Q_INVOKABLE virtual QFuture<void> deleteRoom(int id) = 0;
@@ -98,7 +91,7 @@ private:
 	UserInfo* _currentUser;
 
 };
-class CallerChatController : public AbstractChatController
+class CHAT_CLIENT_EXPORT CallerChatController : public AbstractChatController
 {
 	Q_OBJECT;
 public:
@@ -110,10 +103,10 @@ public:
 	QFuture<void> createMessage(const QString& body, int roomId) override;
 	QFuture<void> createRoom(const QString&) override;
 	QFuture<void> deleteRoom(int id) override;
-	QFuture<void> updateRoom(int id, const QVariantHash&) override;
-	QFuture<void> updateMessage(int roomId,int messageId, const QVariantHash&) override;
+	QFuture<void> updateRoom(const QVariantHash&) override;
+	QFuture<void> updateMessage(const QVariantHash&) override;
 	QFuture<void> deleteMessage(int roomid,int messId) override;
-	QFuture<void> updateUser(int id, const QVariantHash&) override;
+	QFuture<void> updateUser(const QVariantHash&) override;
 	QFuture<void> deleteUser() override;
 
 	/*void createUser(UserInfo* user);*/
@@ -122,6 +115,7 @@ public slots:
 private:
 	QMap<int, MessageModel*> _history;
 	QMap<int, UserInfo*> _users;
+	QMap<int, QFuture<UserInfo*>> _cals;
 	ServerMethodCaller* _caller;
 	int _tempMessageCounter;
 };

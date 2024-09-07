@@ -1,6 +1,7 @@
 #pragma once
 #include <QtPlugin>
-class StartupWindow : public QObject
+#include "chatclient_include.h"
+class CHAT_CLIENT_EXPORT StartupWindow : public QObject
 {
 	Q_OBJECT;
 public:

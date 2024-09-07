@@ -4,8 +4,9 @@
 #include <qqmlengine.h>
 #include <qstandarditemmodel.h>
 #include <qqmlengine.h>
+#include "chatclient_include.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_ROOM_MODEL)
-class RoomModel : public QAbstractListModel
+class CHAT_CLIENT_EXPORT RoomModel : public QAbstractListModel
 {
 	Q_OBJECT;
 	QML_ELEMENT;
@@ -18,6 +19,16 @@ public:
 		int id;
 		QString name;
 		QString tag;
+		static int checkId(const QVariantHash& data, bool& success)
+		{
+			if (data.contains("id"))
+			{
+				success = true;
+				return data["id"].toInt();
+			}
+			success = false;
+			return 0;
+		}
 	};
 	QVector<RoomData> _rooms;
 	QMap<int, int>    _idToIndex;
@@ -37,7 +48,6 @@ public:
 	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	QModelIndex idToIndex(int id);
 	bool setData(const QModelIndex& index, const QVariant& value, int role = NameRole) override;
-	//static RoomModel* createFromRoomList(const RoomList& other);
 private:
 	QHash<int, QByteArray> roleNames() const;
 };

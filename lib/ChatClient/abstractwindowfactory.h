@@ -4,7 +4,9 @@
 #include "applicationsettings.h"
 #include "abstractchatwindow.h"
 #include "chatcontroller.h"
-class AbstractWindowFactory : public QObject
+#include "chatclient_include.h"
+
+class CHAT_CLIENT_EXPORT AbstractWindowFactory : public QObject
 {
 	Q_OBJECT;
 public:

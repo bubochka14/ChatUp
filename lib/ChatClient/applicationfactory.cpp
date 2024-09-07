@@ -14,11 +14,11 @@ WSApplicationFactory::WSApplicationFactory(const QString& host,int port,QObject*
 }
 AuthenticationMaster* WSApplicationFactory::createAuthenticationMaster()
 {
-	return new CallerAuthentificationMaster(_caller);
+	return new CallerAuthentificationMaster(_caller,parent());
 }
 ApplicationSettings* WSApplicationFactory::createApplicationSettings()
 {
-	return new ApplicationSettings("ChatClient", "Org");
+	return new ApplicationSettings("ChatClient", "Org",parent());
 }
 AbstractWindowFactory* WSApplicationFactory::createWindowFactory(ApplicationSettings* settings)
 {
@@ -27,4 +27,8 @@ AbstractWindowFactory* WSApplicationFactory::createWindowFactory(ApplicationSett
 AbstractChatController* WSApplicationFactory::createChatController()
 {
 	return new CallerChatController(_caller,parent());
+}
+ClientMethodDispatcher* WSApplicationFactory::createDispatcher()
+{
+	return new WSClientMethodDispatcher(_ws, parent());
 }

@@ -4,8 +4,9 @@
 #include <qhash.h>
 #include "userinfo.h"
 #include <qloggingcategory.h>
+#include "chatclient_include.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_USER_MODEL)
-class UsersModel : public QAbstractListModel
+class CHAT_CLIENT_EXPORT UsersModel : public QAbstractListModel
 {
 	Q_OBJECT;
 	QVector<UserInfo*> _users;
@@ -20,6 +21,7 @@ public:
 	};
 	explicit UsersModel(QObject* parent = nullptr);
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+	bool updateFromHash(const QVariantHash& hash);
 	//bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	//bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	QVariant data(const QModelIndex& index, int role = IdRole) const override;

@@ -15,6 +15,7 @@ add_executable (app
 set(APP_BINARY ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
 set(APP_SOURCE ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 set(APP_QM_DIR "${CMAKE_BINARY_DIR}/translations" CACHE INTERNAL "")
+
 add_custom_command(TARGET app PRE_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory ${APP_QM_DIR})
 
 target_compile_definitions(app
@@ -28,6 +29,7 @@ target_link_libraries(app PRIVATE
 	Qt6::Qml 
 	Qt6::Quick 
 	ChatClient	
+
 )
 
 #qt_add_lupdate(components TS_FILES "${APP_SOURCC_DIR}/translations/comp_ru.ts" "${APP_SOURCC_DIR}/translations/comp_en.ts")

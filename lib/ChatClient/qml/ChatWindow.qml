@@ -53,8 +53,11 @@ ApplicationWindow {
             SplitView.maximumWidth: 420
             roomModel: controller.userRooms
             onSelectedRoomIndexChanged: {
-                chatBox.model = controller.getRoomHistory(selectedRoomID).result()
+                Future.onFinished(controller.getRoomHistory(selectedRoomID), function(value) {
+                    chatBox.model = value
+                  });
                 chatBox.showStartMessage(false)
+                chatBox.model
             }
         }
         ColumnLayout {
@@ -64,6 +67,7 @@ ApplicationWindow {
             SplitView.minimumWidth: 350
             ChatBox {
                 id: chatBox
+                controller: root.controller
                 Layout.fillHeight: true
                 Layout.fillWidth: true
 

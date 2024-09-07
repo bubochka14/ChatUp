@@ -1,5 +1,5 @@
 #include "WSServerMethodCaller.h"
-
+using namespace Qt::Literals::StringLiterals;
 WSServerMethodCaller::WSServerMethodCaller(WSClient* transport, const QString& host,int port,QObject* parent)
 	:ServerMethodCaller(parent)
 	,_transport(transport)
@@ -21,24 +21,24 @@ QUrl WSServerMethodCaller::serverUrl() const
 	return _server;
 }
 
-QVariant customMethod(const char* method, WSServerMethodCaller*caller,const QVariantHash& args)
+HashList customMethod(const char* method, WSServerMethodCaller*caller,const QVariantHash& args)
 {
-	auto&& outMsg = MessageConstructor::methodCallMsg(method, args);
+	WSMethodCall* outMsg = WSMessageConstructor::methodCallMsg(method, args);
 	QEventLoop loop; 
 	QScopedPointer<QObject> context(new QObject);
-	WSMessage wsmsg; 
+	QScopedPointer<WSReply> wsrep;
 	bool connectionError = false;
 	QTimer timer; timer.setSingleShot(true);
 	QObject::connect(&timer, &QTimer::timeout, context.get(), [=, &loop = loop]()
 		{
 			loop.exit();
 		});
-	QObject::connect(caller->transport(), &WSClient::responseReceived, context.get(),
-		[&](const WSMessage& msg, size_t id) 
+	QObject::connect(caller->transport(), &WSClient::replyReceived, context.get(),
+		[&](WSReply* rep) 
 		{
-			if (outMsg.messageID == id)
+			if (outMsg->messageId() == rep->replyTo())
 			{
-				wsmsg = msg;
+				wsrep.reset(rep);
 				loop.exit();
 			}
 		});
@@ -63,104 +63,91 @@ QVariant customMethod(const char* method, WSServerMethodCaller*caller,const QVar
 		if (connectionError)
 		{
 			MethodCallFailure* out = new MethodCallFailure;
-			out->message = "Connection failure";
+			out->message = "Connection failure"_L1;
 			out->error = QNetworkReply::ConnectionRefusedError;
 			throw out;
 		}
-		if (wsmsg.compareData("status", "error"))
+		if (wsrep->status() == WSReply::error)
 		{
 			MethodCallFailure out;
-			out.message = wsmsg.data.value("errorString").toString().toStdString();
+			out.message = wsrep->errorString();
 			out.error = QNetworkReply::InternalServerError;
 			throw out;
 		}
-		else if (wsmsg.compareData("status", "success"))
+		else if (wsrep->status() == WSReply::success)
 		{
-
-			if (!wsmsg.data.contains("return"))
-				qWarning() << "Response doesn`t contain return field";
- 			if (wsmsg.data.value("return").canConvert<QVariantList>())
-			{
-				HashList out;
-				for (auto& i : wsmsg.data.value("return").toList())
-				{
-					out.append(i.toHash());
-				}
-				return QVariant::fromValue(std::move(out));
-			}
-			else {
-				return wsmsg.data.value("return");
-			}
+ 			return wsrep->reply();
 		}
 		else
 		{
 			MethodCallFailure* out = new MethodCallFailure;
-			out->message = "Unknown methodCall failure";
+			out->message = "Unknown methodCall failure"_L1;
 			throw out;
 		}
 	}
 	else
 	{
 		MethodCallFailure* out = new MethodCallFailure;
-		out->message = "Timeout";
+		out->message = "Timeout"_L1;
 		out->error = QNetworkReply::TimeoutError;
 		throw out;
 	}
 }
 QFuture<HashList> WSServerMethodCaller::getUserRooms(int userID)
 {
-	return QtConcurrent::run(customMethod, "getUserRooms", this, QVariantHash({ { "id",userID } })).then([](QVariant&& v) {return qvariant_cast<HashList>(v); });
+	return QtConcurrent::run(customMethod, "getUserRooms", this, QVariantHash({ { "id"_L1,userID } }));
 }
 QFuture<QVariantHash> WSServerMethodCaller::createMessage(const QVariantHash& h)
 {
 	return QtConcurrent::run(customMethod, "sendChatMessage", this, h)
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+		.then([](HashList&& v) {return v.takeFirst(); });
 }
 QFuture<QVariantHash> WSServerMethodCaller::createRoom(const QVariantHash& h)
 {
 	return QtConcurrent::run(customMethod, "createRoom", this, h)
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+		.then([](HashList&& v) {return v.takeFirst(); });
 
 }
 QFuture<QVariantHash> WSServerMethodCaller::deleteRoom(int id)
 {
-	return QtConcurrent::run(customMethod, "deleteRoo,", this, QVariantHash({ { "id",id } }))
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "deleteRoom", this, QVariantHash({ { "id"_L1,id } }))
+		.then([](HashList&& v) {return v.takeFirst(); });
 
 }
 QFuture<QVariantHash> WSServerMethodCaller::updateRoom(const QVariantHash& h)
 {
-	return QtConcurrent::run(customMethod, "sendChatMessage", this, h)
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "updateRoom", this, h)
+		.then([](HashList&& v) {return v.takeFirst(); });
 
 }
 QFuture<QVariantHash> WSServerMethodCaller::updateMessage(const QVariantHash& h)
 {
-	return QtConcurrent::run(customMethod, "sendChatMessage", this, h)
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "updateMessage", this, h)
+		.then([](HashList&& v) {return v.takeFirst(); });
 
 }
-QFuture<QVariantHash> WSServerMethodCaller::deleteMessage(const QVariantHash& h)
+QFuture<QVariantHash> WSServerMethodCaller::deleteMessage(int roomId, int messageId)
 {
-	return QtConcurrent::run(customMethod, "sendChatMessage", this, h)
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "deleteMessage", this,
+		QVariantHash({ {"roomId",roomId},{"id",messageId} }))
+		.then([](HashList&& v) {return v.takeFirst(); });
 
 }
 QFuture<QVariantHash> WSServerMethodCaller::updateUser(const QVariantHash& h)
 {
 	return QtConcurrent::run(customMethod, "sendChatMessage", this, h)
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+		.then([](HashList&& v) {return v.takeFirst(); });
 
 }
 QFuture<QVariantHash> WSServerMethodCaller::deleteUser(int id)
 {
-	return QtConcurrent::run(customMethod, "sendChatMessage", this, QVariantHash({ { "id",id } }))
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "deleteUser", this, QVariantHash({ { "id"_L1,id } }))
+		.then([](HashList&& v) {return v.takeFirst(); });
 
 }
 QFuture<HashList> WSServerMethodCaller::getRoomHistory(int roomID)
 {
-	return QtConcurrent::run(customMethod, "getRoomHistory",this, QVariantHash({ { "roomId",roomID } })).then([](QVariant&& v) {return qvariant_cast<HashList>(v); });;
+	return QtConcurrent::run(customMethod, "getRoomHistory", this, QVariantHash({ { "roomId"_L1,roomID } }));
 }
 //QFuture<bool> WSServerMethodCaller::addUserToRoom(int userID, int roomID)
 //{
@@ -168,25 +155,28 @@ QFuture<HashList> WSServerMethodCaller::getRoomHistory(int roomID)
 //}
 QFuture<QVariantHash> WSServerMethodCaller::registerUser(const QString& login, const QString& password)
 {
-	return QtConcurrent::run(customMethod, "registerUser", this, QVariantHash({ { "login",login },{"password",password}}))
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "registerUser", this,
+		QVariantHash({ { "login"_L1,login },{"password"_L1,password}}))
+		.then([](HashList&& v) {return v.takeFirst(); });
 }
 QFuture<QVariantHash> WSServerMethodCaller::loginUser(const QString& login, const QString& password)
 {
-	return QtConcurrent::run(customMethod, "loginUser", this, QVariantHash({ { "login",login },{"password",password} }))
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "loginUser", this, QVariantHash({ { "login"_L1,login },
+		{"password"_L1,password} }))
+		.then([](HashList&& v) {return v.takeFirst(); });
 }
 QFuture<QVariantHash> WSServerMethodCaller::getUserInfo(int id)
 {
-	return QtConcurrent::run(customMethod, "getUserInfo", this, QVariantHash({ { "id",id } }))
-	.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "getUserInfo", this, QVariantHash({ { "id"_L1,id } }))
+	.then([](HashList&& v) {return v.takeFirst(); });
 }
 QFuture<QVariantHash> WSServerMethodCaller::addUserToRoom(int roomID, int userID)
 {
-	return QtConcurrent::run(customMethod, "addUserToRoom", this, QVariantHash({ { "roomId",roomID },{"userId",userID} }))
-		.then([](QVariant&& v) {return qvariant_cast<QVariantHash>(v); });
+	return QtConcurrent::run(customMethod, "addUserToRoom", this,
+		QVariantHash({ { "roomId"_L1,roomID },{"userId"_L1,userID} }))
+		.then([](HashList v) {return v.takeFirst(); });
 }
 QFuture<HashList> WSServerMethodCaller::getRoomUsers(int roomID)
 {
-	return QtConcurrent::run(customMethod, "getRoomUsers", this, QVariantHash({ { "roomId",roomID } })).then([](QVariant&& v) {return qvariant_cast<HashList>(v); });;
+	return QtConcurrent::run(customMethod, "getRoomUsers", this, QVariantHash({ { "roomId"_L1,roomID } }));
 }

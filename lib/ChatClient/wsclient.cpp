@@ -5,6 +5,7 @@ WSClient::WSClient(QWebSocketProtocol::Version ver,QObject* parent)
     :QObject(parent)
     ,_webSocket(new QWebSocket(QString(),ver,this))
     ,_connected(false)
+    ,_autodelete(true)
 {
     connect(_webSocket, &QWebSocket::connected, this, &WSClient::onConnected);
     connect(_webSocket, &QWebSocket::disconnected, this, &WSClient::closed);
@@ -13,7 +14,14 @@ WSClient::WSClient(QWebSocketProtocol::Version ver,QObject* parent)
     connect(_webSocket, &QWebSocket::textMessageReceived,
         this, &WSClient::onTextMessageReceived);
 }
-
+bool WSClient::autoDeleteMessages() const
+{
+    return _autodelete;
+}
+void WSClient::setAutoDeleteMessages(bool st)
+{
+    _autodelete = st;
+}
 bool WSClient::connect2Server(const QUrl& url)
 {
     if (isConnected())
@@ -29,44 +37,51 @@ void WSClient::onConnected()
 
 }
 
-void WSClient::onTextMessageReceived(QString textMessage)
+void WSClient::onTextMessageReceived(const QString& textMessage)
 {
-    auto recMess = MessageConstructor::fromJson(textMessage.toUtf8());
+    QJsonObject&& obj = QJsonDocument::fromJson(textMessage.toUtf8()).object();
     qCDebug(LC_WSClient) << "Received message from " << _webSocket->requestUrl() << " : " << textMessage;
-
-    switch (recMess.type)
+    if (obj.value("type") == "response")
     {
-    case WSMessage::Response :
-    {
-        if (!recMess.data.value("responseTo").isValid())
+        QPointer<WSReply> reply(new WSReply);
+        if (!reply->extractFromHash(obj.toVariantHash()))
         {
-            qCCritical(LC_WSClient) << "Cannot find 'responseTo' field in response message from server";
-            return;
+            qCWarning(LC_WSClient) << "Cannot handle reply message";
+            reply.clear();
         }
-        int responseTo = recMess.data.value("responseTo").toInt();
-        qCDebug(LC_WSClient) << "Received response to " << responseTo << " message from " << _webSocket->requestUrl();
-        emit responseReceived(recMess,recMess.data.value("responseTo").toUInt() );
+        else
+        {
+            emit replyReceived(reply);
+            if(autoDeleteMessages())
+                reply.clear();
+        }
     }
-    break;
-    case WSMessage::MethodCall :
+    else if (obj.value("type") == "methodCall")
     {
-        //QHash rhash = recMess.data.value("args").toList().at(1).toHash();
-        //ChatRoomMessage mess(UserInfo(rhash.value("user").toHash()),
-        //    rhash.value("time").toDateTime(), rhash.value("body").toByteArray());
-        //emit postMessage(recMess.data.value("args").toList().first().toInt(), mess);
+        QPointer<WSMethodCall> call(new WSMethodCall);
+        qDebug() << obj.toVariantHash();
+        if (!call->extractFromHash(obj.toVariantHash()))
+        {
+            qCWarning(LC_WSClient) << "Cannot handle methodCall message";
+            call.clear();
+        }
+        else
+        {
+            emit methodCallReceived(call);
+            if (autoDeleteMessages())
+                call.clear();
+        }
     }
-    break;
-    default:
-        qCCritical(LC_WSClient) << "Unknown message type received";
-        break;
+    else
+    {
+        qCWarning(LC_WSClient) << "Unknown message type received";
     }
 }
-bool WSClient::sendMessage(const WSMessage&  message)
+bool WSClient::sendMessage(WSMessage* message)
 {
-    QJsonDocument doc(message.toJsonObject());
-    auto jDoc = doc.toJson(QJsonDocument::Indented);
-    qCDebug(LC_WSClient).noquote() << "Sending ws message: " << QString(jDoc.toStdString().c_str());
-    qCDebug(LC_WSClient) <<_webSocket->sendBinaryMessage(jDoc) << " bytes were sent.";
+    QByteArray&& msg = QJsonDocument::fromVariant(message->toHash()).toJson();
+    qCDebug(LC_WSClient).noquote() << "Sending ws message: " << msg;
+    qCDebug(LC_WSClient) <<_webSocket->sendBinaryMessage(msg) << " bytes were sent.";
     return true;
 }
 void WSClient::onError(QAbstractSocket::SocketError error)

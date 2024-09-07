@@ -8,17 +8,19 @@ ChatClient::ChatClient(const QString& host, int port, QObject* parent)
 	_windowFactory = _appFactory->createWindowFactory(_settings);
 	_chatController = _appFactory->createChatController();
 	_authMaster = _appFactory->createAuthenticationMaster();
+	_dispatcher = _appFactory->createDispatcher();
 	setAppLanguage();
 }
 ChatClient::ChatClient(ApplicationFactory* factory, QObject* parent)
 	:QObject(parent)
 	,_appFactory(factory)
-	, _currentTranslator(nullptr)
 {
 	_settings = _appFactory->createApplicationSettings();
 	_windowFactory = _appFactory->createWindowFactory(_settings);
 	_chatController = _appFactory->createChatController();
 	_authMaster = _appFactory->createAuthenticationMaster();
+	_dispatcher = _appFactory->createDispatcher();
+
 	setAppLanguage();
 }
 
@@ -30,6 +32,71 @@ int ChatClient::run()
 	if (!startup || !chat)
 		return 0;
 	startup->setParent(this);
+	connect(_dispatcher, &ClientMethodDispatcher::disconnected, this, [=](const QVariantHash& data)
+		{
+			qCDebug(LC_ChatClient) << "Disconnected";
+		});
+	connect(_dispatcher, &ClientMethodDispatcher::updatedMessage, this, [=](const QVariantHash& data)
+		{
+			bool st;
+			int room = MessageModel::MessageData::checkRoomId(data, st);
+			if (!st)
+				return;
+			int id = MessageModel::MessageData::checkId(data, st);
+			if (st)
+				_chatController->getRoomHistory(room).then([=](MessageModel* model)
+					{
+						model->setData(model->idToIndex(id),data, MessageModel::HashRole);
+					});
+		});
+	connect(_dispatcher, &ClientMethodDispatcher::updatedUser, this, [=](const QVariantHash& data)
+		{
+		});
+	connect(_dispatcher, &ClientMethodDispatcher::deletedRoom, this, [=](const QVariantHash& data)
+		{
+			bool st;
+			int id = RoomModel::RoomData::checkId(data,st);
+			auto rooms = _chatController->userRooms();
+			if(st)
+			rooms->removeRow(rooms->idToIndex(id).row());
+		});
+	connect(_dispatcher, &ClientMethodDispatcher::updatedRoom, this, [=](const QVariantHash& data)
+		{
+			bool st;
+			int id = RoomModel::RoomData::checkId(data, st);
+			auto rooms = _chatController->userRooms();
+			if (st)
+				rooms->setData(rooms->idToIndex(id),data, RoomModel::HashRole);
+		});
+	connect(_dispatcher, &ClientMethodDispatcher::deletedMessage, this, [=](const QVariantHash& data)
+		{
+			bool st;
+			int room = MessageModel::MessageData::checkRoomId(data, st);
+			if (!st)
+				return;
+			int id = MessageModel::MessageData::checkId(data, st);
+			if (st)
+				_chatController->getRoomHistory(room).then([=](MessageModel* model)
+					{
+						model->removeRow(model->idToIndex(id).row());
+					});
+		});
+	connect(_dispatcher, &ClientMethodDispatcher::messagePosted, this, [=](const QVariantHash& data)
+		{
+			qDebug() << data;
+			bool st;
+			int room = MessageModel::MessageData::checkRoomId(data, st);
+			if (!st)
+				return;
+			int id = MessageModel::MessageData::checkId(data, st);
+			if (st)
+				_chatController->getRoomHistory(room).then([=](MessageModel* model)
+					{
+						if(!model->insertRow(model->rowCount()))
+							return;
+						model->setData(model->index(model->rowCount()-1), data, MessageModel::HashRole);
+					});
+		});
 	connect(_authMaster, &AuthenticationMaster::authentificated, this, [=](UserInfo* userInfo) {
 			_chatController->initializeUser(userInfo);
 			startup->setStatus("Initialization...");

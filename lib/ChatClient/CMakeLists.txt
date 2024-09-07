@@ -11,6 +11,7 @@ set(REL_QML_SOURCES
     "qml/StartupWindow.qml"
     "qml/UserList.qml"
     "qml/LoadingPage.qml"
+    "qml/MessageDelegate.qml"
 )
 foreach(file IN LISTS REL_QML_SOURCES)
     get_filename_component(QML_FILENAME ${file}	NAME)
@@ -31,6 +32,10 @@ set(LIB_RESOURCES
 
     )
 set(LIB_SOURCES
+	"../quickfuture/src/qffuture.h"
+	"../quickfuture/src/qffuture.cpp"
+	"../quickfuture/src/quickfuture.h"
+	"../quickfuture/src/qfvariantwrapper.h"
 	"wsclient.cpp" 
 	"wsclient.h" 
 	"authenticationmaster.h" 
@@ -66,21 +71,19 @@ set(LIB_SOURCES
 	"qmlstartupwindow.h"
 	"abstractwindowfactory.h"
 	"qmlwindowfactory.cpp"
-	"authentificationmaster.h"
 	"qmlwindowfactory.h"
 	"chatcontroller.h"
 	"chatcontroller.cpp"
-	"qmlfuturemapper.h"
-	"qmlfuturemapper.cpp"
 	"clientmethoddispatcher.h"
 	"clientmethoddispatcher.cpp"
 	"wsservermethodcaller.h"
+	"chatclient_include.h"
 	"wsservermethodcaller.cpp"
 	)
 
-qt_add_qml_module(ChatClient STATIC
+qt_add_qml_module(${LIB_NAME} STATIC
     URI ChatClient
-        PLUGIN_TARGET ChatClient
+	PLUGIN_TARGET ${LIB_NAME}
     SOURCES ${LIB_SOURCES}
     RESOURCES ${LIB_RESOURCES}
 	QML_FILES ${QML_SOURCES}
@@ -89,24 +92,15 @@ qt_add_qml_module(ChatClient STATIC
 
 )
 target_compile_definitions(${LIB_NAME} PRIVATE 	
-	LIB_NAME="${LIB_NAME}" 
-	SHARED=false
+	CHAT_CLIENT_LIB
 )
 if ((MSVC) AND (MSVC_VERSION GREATER_EQUAL 1914))
         target_compile_options(${LIB_NAME} PUBLIC "/Zc:__cplusplus")
 endif()
-target_include_directories(${LIB_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-# Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
-# If you are developing for iOS or macOS you should consider setting an
-# explicit, fixed bundle identifier manually though.
-set_target_properties(${LIB_NAME} PROPERTIES
-#    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.lightManager
-    MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-    MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
-    MACOSX_BUNDLE TRUE
-    WIN32_EXECUTABLE TRUE
+target_include_directories(${LIB_NAME} PUBLIC 
+	${CMAKE_CURRENT_SOURCE_DIR} 
+	../quickfuture/src
 )
-target_include_directories(${LIB_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 include(GNUInstallDirs)
 install(TARGETS ${LIB_NAME}
     BUNDLE DESTINATION .

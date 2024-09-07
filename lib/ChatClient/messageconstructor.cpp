@@ -1,83 +1,207 @@
-#include "messageconstructor.h"
-bool WSMessage::isValid() const
-{
-	return type != WSMessage::Undefined;
-}
-WSMessage::WSMessage()
-	:type(Undefined)
-	,messageID(0)
-{
+#include "MessageConstructor.h"
+using namespace Qt::Literals::StringLiterals;
+WSMessage::WSMessage(QObject* parent)
+	:QObject(parent)
+	,_id(-1)
 
-}
-QJsonObject WSMessage::toJsonObject() const
 {
-	QJsonObject jObj;
-	jObj.insert("apiVersion", apiVersion);
-	jObj.insert("type", MessageConstructor::typeMapper(type));
-	jObj.insert("messageID", QJsonValue::fromVariant(QVariant::fromValue(messageID)));
-	jObj.insert("data", QJsonObject::fromVariantHash(data));
-
-	return jObj;
 }
-
-bool WSMessage::compareData(const QString& key, const QString& value) const
+QString WSMessage::apiVersion() const
 {
-	if (!data.contains(key))
+	return _api;
+}
+int WSMessage::messageId() const
+{
+	return _id;
+}
+void WSMessage::setApiVersion(const QString& other)
+{
+	_api = other;
+}
+bool  WSMessage::extractFromHash(const QVariantHash& hash)
+{
+	if (hash.contains("apiVersion"_L1))
+		_api = hash["apiVersion"_L1].toString();
+	else
 		return false;
-	return data.value(key).toString().toUpper() == value.toUpper();
+	if (hash.contains("messageID"_L1))
+		_id = hash["messageID"_L1].toInt();
+	else
+		return false;
+	return true;
 }
-int MessageConstructor::generateID()
+
+void WSMessage::setMessageId(int other)
+{
+	_id = other;
+}
+QVariantHash WSMessage::toHash() const
+{
+	return QVariantHash({
+		{"apiVersion"_L1,_api},
+		{"messageID"_L1,_id}
+		});
+}
+WSReply::WSReply(QObject* parent)
+	:WSMessage(parent)
+	,_repTo(-1)
+	,_status(unknown)
+{}
+int WSReply::replyTo() const
+{
+	return _repTo;
+}
+WSReply::ReplyStatus WSReply::status() const
+{
+	return _status;
+}
+QList<QVariantHash> WSReply::reply() const
+{
+	return _reply;
+}
+void WSReply::setReplyTo(int other)
+{
+	_repTo = other;
+}
+void WSReply::setStatus(ReplyStatus other)
+{
+	_status = other;
+}
+void WSReply::setReply(const QList<QVariantHash>& other)
+{
+	_reply = other;
+}
+void WSReply::setReply(QList<QVariantHash>&& other)
+{
+	_reply = std::move(other);
+}
+WSMethodCall::WSMethodCall(QObject* parent)
+	:WSMessage(parent)
+{}
+QString WSMethodCall::method() const
+{
+	return _method;
+}
+QVariantHash WSMethodCall::args() const
+{
+	return _args;
+}
+void WSMethodCall::setArgs(const QVariantHash& other)
+{
+	_args = other;
+}
+void WSMethodCall::setArgs(QVariantHash&& other)
+{
+	_args = std::move(other);
+}
+void WSMethodCall::setMethod(const QString& other)
+{
+	_method = other;
+}
+bool WSMethodCall::extractFromHash(const QVariantHash& hash)
+{
+	WSMessage::extractFromHash(hash);
+	if (!hash.contains("data"_L1))
+		return false;
+	QVariantHash&& data = hash["data"_L1].toHash();
+	if (data.contains("method"_L1)&& data["method"].canConvert<QString>())
+		_method = data["method"_L1].toString();
+	else
+		return false;
+	if (data.contains("args"_L1))
+		_args = data["args"_L1].toHash();
+	return true;
+}
+QVariantHash WSMethodCall::toHash() const
+{
+	QVariantHash&& hash = WSMessage::toHash();
+	hash.insert("data"_L1,QVariantHash{
+		{"method"_L1,_method},
+		{"args"_L1,_args}
+	});
+	hash.insert("type"_L1, "methodCall"_L1);
+
+	return hash;
+}
+QString WSReply::errorString() const
+{
+	return _error;
+}
+void WSReply::setErrorString(const QString& other)
+{
+	_error = other;
+}
+bool WSReply::extractFromHash(const QVariantHash& hash)
+{
+	WSMessage::extractFromHash(hash);
+	if (!hash.contains("data"_L1))
+		return false;
+	QVariantHash&& data = hash["data"_L1].toHash();
+	if (data.contains("responseTo"_L1))
+		_repTo = data["responseTo"_L1].toInt();
+	else
+		return false;
+	if (data.contains("status"_L1))
+	{
+		_status = ReplyStatus(QMetaEnum::fromType<WSReply::ReplyStatus>()
+			.keyToValue(data["status"_L1].toString().toStdString().c_str()));
+	}
+	else
+		return false;
+	if (data.contains("return"_L1))
+	{
+		_reply.clear();
+		if(data["return"_L1].canConvert<QVariantList>()) {
+			for (auto& i : data["return"_L1].toList())
+			{
+				_reply.emplaceBack(i.toHash());
+			}
+		}
+		else _reply.emplaceBack(data["return"_L1].toHash());
+	}
+	if (data.contains("errorString"_L1))
+		_error = data["errorString"_L1].toString();
+
+	return true;
+}
+QVariantHash WSReply::toHash() const
+{
+	QVariantHash&& hash = WSMessage::toHash();
+	hash.insert("data"_L1,QVariantHash({
+		{"responseTo"_L1,_repTo},
+		{"return"_L1,QVariant::fromValue(_reply)},
+		{"status"_L1,QMetaEnum::fromType<WSReply::ReplyStatus>().valueToKey(_status)},
+		{"errorString"_L1,_error},
+		}));
+	hash.insert("type"_L1, "response"_L1);
+	return hash;
+}
+int WSMessageConstructor::generateID()
 {
 	static int i = 1;
 	return ++i;
 }
-WSMessage MessageConstructor::responseMsg(int responseTo, const QVariantHash& data)
+WSReply* WSMessageConstructor::replyMsg(int replyTo, const QList<QVariantHash>& data)
 {
-	WSMessage out;
-	//out->_apiVersion = API_VERSION;
-	out.type = WSMessage::Response;
-	out.messageID = generateID();
-	out.data.insert("responseTo", QVariant::fromValue(responseTo));
-	out.data.insert(data);
-	return out;
-}
-WSMessage MessageConstructor::methodCallMsg(const QString& method, const QVariantHash& args)
-{
-	WSMessage out;
-	//out->_apiVersion = API_VERSION;
-	out.type = WSMessage::MethodCall;
-	out.messageID = generateID();
-	out.data.insert("method", method);
-	out.data.insert("args",args);
-	return out;
-}
-WSMessage MessageConstructor::fromJson(QByteArray array)
-{
-	WSMessage out;
-	QJsonDocument doc = QJsonDocument::fromJson(array);
-	QJsonObject obj = doc.object();
-	out.apiVersion = obj.value("apiVersion").toString();
-	out.type = typeMapper(obj.value("type").toString());
-	out.messageID = obj.value("messageID").toInteger();
-	out.data = obj.value("data").toObject().toVariantHash();
 
+	WSReply* out = new WSReply();
+	defaultMsgInstallation(out);
+	out->setReplyTo(replyTo);
+	out->setReply(data);
 	return out;
 }
-WSMessage::MessageType MessageConstructor::typeMapper(const QString& type)
+void WSMessageConstructor::defaultMsgInstallation(WSMessage* other)
 {
-	if (type == "methodCall")
-		return WSMessage::MethodCall;
-	else if (type == "response")
-		return WSMessage::Response;
-	else
-		return WSMessage::Undefined;
+	other->setApiVersion("1.0.0"_L1);
+	other->setMessageId(generateID());
 }
-QString MessageConstructor::typeMapper(WSMessage::MessageType type)
+
+WSMethodCall* WSMessageConstructor::methodCallMsg(const QString& method, const QVariantHash& args)
 {
-	if (type == WSMessage::MethodCall)
-		return "methodCall";
-	else if (type == WSMessage::Response)
-		return "response";
-	else
-		return "undefined";
- }
+	WSMethodCall* out = new WSMethodCall();
+	defaultMsgInstallation(out);
+	out->setMethod(method);
+	out->setArgs(args);
+	return out;
+}
+

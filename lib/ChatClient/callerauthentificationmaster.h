@@ -1,6 +1,8 @@
 #pragma once
 #include "authenticationmaster.h"
-class CallerAuthentificationMaster : public AuthenticationMaster
+#include "chatclient_include.h"
+
+class CHAT_CLIENT_EXPORT CallerAuthentificationMaster : public AuthenticationMaster
 {
 	Q_OBJECT;
 public:

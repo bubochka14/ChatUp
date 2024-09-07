@@ -1,8 +1,9 @@
 #pragma once
 #include <QObject>
 #include <QSettings>
+#include "chatclient_include.h"
 
-class ApplicationSettings : public QSettings
+class CHAT_CLIENT_EXPORT ApplicationSettings : public QSettings
 {
 	Q_OBJECT;
 	Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged);

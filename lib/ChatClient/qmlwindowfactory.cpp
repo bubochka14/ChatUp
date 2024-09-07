@@ -3,7 +3,11 @@ Q_LOGGING_CATEGORY(LC_QML_WINDOW_FACTORY, "QmlWindowFactory");
 QmlWindowFactory::QmlWindowFactory(ApplicationSettings* settings, QQmlEngine*e, QObject* parent)
 	:_engine(e)
 	,_settings(settings)
-{}
+{
+	QuickFuture::Future::registerType<MessageModel*>();
+	QuickFuture::Future::registerType<UsersModel*>();
+	QuickFuture::Future::registerType<UserInfo*>();
+}
 StartupWindow* QmlWindowFactory::createStartupWindow()
 {
 	auto window = new QmlStartupWindow(_engine, QUrl("qrc:qt/qml/ChatClient/StartupWindow.qml"));

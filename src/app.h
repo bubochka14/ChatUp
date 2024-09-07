@@ -18,9 +18,8 @@ class ChatClient : public QObject
 	ApplicationFactory* _appFactory;
 	AbstractWindowFactory* _windowFactory;
 	AbstractChatController* _chatController;
-	QTranslator* _currentTranslator;
-	QHash<QString, QTranslator*> _translators;
 	ApplicationSettings* _settings;
+	ClientMethodDispatcher* _dispatcher;
 public:
 	explicit ChatClient(const QString& host,int port,QObject* parent = nullptr);
 	explicit ChatClient(ApplicationFactory* factory, QObject* parent = nullptr);

@@ -4,11 +4,13 @@
 #include <qhash.h>
 #include <qqmlengine.h>
 #include "qloggingcategory.h"
+#include "chatclient_include.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_MESSAGE_MODEL);
-class MessageModel : public QAbstractListModel
+class CHAT_CLIENT_EXPORT MessageModel : public QAbstractListModel
 {
 	Q_OBJECT;
 	QML_ELEMENT;
+public:
 	struct MessageData{ 
 		MessageData();
 		QVariantHash toHash() const;
@@ -18,9 +20,27 @@ class MessageModel : public QAbstractListModel
 		int  roomId;
 		QDateTime  time;
 		QByteArray body;
+		static int checkId(const QVariantHash& data,bool& success)
+		{
+			if (data.contains("id"))
+			{
+				success = true;
+				return data["id"].toInt();
+			}
+			success = false;
+			return 0;
+		}
+		static int checkRoomId(const QVariantHash& data, bool& success)
+		{
+			if (data.contains("roomId"))
+			{
+				success = true;
+				return data["roomId"].toInt();
+			}
+			success = false;
+			return 0;
+		}
 	};
-
-public:
 	enum RoleNames
 	{
 		IdRole,
@@ -35,6 +55,7 @@ public:
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
 	bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
+	bool updateFromHash(const QVariantHash& hash);
 	QVariant data(const QModelIndex& index, int role = IdRole) const override;
 	QModelIndex idToIndex(int id) const;
 private:

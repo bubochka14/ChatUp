@@ -8,17 +8,16 @@ CallerAuthentificationMaster::CallerAuthentificationMaster(ServerMethodCaller* c
 void CallerAuthentificationMaster::loginUser(const QString& login, const QString& password)
 {
 	UserInfo* newUser = new UserInfo;
-	_authFuture = _caller->registerUser(login, password);
+	_authFuture = _caller->loginUser(login, password);
 	_authFuture.then([=](QVariantHash&& hash)
 		{
 			newUser->extractFromHash(hash);
 			emit authentificated(newUser);
 		})
-		.onFailed([=](MethodCallFailure* fail)
+		.onFailed([=](MethodCallFailure& fail)
 			{
-				QScopedPointer<MethodCallFailure> exScope(fail);
 				QScopedPointer<UserInfo> userScope(newUser);
-				emit errorReceived(fail->what());
+				emit errorReceived(fail.message);
 			})
 		.onFailed([=]() {
 			QScopedPointer<UserInfo>(user);
@@ -34,11 +33,10 @@ void CallerAuthentificationMaster::registerUser(const QString& login, const QStr
 			newUser->extractFromHash(hash);
 			emit authentificated(newUser);
 		})
-		.onFailed([=](MethodCallFailure* fail)
+		.onFailed([=](MethodCallFailure& fail)
 			{
-				QScopedPointer<MethodCallFailure> exScope(fail);
 				QScopedPointer<UserInfo> userScope(newUser);
-				emit errorReceived(fail->what());
+				emit errorReceived(fail.message);
 			})
 		.onFailed([=]() {
 			QScopedPointer<UserInfo>(user);

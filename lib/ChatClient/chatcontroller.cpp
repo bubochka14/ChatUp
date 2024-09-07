@@ -5,7 +5,6 @@ AbstractChatController::AbstractChatController(QObject* parent)
 	,_userRooms(new RoomModel(this))
 	,_currentUser(new UserInfo(this))
 {
-
 }
 void AbstractChatController::setCurrentUser(UserInfo* other)
 {
@@ -39,10 +38,10 @@ QFuture<MessageModel*> CallerChatController::getRoomHistory(int roomId) {
 	return _caller->getRoomHistory(roomId).then(this,[=](HashList&& messages) {
 		_history.insert(roomId, new MessageModel(this));
 		auto model = _history[roomId];
-		model->insertRow(messages.count());
+		model->insertRows(0,messages.count());
 		for (size_t i = 0; i < messages.count(); i++)
 		{
-			model->setData(model->index(model->rowCount()), messages[i], MessageModel::HashRole);
+			model->setData(model->index(i), messages[i], MessageModel::HashRole);
 
 		}
 		return model;
@@ -52,11 +51,14 @@ QFuture<UserInfo*> CallerChatController::getUserInfo(int userId)
 {
 	if (_users.contains(userId))
 		return QtFuture::makeReadyFuture(_users[userId]);
-	return _caller->getUserInfo(userId).then([=](QVariantHash&& hash) {
+	if (_cals.contains(userId))
+		return _cals[userId];
+	_cals[userId] = _caller->getUserInfo(userId).then(this,[=](QVariantHash&& hash) {
 		_users.insert(userId, new UserInfo(this));
 		_users[userId]->extractFromHash(hash);
 		return _users[userId];
 		});
+	return _cals[userId];
 }
 
 QFuture<void> CallerChatController::addUserToRoom(int roomID, int userID)
@@ -76,8 +78,11 @@ QFuture<void> CallerChatController::createMessage(const QString& body, int roomI
 	{
 		model->setData(model->index(model->rowCount() - 1), body, MessageModel::BodyRole);
 		model->setData(model->index(model->rowCount() - 1), -(++_tempMessageCounter), MessageModel::IdRole);
+		model->setData(model->index(model->rowCount() - 1), currentUser()->id(), MessageModel::UserIdRole);
+		model->setData(model->index(model->rowCount() - 1), QDateTime::currentDateTime(), MessageModel::TimeRole);
+		model->setData(model->index(model->rowCount() - 1), roomId, MessageModel::RoomIdRole);
 	}
-	_caller->createMessage(model->data(model->index(model->rowCount()-1), MessageModel::HashRole).toHash())
+	return _caller->createMessage(model->data(model->index(model->rowCount()-1), MessageModel::HashRole).toHash())
 		.then([=](QVariantHash&& hash)
 			{
 				model->setData(model->index(model->rowCount() - 1), hash, MessageModel::HashRole);
@@ -86,89 +91,66 @@ QFuture<void> CallerChatController::createMessage(const QString& body, int roomI
 }
 QFuture<void> CallerChatController::createRoom(const QString& name)
 {
-	//MessageModel* model = _history[roomId];
-	//if (model->insertRow(model->rowCount()))
-	//{
-	//	model->setData(model->index(model->rowCount() - 1), body, MessageModel::BodyRole);
-	//	model->setData(model->index(model->rowCount() - 1), -(++_tempMessageCounter), MessageModel::IdRole);
-	//}
-	//_caller->createMessage(model->data(model->index(model->rowCount() - 1), MessageModel::HashRole).toHash())
-	//	.then([=](QVariantHash&& hash)
-	//		{
-	//			model->setData(model->index(model->rowCount() - 1), hash, MessageModel::HashRole);
-	//		});
-	return QtFuture::makeReadyFuture();
+	return _caller->createRoom({ {"name",name} }).then(this,[=](QVariantHash&& hash) {
+		userRooms()->insertRow(0);
+		userRooms()->setData(userRooms()->index(0), hash, RoomModel::HashRole);
+		});
 }
 QFuture<void> CallerChatController::deleteRoom(int id)
 {
-	//QModelIndex&& index = userRooms()->idToIndex(id);
-	//if (!index.isValid()) 
-	//	return;;
-	//userRooms()->removeRow(userRooms()->idToIndex(id).row());
-	return QtFuture::makeReadyFuture();
+	return _caller->deleteRoom(id).then([=](QVariantHash&& hash) {
+		userRooms()->removeRow(userRooms()->idToIndex(id).row());
+		});
 
 }
-QFuture<void> CallerChatController::updateRoom(int id, const QVariantHash& data)
+QFuture<void> CallerChatController::updateRoom(const QVariantHash& data)
 {
-	//QModelIndex&& index = userRooms()->idToIndex(id);
-	//if (!index.isValid())
-	//	return;;
-	//userRooms()->setData(index, data, RoomModel::HashRole);
-	return QtFuture::makeReadyFuture();
+	return _caller->updateRoom(data).then(this, [=](QVariantHash&& hash) {
+		userRooms()->insertRow(0);
+		userRooms()->setData(userRooms()->index(0), hash, RoomModel::HashRole);
+		});
 
 }
 QFuture<UsersModel*> CallerChatController::getRoomUsers(int id)
 {
+	//todo
 	return QtFuture::makeReadyFuture(new UsersModel);
 
 }
-QFuture<void> CallerChatController::updateMessage(int room,int  mess, const QVariantHash& data)
+QFuture<void> CallerChatController::updateMessage(const QVariantHash& data)
 {
-	//QModelIndex&& index = _history[room]->idToIndex(mess);
-	//if (!index.isValid())
-	//	return;;
-	//_history[room]->setData(userRooms()->idToIndex(mess), data, RoomModel::HashRole);
-	return QtFuture::makeReadyFuture();
+	return _caller->updateMessage(data).then(this, [=](QVariantHash&& hash) {
+		auto model = _history[data["roomId"].toUInt()];
+		model->setData(model->idToIndex(data["id"].toInt()),hash,MessageModel::HashRole);
+		});
 
 
 }
 QFuture<void> CallerChatController::deleteMessage(int roomId,int messId)
-{/*
-	QModelIndex&& index = _history[roomId]->idToIndex(messId);
-	if (!index.isValid())
-		return;;
-	_history[roomId]->removeRow(index.row());*/
-	return QtFuture::makeReadyFuture();
-
-}
-QFuture<void> CallerChatController::updateUser(int id,const QVariantHash&)
 {
+	return _caller->deleteMessage(roomId,messId).then(this, [=](QVariantHash&& hash) {
+		_history[roomId]->removeRow(_history[roomId]->idToIndex(messId).row());
+		});
+}
+QFuture<void> CallerChatController::updateUser(const QVariantHash&)
+{
+	//todo
 	return QtFuture::makeReadyFuture();
 
 }
 QFuture<void> CallerChatController::deleteUser()
 {
+	//todo
 	return QtFuture::makeReadyFuture();
 
 }
-//void OfflineChatController::loadRoom(int id)
-//{
-//	//_history.insert(id, new MessageModel(this));
-//	//_caller->getRoomHistory(id).then([=](QFuture<QVariantHash> messages)
-//	//	{
-//	//		size_t resultCount = messages.resultCount();
-//	//		for (size_t i = 0; i < resultCount; i++)
-//	//		{
-//	//			_history.value(id)->setData(_history.value(id)->index(i), messages.takeResult(), MessageModel::HashRole);
-//	//		}
-//	//	});
-//}
 void CallerChatController::initializeUser(UserInfo* currentUser)
 {
 	setCurrentUser(currentUser);
 	_caller->getUserRooms(currentUser->id())
 		.then([=](HashList&& rooms)
 			{
+				qDebug() << rooms;
 				userRooms()->insertRows(0, rooms.count());
 				for (size_t i = 0; i < rooms.count(); i++)
 				{

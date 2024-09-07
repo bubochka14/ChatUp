@@ -1,10 +1,13 @@
 #pragma once
 #include <QObject>
 #include <QDateTime>
+#include <QQmlEngine>
 #include <QMetaEnum>
-class UserInfo : public QObject
+#include "chatclient_include.h"
+class CHAT_CLIENT_EXPORT UserInfo : public QObject
 {
 	Q_OBJECT;
+	QML_ELEMENT;
 public:
 	enum Status
 	{
@@ -19,6 +22,16 @@ public:
 	Status status() const;
 	void setStatus(Status other);
 	QVariantHash toHash() const;
+	static int checkId(const QVariantHash& data, bool& st)
+	{
+		if (data.contains("id"))
+		{
+			st = true;
+			return data["id"].toInt();
+		}
+		st = false;
+		return 0;
+	}
 public slots:
 	void extractFromHash(const QVariantHash& other);
 signals:

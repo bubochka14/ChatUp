@@ -11,7 +11,4 @@ ServerMethodCaller::ServerMethodCaller(QObject* parent)
 	:QObject(parent)
 	,_timeout(10000)
 {}
-const char* MethodCallFailure::what() const noexcept
-{
-	return message.c_str();
-}
+
