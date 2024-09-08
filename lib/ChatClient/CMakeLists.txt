@@ -5,7 +5,7 @@ set(REL_QML_SOURCES
     "qml/ChatBox.qml"
     "qml/ChatInput.qml"
     "qml/ChatWindow.qml"
-    "qml/EmojiList.qml"
+    "qml/EmojiList.qml"	
     "qml/RoomList.qml"
     "qml/RoundedFrame.qml"
     "qml/StartupWindow.qml"
@@ -28,6 +28,9 @@ set(LIB_RESOURCES
 	"resources/pics/emoji.svg"
 	"resources/pics/file.png"
     "resources/gif/duck.gif"
+    "resources/pics/read.svg"
+    "resources/pics/error.svg"
+    "resources/pics/sent.svg"
     "qtquickcontrols2.conf"
 
     )
