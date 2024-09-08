@@ -32,11 +32,11 @@ QVariantHash MessageModel::MessageData::toHash() const
 {
 	QVariantHash out;
 	out["id"] = id;
-	out["status"] = QMetaEnum::fromType<MessageStatus>().valueToKey(status);
 	out["time"] = time;
 	out["body"] = body;
 	out["userId"] = userId;
 	out["roomId"] = roomId;
+	out["status"] = QString(QMetaEnum::fromType<MessageStatus>().valueToKey(status)).toLower();
 	return out;
 }
 void MessageModel::MessageData::extractFromHash(const QVariantHash& other)
@@ -52,8 +52,12 @@ void MessageModel::MessageData::extractFromHash(const QVariantHash& other)
 	if (other.contains("body"))
 		body = other["body"].toByteArray();	
 	if (other.contains("status"))
+	{
+		QString&& statusStr = other["status"].toString();
+		statusStr.replace(0, 1, statusStr[0].toUpper());
 		status = MessageStatus(QMetaEnum::fromType<MessageStatus>().
-			keyToValue(other["status"].toString().toStdString().c_str()));
+			keyToValue(statusStr.toStdString().c_str()));
+	}
 }
 MessageModel::MessageModel(QObject* parent )
 	:QAbstractListModel(parent)
