@@ -12,7 +12,6 @@ public:
 		return QtFuture::makeReadyFuture(_history[roomId]);
 	}
 	QFuture<UserInfo*> getUserInfo(int userId) override{
-		qDebug() << _users[userId] << userId;
 		return QtFuture::makeReadyFuture(_users[userId]);
 	}
 	QFuture<UsersModel*> getRoomUsers(int id) override{
@@ -21,23 +20,26 @@ public:
 	QFuture<void> addUserToRoom(int roomID, int userID) override{
 		return QtFuture::makeReadyFuture<void>();
 	}
-	QFuture<void> createMessage(const QString& body, int roomId) override{
+	QFuture<void> createMessage(const QString& body, int roomId, int userId)
+	{
 		static int messIdCounter = 0;
 		if (!_history.contains(roomId))
 			_history[roomId] = new MessageModel(this);
-		if(_history[roomId]->insertRow(_history[roomId]->rowCount()))
+		if (_history[roomId]->insertRow(_history[roomId]->rowCount()))
 		{
 			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
 				body, MessageModel::BodyRole);
 			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
-				1, MessageModel::UserIdRole);
+				userId, MessageModel::UserIdRole);
 			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
 				++messIdCounter, MessageModel::IdRole);
 			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
 				QDateTime::currentDateTime(), MessageModel::TimeRole);
 		}
 		return QtFuture::makeReadyFuture<void>();
-
+	}
+	QFuture<void> createMessage(const QString& body, int roomId) override{
+		return createMessage(body, roomId, currentUser()->id());
 	}
 	QFuture<void> createRoom(const QString& name) override{
 		static int roomIdCounter = 0;
@@ -91,6 +93,33 @@ public:
 	}
 	void initializeUser(UserInfo* currentUser) override{
 		setCurrentUser(currentUser);
+		auto anotherUser = new UserInfo(this);
+		anotherUser->setId(2);
+		anotherUser->setName("another");
+		addUser(anotherUser);
+		createRoom("test_room1");
+		createRoom("test_room2");
+		int test_room1_id = userRooms()->data(userRooms()->index(0), RoomModel::IDRole).toInt();
+		int test_room2_id = userRooms()->data(userRooms()->index(1), RoomModel::IDRole).toInt();
+
+		createMessage("loading message from current user", test_room1_id, currentUser->id());
+		_history[test_room1_id]->setData(_history[test_room1_id]->index(0), MessageModel::Loading, MessageModel::StatusRole);
+
+		createMessage("sent message from current user", test_room1_id, currentUser->id());
+
+		_history[test_room1_id]->setData(_history[test_room1_id]->index(1), MessageModel::Sent, MessageModel::StatusRole);
+
+		createMessage("read message from current user", test_room1_id, currentUser->id());
+
+		_history[test_room1_id]->setData(_history[test_room1_id]->index(2), MessageModel::Read, MessageModel::StatusRole);
+
+		createMessage("error message from current user", test_room1_id, currentUser->id());
+
+		_history[test_room1_id]->setData(_history[test_room1_id]->index(3), MessageModel::Error, MessageModel::StatusRole);
+
+		createMessage("message in test_room2 from current user", test_room2_id, currentUser->id());
+
+		createMessage("message from another user", test_room2_id, anotherUser->id());
 		emit initialized();
 	}
 	void setCurrentUser(UserInfo* user)
@@ -102,6 +131,11 @@ public:
 	{
 		AbstractChatController::setUserRooms(model);
 	}
+	void addUser(UserInfo* user)
+	{
+		user->setParent(this);
+		_users[user->id()] = user;
+	}
 private:
 	QMap<int, MessageModel*> _history;
 	QMap<int, UserInfo*> _users;
@@ -111,6 +145,8 @@ TEST(ChatClientManualTest, ChatWindow)
 {
 	using namespace ::testing;
 	QGuiApplication app(globalArgc, globalArgv);
+	app.setAttribute(Qt::AA_UseHighDpiPixmaps);
+
 	QScopedPointer<QObject> context(new QObject);
 	auto defaultAppFactory = new WSApplicationFactory("", 0, context.get());
 	NiceMock<MockWindowFactory> mockWindowFact;
@@ -119,6 +155,11 @@ TEST(ChatClientManualTest, ChatWindow)
 	NiceMock<MockApplicationFactory> mockAppFactory;
 	NiceMock<MockAuthenticationMaster> mockAuth;
 	NiceMock<MockClientMessageDispatcher> mockDisp;
+	UserInfo* testUser = new UserInfo;
+	testUser->setId(1);
+	testUser->setName("test_current_user");
+	testUser->setStatus(UserInfo::Online);
+	emit mockAuth.authentificated(testUser);
 	ON_CALL(mockAppFactory, createWindowFactory).WillByDefault(Return(&mockWindowFact));
 	ON_CALL(mockAppFactory, createDispatcher).WillByDefault(Return(&mockDisp));
 	ON_CALL(mockAppFactory, createAuthenticationMaster).WillByDefault(Return(&mockAuth));
@@ -130,20 +171,12 @@ TEST(ChatClientManualTest, ChatWindow)
 	ON_CALL(mockWindowFact, createChatWindow).WillByDefault([=](AbstractChatController* cont) 
 		{return defaultAppFactory->createWindowFactory(
 			defaultAppFactory->createApplicationSettings())->createChatWindow(cont); });
-	ON_CALL(mockAuth, registerUser).WillByDefault([&]()
+	ON_CALL(mockAuth, registerUser).WillByDefault([&](const QString&, const QString&)
 		{
-			UserInfo* testUser = new UserInfo;
-			testUser->setId(1);
-			testUser->setName("test_current_user");
-			testUser->setStatus(UserInfo::Online);
 			emit mockAuth.authentificated(testUser);
 		});
-	controller.createRoom("test_room1");
-	controller.createRoom("test_room2");
-	controller.createMessage("message in test_room1",controller.userRooms()->data(
-		controller.userRooms()->index(0), RoomModel::IDRole).toInt());
-	controller.createMessage("message in test_room2",controller.userRooms()->data(
-		controller.userRooms()->index(1), RoomModel::IDRole).toInt());
+
+
 	ChatClient client{ &mockAppFactory };
 
 	ASSERT_TRUE(client.run());
