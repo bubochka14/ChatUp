@@ -2,10 +2,11 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import ChatClient
+
 ApplicationWindow {
     id: root
-    width:400
-    height:600
+    width: 400
+    height: 600
     visible: true
     signal languageSet(string language)
     signal messageSent(string message, int roomID)
@@ -19,21 +20,19 @@ ApplicationWindow {
                 Action {
                     text: "English"
                     onTriggered: {
-                    root.languageSet("en");
+                        root.languageSet("en")
                     }
                 }
                 Action {
                     text: "Russian"
                     onTriggered: {
-                    root.languageSet("ru");
+                        root.languageSet("ru")
                     }
-
                 }
             }
         }
         Menu {
             title: qsTr("&Room")
- 
         }
         Menu {
             title: qsTr("&Account")
@@ -42,7 +41,7 @@ ApplicationWindow {
             }
         }
     }
-    SplitView  {
+    SplitView {
         id: mainLayout
         anchors.fill: parent
 
@@ -53,16 +52,17 @@ ApplicationWindow {
             SplitView.maximumWidth: 420
             roomModel: controller.userRooms
             onSelectedRoomIndexChanged: {
-                Future.onFinished(controller.getRoomHistory(selectedRoomID), function(value) {
-                    chatBox.model = value
-                  });
+                Future.onFinished(controller.getRoomHistory(selectedRoomID),
+                                  function (value) {
+                                      chatBox.model = value
+                                  })
                 chatBox.showStartMessage(false)
                 chatBox.model
             }
         }
         ColumnLayout {
             id: chatColumn
-            spacing:0
+            spacing: 0
             SplitView.fillWidth: true
             SplitView.minimumWidth: 350
             ChatBox {
@@ -70,7 +70,6 @@ ApplicationWindow {
                 controller: root.controller
                 Layout.fillHeight: true
                 Layout.fillWidth: true
-
             }
 
             ChatInput {
@@ -79,7 +78,8 @@ ApplicationWindow {
 
                 visible: roomList.selectedRoomIndex == -1 ? false : true
                 onMessageEntered: textMessage => {
-                                      if (textMessage && roomList.selectedRoomID != -1) {
+                                      if (textMessage
+                                          && roomList.selectedRoomID != -1) {
                                           controller.createMessage(
                                               textMessage,
                                               roomList.selectedRoomID)
@@ -87,15 +87,6 @@ ApplicationWindow {
                                       }
                                   }
             }
-        }
-        UserList
-        {
-            Layout.fillHeight: true
-            visible: roomList.selectedRoomIndex == -1 ? false : true
-
-            id: userList
-            SplitView.minimumWidth: 120
-            SplitView.maximumWidth: 350
         }
     }
 }

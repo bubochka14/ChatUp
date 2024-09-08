@@ -44,7 +44,8 @@ Pane {
                                       if(user)
                                       delegateLoader.setSource(
                                                   "MessageDelegate.qml", {
-                                                      "user": user
+                                                      "user": user,
+                                                      "currentUser":controller.currentUser.id === user.id
                                                   })
                                       else
                                           console.log("Cannot hanlde received UserInfo")
