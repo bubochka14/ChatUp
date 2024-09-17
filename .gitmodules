@@ -4,3 +4,18 @@
 [submodule "lib/quickfuture"]
 	path = lib/quickfuture
 	url = https://github.com/bubochka14/quickfuture
+[submodule "lib/qwindowkit"]
+	path = lib/qwindowkit
+	url = https://github.com/stdware/qwindowkit
+[submodule "lib/-recursive"]
+	path = lib/-recursive
+	url = https://github.com/wangwenx190/framelesshelper
+[submodule "lib/--froce"]
+	path = lib/--froce
+	url = https://github.com/wangwenx190/framelesshelper
+[submodule "lib/--force"]
+	path = lib/--force
+	url = https://github.com/wangwenx190/framelesshelper
+[submodule "lib/framelesshelper"]
+	path = lib/framelesshelper
+	url = https://github.com/wangwenx190/framelesshelper

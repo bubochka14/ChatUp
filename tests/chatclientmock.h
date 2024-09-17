@@ -1,25 +1,27 @@
 #pragma once
 #include "servermethodcaller.h"
-#include "applicationfactory.h"
+#include "networkfactory.h"
 #include <gmock/gmock.h>
 #include "chatcontroller.h"
+#include "abstractwindowfactory.h"
 #include "authenticationmaster.h"
+#include "startupwindow.h"
 class MockServerMethodCaller : public ServerMethodCaller
 {
 public:
-	MOCK_METHOD(QFuture<HashList>, getUserRooms,(int id) = 0;
-	MOCK_METHOD(QFuture<HashList>, getRoomUsers,(int id) = 0;
-	MOCK_METHOD(QFuture<HashList>, getRoomHistory,(int id) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, getUserInfo,(int id) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, addUserToRoom,(int roomID, int userID) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, createMessage,(const QVariantHash&) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, createRoom,(const QVariantHash&) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, deleteRoom,(int id) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, updateRoom,(const QVariantHash&) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, updateMessage,(const QVariantHash&) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, deleteMessage,(int roomId, int messageId) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, updateUser,(const QVariantHash&) = 0;
-	MOCK_METHOD(QFuture<QVariantHash>, deleteUser,(int id) = 0;
+	MOCK_METHOD(QFuture<HashList>, getUserRooms,(int id),(override));
+	MOCK_METHOD(QFuture<HashList>, getRoomUsers,(int id),(override));
+	MOCK_METHOD(QFuture<HashList>, getRoomHistory,(int id),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, getUserInfo,(int id),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, addUserToRoom,(int roomID, int userID),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, createMessage,(const QVariantHash&),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, createRoom,(const QVariantHash&),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, deleteRoom,(int id),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, updateRoom,(const QVariantHash&),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, updateMessage,(const QVariantHash&),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, deleteMessage,(int roomId, int messageId),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, updateUser,(const QVariantHash&),(override));
+	MOCK_METHOD(QFuture<QVariantHash>, deleteUser,(int id),(override));
 	MOCK_METHOD(QFuture<QVariantHash>, registerUser,(const QString& , const QString& ),(override));
 	MOCK_METHOD(QFuture<QVariantHash>, loginUser,(const QString& , const QString& ),(override));
 };
@@ -52,12 +54,10 @@ class MockClientMessageDispatcher : public ClientMethodDispatcher
 public:
 	MOCK_METHOD(void, addCustomHandler,(const QString& , Handler),(override));
 };
-class MockApplicationFactory : public ApplicationFactory
+class MockNetworkFactory : public NetworkFactory
 {
 public:
 	MOCK_METHOD(AuthenticationMaster*, createAuthenticationMaster,(),(override));
-	MOCK_METHOD(ApplicationSettings*, createApplicationSettings,(),(override));
-	MOCK_METHOD(AbstractWindowFactory*, createWindowFactory,(ApplicationSettings*),(override));
 	MOCK_METHOD(AbstractChatController*, createChatController,(),(override));
 	MOCK_METHOD(ClientMethodDispatcher*, createDispatcher,(),(override));
 };
@@ -66,7 +66,6 @@ class MockWindowFactory : public AbstractWindowFactory
 public:
 	MOCK_METHOD(AbstractChatWindow*, createChatWindow, (AbstractChatController*), (override));
 	MOCK_METHOD(StartupWindow*, createStartupWindow,(), (override));
-	MOCK_METHOD(AbstractChatWindow*, chatWindow,());
 };
 class MockStartup : public StartupWindow
 {

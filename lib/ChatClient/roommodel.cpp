@@ -64,6 +64,14 @@ bool RoomModel::insertRows(int row, int count, const QModelIndex& parent)
 
 	beginInsertRows(parent,row, row + count - 1);
 	_rooms.insert(row,count, RoomData());
+	//update id to index mapping
+	if(row+count!=_rooms.count())
+	{
+		for (auto i = _rooms.begin() + row + 1; i < _rooms.end(); ++i)
+		{
+			_idToIndex[i->id] += count;
+		}
+	}
 	endInsertRows();
 	return true;
 }

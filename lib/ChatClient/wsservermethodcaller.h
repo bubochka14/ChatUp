@@ -2,6 +2,7 @@
 #include "servermethodcaller.h"
 #include "wsclient.h"
 #include "chatclient_include.h"
+#include <qpointer.h>
 class CHAT_CLIENT_EXPORT WSServerMethodCaller : public ServerMethodCaller
 {
 	Q_OBJECT;

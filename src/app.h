@@ -8,21 +8,21 @@
 #include "applicationsettings.h"
 #include "qmlwindowfactory.h"
 #include "clientmethoddispatcher.h"
-#include "applicationfactory.h"
-#include "chatcontroller.h"
+#include "networkfactory.h"
+#include "qffuture.h"
+#include <QWKQuick/qwkquickglobal.h>
+
 Q_DECLARE_LOGGING_CATEGORY(LC_ChatClient)
-class ChatClient : public QObject
+class App : public QObject
 {
 	Q_OBJECT;
 	AuthenticationMaster* _authMaster;
-	ApplicationFactory* _appFactory;
+	NetworkFactory* _netFactory;
 	AbstractWindowFactory* _windowFactory;
-	AbstractChatController* _chatController;
-	ApplicationSettings* _settings;
-	ClientMethodDispatcher* _dispatcher;
+
 public:
-	explicit ChatClient(const QString& host,int port,QObject* parent = nullptr);
-	explicit ChatClient(ApplicationFactory* factory, QObject* parent = nullptr);
+	explicit App(const QString& host,int port,QObject* parent = nullptr);
+	explicit App(NetworkFactory* netFact,AbstractWindowFactory* windowFactory, QObject* parent = nullptr);
 	int run();
 public slots:
 	void setAppLanguage(const QString& lan = QString());

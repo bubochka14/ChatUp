@@ -26,7 +26,7 @@ HashList customMethod(const char* method, WSServerMethodCaller*caller,const QVar
 	WSMethodCall* outMsg = WSMessageConstructor::methodCallMsg(method, args);
 	QEventLoop loop; 
 	QScopedPointer<QObject> context(new QObject);
-	QScopedPointer<WSReply> wsrep;
+	QPointer<WSReply> wsrep;
 	bool connectionError = false;
 	QTimer timer; timer.setSingleShot(true);
 	QObject::connect(&timer, &QTimer::timeout, context.get(), [=, &loop = loop]()
@@ -38,7 +38,7 @@ HashList customMethod(const char* method, WSServerMethodCaller*caller,const QVar
 		{
 			if (outMsg->messageId() == rep->replyTo())
 			{
-				wsrep.reset(rep);
+				wsrep = rep;
 				loop.exit();
 			}
 		});

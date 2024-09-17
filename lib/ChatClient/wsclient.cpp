@@ -40,36 +40,35 @@ void WSClient::onConnected()
 void WSClient::onTextMessageReceived(const QString& textMessage)
 {
     QJsonObject&& obj = QJsonDocument::fromJson(textMessage.toUtf8()).object();
-    qCDebug(LC_WSClient) << "Received message from " << _webSocket->requestUrl() << " : " << textMessage;
     if (obj.value("type") == "response")
     {
-        QPointer<WSReply> reply(new WSReply);
+        WSReply* reply = new WSReply;
         if (!reply->extractFromHash(obj.toVariantHash()))
         {
             qCWarning(LC_WSClient) << "Cannot handle reply message";
-            reply.clear();
+            //reply->deleteLater();
         }
         else
         {
             emit replyReceived(reply);
-            if(autoDeleteMessages())
-                reply.clear();
+            //if(autoDeleteMessages())
+            //    reply->deleteLater();
         }
     }
     else if (obj.value("type") == "methodCall")
     {
-        QPointer<WSMethodCall> call(new WSMethodCall);
+        WSMethodCall* call = new WSMethodCall;
         qDebug() << obj.toVariantHash();
         if (!call->extractFromHash(obj.toVariantHash()))
         {
             qCWarning(LC_WSClient) << "Cannot handle methodCall message";
-            call.clear();
+            //call->deleteLater();
         }
         else
         {
             emit methodCallReceived(call);
-            if (autoDeleteMessages())
-                call.clear();
+            //if (autoDeleteMessages())
+            //    call->deleteLater();
         }
     }
     else
@@ -80,8 +79,8 @@ void WSClient::onTextMessageReceived(const QString& textMessage)
 bool WSClient::sendMessage(WSMessage* message)
 {
     QByteArray&& msg = QJsonDocument::fromVariant(message->toHash()).toJson();
-    qCDebug(LC_WSClient).noquote() << "Sending ws message: " << msg;
-    qCDebug(LC_WSClient) <<_webSocket->sendBinaryMessage(msg) << " bytes were sent.";
+   // qCDebug(LC_WSClient).noquote() << "Sending ws message: " << msg;
+    _webSocket->sendBinaryMessage(msg);
     return true;
 }
 void WSClient::onError(QAbstractSocket::SocketError error)

@@ -1,3 +1,4 @@
+
 #pragma once
 #include <QAbstractListModel>
 #include<QStandardItemModel>
@@ -5,6 +6,7 @@
 #include <qqmlengine.h>
 #include "qloggingcategory.h"
 #include "chatclient_include.h"
+#include <deque>
 Q_DECLARE_LOGGING_CATEGORY(LC_MESSAGE_MODEL);
 class CHAT_CLIENT_EXPORT MessageModel : public QAbstractListModel
 {
@@ -64,7 +66,7 @@ public:
 	QModelIndex idToIndex(int id) const;
 private:
 	QHash<int, QByteArray> roleNames() const;
-	QVector<MessageData>   _messages;
+	std::deque<MessageData>   _messages;
 	static const QHash<int, QByteArray> _roleNames;
 	QMap<int, int> _idToIndex;
 };

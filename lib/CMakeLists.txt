@@ -1,2 +1,4 @@
 add_subdirectory(ChatClient)
 add_subdirectory(UpdateManager)
+add_subdirectory(qwindowkit)
+add_subdirectory(quickfuture)

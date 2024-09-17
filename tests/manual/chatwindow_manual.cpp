@@ -9,6 +9,8 @@ class OfflineChatController : public AbstractChatController
 {
 public:
 	QFuture<MessageModel*> getRoomHistory(int roomId) override {
+		if (!_history.contains(roomId))
+			_history[roomId] = new MessageModel(this);
 		return QtFuture::makeReadyFuture(_history[roomId]);
 	}
 	QFuture<UserInfo*> getUserInfo(int userId) override{
@@ -25,15 +27,15 @@ public:
 		static int messIdCounter = 0;
 		if (!_history.contains(roomId))
 			_history[roomId] = new MessageModel(this);
-		if (_history[roomId]->insertRow(_history[roomId]->rowCount()))
+		if (_history[roomId]->insertRow(0))
 		{
-			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
+			_history[roomId]->setData(_history[roomId]->index(0),
 				body, MessageModel::BodyRole);
-			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
+			_history[roomId]->setData(_history[roomId]->index(0),
 				userId, MessageModel::UserIdRole);
-			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
+			_history[roomId]->setData(_history[roomId]->index(0),
 				++messIdCounter, MessageModel::IdRole);
-			_history[roomId]->setData(_history[roomId]->index(_history[roomId]->rowCount() - 1),
+			_history[roomId]->setData(_history[roomId]->index(0),
 				QDateTime::currentDateTime(), MessageModel::TimeRole);
 		}
 		return QtFuture::makeReadyFuture<void>();
@@ -45,7 +47,7 @@ public:
 		static int roomIdCounter = 0;
 		if(userRooms()->insertRow(0))
 		{
-			userRooms()->setData(userRooms()->index(0), ++roomIdCounter, RoomModel::IDRole);
+			userRooms()->setData(userRooms()->index(0), roomIdCounter++, RoomModel::IDRole);
 			userRooms()->setData(userRooms()->index(0), name, RoomModel::NameRole);
 		}
 		return QtFuture::makeReadyFuture<void>();
@@ -118,8 +120,10 @@ public:
 		_history[test_room1_id]->setData(_history[test_room1_id]->index(3), MessageModel::Error, MessageModel::StatusRole);
 
 		createMessage("message in test_room2 from current user", test_room2_id, currentUser->id());
-
-		createMessage("message from another user", test_room2_id, anotherUser->id());
+		for (size_t i = 0; i < 20; i++)
+		{
+			createMessage("message from another user", test_room2_id, anotherUser->id());
+		}
 		emit initialized();
 	}
 	void setCurrentUser(UserInfo* user)
@@ -144,42 +148,43 @@ private:
 TEST(ChatClientManualTest, ChatWindow)
 {
 	using namespace ::testing;
-	QGuiApplication app(globalArgc, globalArgv);
-	app.setAttribute(Qt::AA_UseHighDpiPixmaps);
+	QGuiApplication qtApp(globalArgc, globalArgv);
 
 	QScopedPointer<QObject> context(new QObject);
-	auto defaultAppFactory = new WSApplicationFactory("", 0, context.get());
+	QScopedPointer<AbstractWindowFactory> defaultWindowFactory(new QmlWindowFactory);
+	QScopedPointer<UserInfo> testUser(new UserInfo);
+	QScopedPointer<OfflineChatController> controller(new OfflineChatController);
+
 	NiceMock<MockWindowFactory> mockWindowFact;
 	NiceMock<MockStartup> autoStartup;
-	OfflineChatController controller;
-	NiceMock<MockApplicationFactory> mockAppFactory;
+	NiceMock<MockNetworkFactory> mockNetFact;
 	NiceMock<MockAuthenticationMaster> mockAuth;
 	NiceMock<MockClientMessageDispatcher> mockDisp;
-	UserInfo* testUser = new UserInfo;
+
 	testUser->setId(1);
 	testUser->setName("test_current_user");
 	testUser->setStatus(UserInfo::Online);
-	emit mockAuth.authentificated(testUser);
-	ON_CALL(mockAppFactory, createWindowFactory).WillByDefault(Return(&mockWindowFact));
-	ON_CALL(mockAppFactory, createDispatcher).WillByDefault(Return(&mockDisp));
-	ON_CALL(mockAppFactory, createAuthenticationMaster).WillByDefault(Return(&mockAuth));
-	ON_CALL(mockAppFactory, createChatController).WillByDefault(Return(&controller));
+	emit mockAuth.authentificated(testUser.get());
+
+
+	ON_CALL(mockNetFact, createDispatcher).WillByDefault(Return(&mockDisp));
+	ON_CALL(mockNetFact, createAuthenticationMaster).WillByDefault(Return(&mockAuth));
+	ON_CALL(mockNetFact, createChatController).WillByDefault(Return(controller.get()));
 	ON_CALL(mockWindowFact, createStartupWindow).WillByDefault(Return(&autoStartup));
 	ON_CALL(autoStartup, show).WillByDefault([&]() {
 		autoStartup.registerPassed("", "");
 		});
-	ON_CALL(mockWindowFact, createChatWindow).WillByDefault([=](AbstractChatController* cont) 
-		{return defaultAppFactory->createWindowFactory(
-			defaultAppFactory->createApplicationSettings())->createChatWindow(cont); });
+	ON_CALL(mockWindowFact, createChatWindow).WillByDefault([&](AbstractChatController* cont) 
+		{
+			return defaultWindowFactory->createChatWindow(cont);
+		});
 	ON_CALL(mockAuth, registerUser).WillByDefault([&](const QString&, const QString&)
 		{
-			emit mockAuth.authentificated(testUser);
+			emit mockAuth.authentificated(testUser.get());
 		});
 
-
-	ChatClient client{ &mockAppFactory };
-
+	App client{&mockNetFact,&mockWindowFact };
 	ASSERT_TRUE(client.run());
-	app.exec();
+	qtApp.exec();
 
 }

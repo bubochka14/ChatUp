@@ -46,7 +46,7 @@ public:
 	Q_INVOKABLE  QVariant data(const QModelIndex& index, int role = NameRole) const override;
 	bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
-	QModelIndex idToIndex(int id);
+	Q_INVOKABLE QModelIndex idToIndex(int id);
 	bool setData(const QModelIndex& index, const QVariant& value, int role = NameRole) override;
 private:
 	QHash<int, QByteArray> roleNames() const;

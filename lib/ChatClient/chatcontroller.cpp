@@ -74,19 +74,25 @@ QFuture<void> CallerChatController::createMessage(const QString& body, int roomI
 		return makeErrorFuture<void>("Unknown room");
 	}
 	MessageModel* model = _history[roomId];
-	if (model->insertRow(model->rowCount()))
+	if (model->insertRow(0))
 	{
-		model->setData(model->index(model->rowCount() - 1), body, MessageModel::BodyRole);
-		model->setData(model->index(model->rowCount() - 1), -(++_tempMessageCounter), MessageModel::IdRole);
-		model->setData(model->index(model->rowCount() - 1), currentUser()->id(), MessageModel::UserIdRole);
-		model->setData(model->index(model->rowCount() - 1), QDateTime::currentDateTime(), MessageModel::TimeRole);
-		model->setData(model->index(model->rowCount() - 1), roomId, MessageModel::RoomIdRole);
+		int tempMessageId = -(++_tempMessageCounter);
+		model->setData(model->index(0), body, MessageModel::BodyRole);
+		model->setData(model->index(0), tempMessageId, MessageModel::IdRole);
+		model->setData(model->index(0), currentUser()->id(), MessageModel::UserIdRole);
+		model->setData(model->index(0), QDateTime::currentDateTime(), MessageModel::TimeRole);
+		model->setData(model->index(0), roomId, MessageModel::RoomIdRole);
+
+		return _caller->createMessage(model->data(model->index(0), MessageModel::HashRole).toHash())
+			.then([=](QVariantHash&& hash)
+				{
+					bool st;
+					int id = MessageModel::MessageData::checkId(hash, st);
+					if (st && model->idToIndex(tempMessageId).isValid())
+						model->setData(model->idToIndex(tempMessageId), hash, MessageModel::HashRole);
+					//else error
+				});
 	}
-	return _caller->createMessage(model->data(model->index(model->rowCount()-1), MessageModel::HashRole).toHash())
-		.then([=](QVariantHash&& hash)
-			{
-				model->setData(model->index(model->rowCount() - 1), hash, MessageModel::HashRole);
-			});
 
 }
 QFuture<void> CallerChatController::createRoom(const QString& name)
@@ -150,7 +156,6 @@ void CallerChatController::initializeUser(UserInfo* currentUser)
 	_caller->getUserRooms(currentUser->id())
 		.then([=](HashList&& rooms)
 			{
-				qDebug() << rooms;
 				userRooms()->insertRows(0, rooms.count());
 				for (size_t i = 0; i < rooms.count(); i++)
 				{

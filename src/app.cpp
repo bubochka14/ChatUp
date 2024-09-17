@@ -1,33 +1,28 @@
 #include "app.h"
 Q_LOGGING_CATEGORY(LC_ChatClient, "ChatClient")
-ChatClient::ChatClient(const QString& host, int port, QObject* parent)
-	:QObject(parent)
-	,_appFactory(new WSApplicationFactory(host,port,this))
-{
-	_settings = _appFactory->createApplicationSettings();
-	_windowFactory = _appFactory->createWindowFactory(_settings);
-	_chatController = _appFactory->createChatController();
-	_authMaster = _appFactory->createAuthenticationMaster();
-	_dispatcher = _appFactory->createDispatcher();
-	setAppLanguage();
-}
-ChatClient::ChatClient(ApplicationFactory* factory, QObject* parent)
-	:QObject(parent)
-	,_appFactory(factory)
-{
-	_settings = _appFactory->createApplicationSettings();
-	_windowFactory = _appFactory->createWindowFactory(_settings);
-	_chatController = _appFactory->createChatController();
-	_authMaster = _appFactory->createAuthenticationMaster();
-	_dispatcher = _appFactory->createDispatcher();
+App::App(const QString& host, int port, QObject* parent)
+	:App(new WSNetworkFactory(host, port),new QmlWindowFactory(), parent)
 
+{
+}
+App::App(NetworkFactory* netFact, AbstractWindowFactory* windowFactory, QObject* parent)
+	:QObject(parent)
+	,_netFactory(netFact)
+	,_windowFactory(windowFactory)
+{
+	_netFactory->setParent(this);
+	_windowFactory->setParent(this);
+	//QWK::registerTypes(_engine);
 	setAppLanguage();
 }
 
-int ChatClient::run()
+int App::run()
 {
 	StartupWindow* startup = _windowFactory->createStartupWindow();
+	AbstractChatController* _chatController = _netFactory->createChatController();
 	AbstractChatWindow* chat = _windowFactory->createChatWindow(_chatController);
+	ClientMethodDispatcher* _dispatcher = _netFactory->createDispatcher();;
+	AuthenticationMaster* _authMaster = _netFactory->createAuthenticationMaster();;
 
 	if (!startup || !chat)
 		return 0;
@@ -128,7 +123,7 @@ int ChatClient::run()
 	startup->show();
 	return 1;
 }
-void ChatClient::setAppLanguage(const QString& lan)
+void App::setAppLanguage(const QString& lan)
 {
 	//QString tmp = lan;
 	//ApplicationSettings settings(APP_NAME,ORG_NAME);

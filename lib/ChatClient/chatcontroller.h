@@ -9,7 +9,6 @@
 #include "usersmodel.h"
 #include <qloggingcategory.h>
 #include "chatclient_include.h"
-#include <qffuture.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_CHAT_CONTROLLER);
 //class RoomController : public QObject
 //{

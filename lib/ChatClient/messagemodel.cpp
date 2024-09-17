@@ -102,7 +102,14 @@ bool MessageModel::insertRows(int row, int count, const QModelIndex& parent)
 	if (row < 0 || row >rowCount() || count <= 0)
 		return false;
 	beginInsertRows(parent, row, row + count - 1);
-	_messages.insert(row, count, MessageData());
+	if (row + count < _messages.size())
+	{
+		for (auto i = _messages.begin() + row + 1; i < _messages.end(); ++i)
+		{
+			_idToIndex[i->id] += count;
+		}
+	}
+	_messages.insert(_messages.begin() + row, count, std::move(MessageData()));
 	endInsertRows();
 	return true;
 }
@@ -113,7 +120,7 @@ bool MessageModel::removeRows(int row, int count, const QModelIndex& parent)
 		return false;
 	beginRemoveRows(parent, row, row + count - 1);
 	_idToIndex.remove(_messages[row].id);
-	_messages.remove(row, count);
+	_messages.erase(_messages.begin() + row, _messages.begin() + row+ count);
 	endRemoveRows();
 	return true;
 }
@@ -128,6 +135,7 @@ bool MessageModel::setData(const QModelIndex& index, const QVariant& value, int 
 	case IdRole:
 		if (value.canConvert<int>())
 		{
+			_idToIndex[value.toInt()] = index.row();
 			_messages[index.row()].id = value.value<int>();
 			emit dataChanged(index, index, QList<int>() << IdRole);
 			return true;

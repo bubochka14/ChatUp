@@ -8,9 +8,17 @@
 #include <qdiriterator.h>
 #include "app.h"
 #include <QUrl>
+#ifdef Q_OS_WIN
+    // Indicates to hybrid graphics systems to prefer the discrete part by default.
+extern "C" {
+    Q_DECL_EXPORT unsigned long NvOptimusEnablement = 0x00000001;
+    Q_DECL_EXPORT int AmdPowerXpressRequestHighPerformance = 1;
+}
+#endif
 int main(int argc, char ** argv)
 {
 	using namespace Qt::Literals::StringLiterals;
+
 	QGuiApplication gApp(argc, argv);
     QGuiApplication::setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
@@ -33,7 +41,7 @@ int main(int argc, char ** argv)
     url.setPort(port);
     url.setScheme(u"ws"_s);
     url.setHost(host);
-    ChatClient client(host,port);
+    App client(host,port);
     if (client.run())
         return gApp.exec();
 }

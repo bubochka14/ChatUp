@@ -41,6 +41,8 @@ public:
 	void setReply(QList<QVariantHash>&& other);
 	bool extractFromHash(const QVariantHash&) override;
 	QVariantHash toHash() const override;
+	~WSReply() { 
+		qDebug() << "i destroyed";}
 
 private:
 	int _repTo;
