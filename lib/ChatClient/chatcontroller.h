@@ -10,114 +10,151 @@
 #include <qloggingcategory.h>
 #include "chatclient_include.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_CHAT_CONTROLLER);
-//class RoomController : public QObject
-//{
-//	Q_OBJECT;
-//	QML_ELEMENT;
-//	QML_UNCREATABLE("");
-//public:
-//	RoomModel* userRooms() const;
-//	void createRoom(const QString&) ;
-//	void deleteRoom(int id) ;
-//	void updateRoom(int id, const QVariantHash&);
-//
-//};
-//class MessageController : public QObject
-//{
-//	Q_OBJECT;
-//	QML_ELEMENT;
-//	QML_UNCREATABLE("");
-//public:
-//	MessageModel* getRoomHistory(int roomId);
-//	void updateMessage(int roomId, int messageId, const QVariantHash&);
-//	void createMessage(const QString& body, int roomId);
-//	void deleteMessage(int roomid, int messId);
-//
-//};
-//class UserController : public QObject
-//{
-//	Q_OBJECT;
-//	QML_ELEMENT;
-//	QML_UNCREATABLE("");
-//public:
-//	UsersModel* getRoomUsers(int roomId);
-//	UserInfo* getUserInfo(int userId);
-//	void updateUser(int id, const QVariantHash&);
-//	void deleteUser();
-//
-//};
 class CHAT_CLIENT_EXPORT AbstractChatController : public QObject
+{
+	Q_OBJECT;
+	Q_PROPERTY(UserInfo* currentUser READ currentUser WRITE setCurrentUser	NOTIFY currentUserChanged);
+public:
+	explicit AbstractChatController(QObject* parent = nullptr);
+	void setCurrentUser(UserInfo* other);
+	UserInfo* currentUser() const;
+signals:
+	void currentUserChanged();
+private:
+	UserInfo* _currentUser;
+
+
+};
+class CHAT_CLIENT_EXPORT RoomController : public AbstractChatController
 {
 	Q_OBJECT;
 	QML_ELEMENT;
 	QML_UNCREATABLE("");
-	Q_PROPERTY(RoomModel* userRooms READ userRooms NOTIFY userRoomsChanged);
-	Q_PROPERTY(UserInfo* currentUser READ currentUser NOTIFY currentUserChanged);
 public:
-	explicit AbstractChatController(QObject* parent = nullptr);
-	Q_INVOKABLE virtual QFuture<MessageModel*> getRoomHistory(int roomId) = 0;
-	Q_INVOKABLE virtual QFuture<UsersModel*> getRoomUsers(int id) = 0;
-	Q_INVOKABLE virtual QFuture<UserInfo*> getUserInfo(int id) = 0;
-	RoomModel* userRooms() const;
-	UserInfo* currentUser() const;
-	Q_INVOKABLE virtual QFuture<void> addUserToRoom(int roomID, int userID) = 0;
-	Q_INVOKABLE virtual QFuture<void> createMessage(const QString& body, int roomId) = 0;
-	Q_INVOKABLE virtual QFuture<void> createRoom(const QString& name) = 0;
-	Q_INVOKABLE virtual QFuture<void> updateRoom(const QVariantHash&) = 0;
-	Q_INVOKABLE virtual QFuture<void> updateMessage(const QVariantHash&) = 0;
-	Q_INVOKABLE virtual QFuture<void> updateUser(const QVariantHash&) = 0;
-	Q_INVOKABLE virtual QFuture<void> deleteUser() = 0;
-	Q_INVOKABLE virtual QFuture<void> deleteMessage(int roomId,int messId) = 0;
+	struct DirectRoom {
+
+	};
+	explicit RoomController(QObject* parent = nullptr);
+	Q_INVOKABLE virtual QFuture<void> createGroup(const QString& name) = 0;
+	Q_INVOKABLE virtual QFuture<void> createDirect(int userID) = 0;
+	Q_INVOKABLE virtual QFuture<void> addUserToRoom(int userID, int roomId) =0;
+
+	Q_INVOKABLE virtual QFuture<RoomModel*> getGroups() = 0;
+	//Q_INVOKABLE virtual QFuture<QAbstractListModel*> getDirectRooms() = 0;
+
 	Q_INVOKABLE virtual QFuture<void> deleteRoom(int id) = 0;
-	virtual ~AbstractChatController() = default;
-signals:
-	void errorReceived();
-	void userRoomsChanged();
-	void currentUserChanged();
-	void initialized();
-public slots:
-	virtual void initializeUser(UserInfo* currentUser) =0;
-protected:
-	void setCurrentUser(UserInfo* other);
-	void setUserRooms(RoomModel* other);
-	template<class T>
-	QFuture<T> makeErrorFuture(const QString& error)
-	{
-		return QtFuture::makeReadyFuture<void>().then(this, [&]() {throw error; });
-	}
-private:
-	RoomModel* _userRooms;
-	UserInfo* _currentUser;
+	Q_INVOKABLE virtual QFuture<void> updateRoom(const QVariantHash& data) = 0;
 
 };
-class CHAT_CLIENT_EXPORT CallerChatController : public AbstractChatController
+class CHAT_CLIENT_EXPORT MessageController : public AbstractChatController
+{
+	Q_OBJECT;
+	QML_ELEMENT;
+	QML_UNCREATABLE("");
+public:
+	explicit MessageController(QObject* parent = nullptr);
+	Q_INVOKABLE virtual QFuture <MessageModel*> getRoomHistory(int roomId) = 0;
+	Q_INVOKABLE virtual QFuture<void> updateMessage(const QVariantHash& data) = 0;
+	Q_INVOKABLE virtual QFuture<void> createMessage(const QString& body, int roomId) = 0;
+	Q_INVOKABLE virtual QFuture<void> deleteMessage(int roomid, int messId) = 0;
+
+};
+class CHAT_CLIENT_EXPORT UserController : public AbstractChatController
+{
+	Q_OBJECT;
+	QML_ELEMENT;
+	QML_UNCREATABLE("");
+public:
+	explicit UserController(QObject* parent = nullptr);
+	Q_INVOKABLE virtual QFuture<UsersModel*> getUsers(const QVariantHash& pattern, int limit) = 0;
+	Q_INVOKABLE virtual QFuture<UserInfo*> getUserInfo(int userId) = 0;
+	Q_INVOKABLE virtual QFuture<void> updateUser(const QVariantHash& data) = 0;
+	Q_INVOKABLE virtual QFuture<void> deleteUser() = 0;
+	//Q_INVOKABLE virtual QFuture<UsersModel*> search(const QVariantHash&,size_t conut) = 0;
+};
+class CHAT_CLIENT_EXPORT ChatControllerFactory : public QObject
 {
 	Q_OBJECT;
 public:
-	explicit CallerChatController(ServerMethodCaller*caller, QObject* parent = nullptr);
-	QFuture<MessageModel*> getRoomHistory(int roomId) override;
-	QFuture<UserInfo*> getUserInfo(int userId) override;
-	QFuture<UsersModel*> getRoomUsers(int id) override;
-	QFuture<void> addUserToRoom(int roomID, int userID) override;
-	QFuture<void> createMessage(const QString& body, int roomId) override;
-	QFuture<void> createRoom(const QString&) override;
-	QFuture<void> deleteRoom(int id) override;
-	QFuture<void> updateRoom(const QVariantHash&) override;
-	QFuture<void> updateMessage(const QVariantHash&) override;
-	QFuture<void> deleteMessage(int roomid,int messId) override;
-	QFuture<void> updateUser(const QVariantHash&) override;
-	QFuture<void> deleteUser() override;
-
-	/*void createUser(UserInfo* user);*/
-public slots:
-	void initializeUser(UserInfo* currentUser) override;
-private:
-	QMap<int, MessageModel*> _history;
-	QMap<int, UserInfo*> _users;
-	QMap<int, QFuture<UserInfo*>> _cals;
-	ServerMethodCaller* _caller;
-	int _tempMessageCounter;
+	virtual RoomController* createRoomController() =0;
+	virtual MessageController* createMessageController() =0 ;
+	virtual UserController* createUserController() =0;
+	virtual ~ChatControllerFactory() = default;
+protected:
+	explicit ChatControllerFactory(QObject* parent = nullptr);
 };
+//class CHAT_CLIENT_EXPORT AbstractChatController : public QObject
+//{
+//	Q_OBJECT;
+//	QML_ELEMENT;
+//	QML_UNCREATABLE("");
+//	Q_PROPERTY(RoomModel* userRooms READ userRooms NOTIFY userRoomsChanged);
+//	Q_PROPERTY(UserInfo* currentUser READ currentUser NOTIFY currentUserChanged);
+//public:
+//	explicit AbstractChatController(QObject* parent = nullptr);
+//	Q_INVOKABLE virtual QFuture<MessageModel*> getRoomHistory(int roomId) = 0;
+//	Q_INVOKABLE virtual QFuture<UsersModel*> getRoomUsers(int id) = 0;
+//	Q_INVOKABLE virtual QFuture<UserInfo*> getUserInfo(int id) = 0;
+//	RoomModel* userRooms() const;
+//	UserInfo* currentUser() const;
+//	Q_INVOKABLE virtual QFuture<void> addUserToRoom(int roomID, int userID) = 0;
+//	Q_INVOKABLE virtual QFuture<void> createMessage(const QString& body, int roomId) = 0;
+//	Q_INVOKABLE virtual QFuture<void> createRoom(const QString& name) = 0;
+//	Q_INVOKABLE virtual QFuture<void> updateRoom(const QVariantHash&) = 0;
+//	Q_INVOKABLE virtual QFuture<void> updateMessage(const QVariantHash&) = 0;
+//	Q_INVOKABLE virtual QFuture<void> updateUser(const QVariantHash&) = 0;
+//	Q_INVOKABLE virtual QFuture<void> deleteUser() = 0;
+//	Q_INVOKABLE virtual QFuture<void> deleteMessage(int roomId,int messId) = 0;
+//	Q_INVOKABLE virtual QFuture<void> deleteRoom(int id) = 0;
+//	virtual ~AbstractChatController() = default;
+//signals:
+//	void errorReceived();
+//	void userRoomsChanged();
+//	void currentUserChanged();
+//	void initialized();
+//public slots:
+//	virtual void initializeUser(UserInfo* currentUser) =0;
+//protected:
+//	void setCurrentUser(UserInfo* other);
+//	void setUserRooms(RoomModel* other);
+//	template<class T>
+//	QFuture<T> makeErrorFuture(const QString& error)
+//	{
+//		return QtFuture::makeReadyFuture<void>().then(this, [&]() {throw error; });
+//	}
+//private:
+//	RoomModel* _userRooms;
+//	UserInfo* _currentUser;
+//
+//};
+//class CHAT_CLIENT_EXPORT CallerChatController : public AbstractChatController
+//{
+//	Q_OBJECT;
+//public:
+//	explicit CallerChatController(ServerMethodCaller*caller, QObject* parent = nullptr);
+//	QFuture<MessageModel*> getRoomHistory(int roomId) override;
+//	QFuture<UserInfo*> getUserInfo(int userId) override;
+//	QFuture<UsersModel*> getRoomUsers(int id) override;
+//	QFuture<void> addUserToRoom(int roomID, int userID) override;
+//	QFuture<void> createMessage(const QString& body, int roomId) override;
+//	QFuture<void> createRoom(const QString&) override;
+//	QFuture<void> deleteRoom(int id) override;
+//	QFuture<void> updateRoom(const QVariantHash&) override;
+//	QFuture<void> updateMessage(const QVariantHash&) override;
+//	QFuture<void> deleteMessage(int roomid,int messId) override;
+//	QFuture<void> updateUser(const QVariantHash&) override;
+//	QFuture<void> deleteUser() override;
+//
+//	/*void createUser(UserInfo* user);*/
+//public slots:
+//	void initializeUser(UserInfo* currentUser) override;
+//private:
+//	QMap<int, MessageModel*> _history;
+//	QMap<int, UserInfo*> _users;
+//	QMap<int, QFuture<UserInfo*>> _cals;
+//	ServerMethodCaller* _caller;
+//	int _tempMessageCounter;
+//};
 //class WSChatController : public AbstractChatController
 //{
 //public:
