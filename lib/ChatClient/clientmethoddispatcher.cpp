@@ -9,13 +9,8 @@ WSClientMethodDispatcher::WSClientMethodDispatcher(WSClient* client, QObject* pa
 	,_ws(client)
 {
 	connect(_ws, &WSClient::methodCallReceived, this, &WSClientMethodDispatcher::handleMethodCall);
-	_handlers["updateUser"] = QList<Handler>() <<[=](const QVariantHash& hash) {emit updatedUser(hash); };
-	_handlers["updateRoom"] = QList<Handler>() <<[=](const QVariantHash& hash) {emit updatedRoom(hash); };
-	_handlers["deleteMessage"]= QList<Handler>() << [=](const QVariantHash& hash) {emit deletedMessage(hash); };
-	_handlers["deleteRoom"] = QList<Handler>() << [=](const QVariantHash& hash) {emit deletedRoom(hash); };
 	_handlers["disconnect"]= QList<Handler>() << [=](const QVariantHash& hash) {emit disconnected(hash); };
-	_handlers["updateMessage"] = QList<Handler>() << [=](const QVariantHash& hash) {emit updatedMessage(hash); };
-	_handlers["postMessage"]= QList<Handler>() << [=](const QVariantHash& hash) {emit messagePosted(hash); };
+
 }
 void WSClientMethodDispatcher::handleMethodCall(WSMethodCall* call)
 {
@@ -27,7 +22,7 @@ void WSClientMethodDispatcher::handleMethodCall(WSMethodCall* call)
 		}
 	}
 }
-void WSClientMethodDispatcher::addCustomHandler(const QString& method, std::function<void(const QVariantHash&)> handler)
+void WSClientMethodDispatcher::handler(const QString& method, std::function<void(const QVariantHash&)> handler)
 {
 	if (_handlers.contains(method))
 		_handlers[method].append(handler);

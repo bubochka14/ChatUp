@@ -11,14 +11,8 @@ public:
 	explicit ClientMethodDispatcher(QObject* parent = nullptr);
 	virtual ~ClientMethodDispatcher() = default;
 public slots:
-	virtual void addCustomHandler(const QString& method, Handler handler) = 0;
+	virtual void addHandler(const QString& method, Handler handler) = 0;
 signals:
-	void messagePosted(const QVariantHash& data);
-	void updatedUser(const QVariantHash& data);
-	void updatedRoom(const QVariantHash& data);
-	void updatedMessage(const QVariantHash& data);
-	void deletedMessage(const QVariantHash& data);
-	void deletedRoom(const QVariantHash& data);
 	void disconnected(const QVariantHash& data);
 
 };
@@ -30,7 +24,7 @@ public:
 	explicit WSClientMethodDispatcher(WSClient* client, QObject* parent = nullptr);
 public slots:
 	void handleMethodCall(WSMethodCall* call);
-	void addCustomHandler(const QString& method, Handler handler) override;
+	void handler(const QString& method, Handler handler) override;
 
 private:
 	QMap<QString, QList<Handler>> _handlers;
