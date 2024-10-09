@@ -17,6 +17,8 @@ public:
 		void fromHash(const QVariantHash& other);
 		QVariantHash toHash() const;
 		int id;
+		size_t foreignReadCount;
+		size_t userReadCount;
 		QString name;
 		QString tag;
 		static int checkId(const QVariantHash& data, bool& success)
@@ -39,7 +41,10 @@ public:
 		NameRole = Qt::UserRole,
 		IDRole,
 		TagRole,
-		HashRole
+		HashRole,
+		UserReadMessagesCountRole,
+		ForeignReadMesssagesCountRole
+
 	}; Q_ENUM(RoleNames)
 	explicit RoomModel(QObject* parent = nullptr);
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;

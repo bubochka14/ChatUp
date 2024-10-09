@@ -1,0 +1,15 @@
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
+ColumnLayout {
+    id: root
+    property alias seacrhPattern: searchField.text
+    
+    TextField
+    {
+        id: searchField
+        placeholderText: qsTr("Search")
+    }
+    UsersView {}
+}

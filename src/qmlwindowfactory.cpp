@@ -9,20 +9,28 @@ QmlWindowFactory::QmlWindowFactory(QObject* parent)
         QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
 #endif
-     // Make sure alpha channel is requested, our special effects on Windows depends on it.
+     //Alpha channel request for window agent features
     QQuickWindow::setDefaultAlphaBuffer(true);
+	// Window agent registration
 #if QT_VERSION >= QT_VERSION_CHECK(6, 7, 0)
-        const bool curveRenderingAvailable = true;
+	const bool curveRenderingAvailable = true;
 #else
-        const bool curveRenderingAvailable = false;
+	const bool curveRenderingAvailable = false;
 #endif
-    _engine->rootContext()->setContextProperty(QStringLiteral("$curveRenderingAvailable"), QVariant(curveRenderingAvailable));
+	_engine->rootContext()->setContextProperty(QStringLiteral("$curveRenderingAvailable"), QVariant(curveRenderingAvailable));
     qmlRegisterType<QWK::QuickWindowAgent>("QWindowKit", 1, 0, "WindowAgent");
     qmlRegisterModule("QWindowKit", 1, 0);
+	// Registering types available via Future in QML
 	QuickFuture::registerType<UserInfo*>();
 	QuickFuture::registerType<RoomModel*>();
 	QuickFuture::registerType<MessageModel*>();
+	QuickFuture::registerType<UsersModel*>();
 
+	qmlRegisterSingletonType<QMLObjectConverter>("ObjectConverter", 1, 0, "ObjectConverter", [](QQmlEngine* engine, QJSEngine* scriptEngine) -> QObject* {
+		Q_UNUSED(engine);
+		Q_UNUSED(scriptEngine);
+		return new QMLObjectConverter();
+	});
 
 }
 StartupWindow* QmlWindowFactory::createStartupWindow()
@@ -35,9 +43,9 @@ StartupWindow* QmlWindowFactory::createStartupWindow()
 	}
 	return window;
 }
-AbstractChatWindow* QmlWindowFactory::createChatWindow(AbstractChatController* controller)
+AbstractChatWindow* QmlWindowFactory::createChatWindow(RoomController* room, UserController* user, MessageController* mess)
 {
-	auto window = new QmlChatWindow(_engine,controller, QUrl("qrc:/resources/ChatWindow.qml"));
+	auto window = new QmlChatWindow(_engine,room,mess,user, QUrl("qrc:/resources/ChatWindow.qml"));
 	if (window->hasError())
 	{
 		qCCritical(LC_QML_WINDOW_FACTORY) << "Cannot create chat window: " << window->errorString();

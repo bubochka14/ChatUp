@@ -195,6 +195,14 @@ void WSMessageConstructor::defaultMsgInstallation(WSMessage* other)
 	other->setApiVersion("1.0.0"_L1);
 	other->setMessageId(generateID());
 }
+WSMethodCall* WSMessageConstructor::methodCallMsg(const QString& method, QVariantHash&& args)
+{
+	WSMethodCall* out = new WSMethodCall();
+	defaultMsgInstallation(out);
+	out->setMethod(method);
+	out->setArgs(std::move(args));
+	return out;
+}
 
 WSMethodCall* WSMessageConstructor::methodCallMsg(const QString& method, const QVariantHash& args)
 {

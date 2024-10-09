@@ -24,7 +24,6 @@ RowLayout {
         Layout.alignment: Qt.AlignBottom
         MouseArea {
             anchors.fill: parent
-            onClicked: {root.profileClicked(); console.log(id,user,userID, body,roomID)}
             cursorShape: Qt.PointingHandCursor
         }
     }

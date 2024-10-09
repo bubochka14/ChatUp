@@ -6,10 +6,17 @@ import ChatClient
 
 Dialog {
     id: root
-    property UserInfo user
+    signal sendMessageClicked()
     width:250
     height:400
     modal: true
+    function showProfle(user)
+    {
+        tagLabel.text = "Tag: "+user.tag
+        nameLabel.text = "Name: " +user.name
+        open()
+    }
+
     RoundedFrame {
         anchors.fill: parent
         ColumnLayout {
@@ -27,13 +34,17 @@ Dialog {
             }
             Label
             {
+                id:tagLabel
                 Layout.alignment: Qt.AlignHCenter
-                text: "Tag: " + root.user.tag
             }
 
             Label {
+                id:nameLabel
                 Layout.alignment: Qt.AlignHCenter
-                text: "Name: " + root.user.name
+            }
+            Button{
+                text:"Send Message"
+                onClicked: {root.sendMessageClicked();accept()}
             }
         }
     }

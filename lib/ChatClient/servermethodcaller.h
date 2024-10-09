@@ -25,7 +25,8 @@ public:
 	virtual QFuture<HashList>	  getUserRooms	(const QVariantHash& data) = 0;
 	virtual QFuture<HashList>	  getRoomUsers	(const QVariantHash& data) = 0;
 	virtual QFuture<HashList>	  getRoomHistory(const QVariantHash& data) = 0;
-	virtual QFuture<HashList>	  getUsers	    (const QVariantHash& data) = 0;
+	virtual QFuture<HashList>	  findUsers		(const QVariantHash& data) = 0;
+	virtual QFuture<QVariantHash> getUsers		(const QVariantHash& data) = 0;
 	virtual QFuture<QVariantHash> addUserToRoom (const QVariantHash& data) = 0;
 	virtual QFuture<QVariantHash> createMessage (const QVariantHash& data) = 0;
 	virtual QFuture<QVariantHash> createRoom    (const QVariantHash& data) = 0;
@@ -37,6 +38,9 @@ public:
 	virtual QFuture<QVariantHash> deleteUser	(const QVariantHash& data) = 0;
 	virtual QFuture<QVariantHash> registerUser	(const QVariantHash& data) = 0;
 	virtual QFuture<QVariantHash> loginUser		(const QVariantHash& data) = 0;
+
+	virtual QFuture<QVariantHash> setReadMessagesCount(const QVariantHash& data) = 0;
+	virtual QFuture<QVariantHash> getReadMessagesCount(const QVariantHash& data) = 0;
 protected:
 	explicit ServerMethodCaller(QObject* parent = nullptr);
 

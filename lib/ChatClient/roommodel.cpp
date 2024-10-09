@@ -2,6 +2,8 @@
 Q_LOGGING_CATEGORY(LC_ROOM_MODEL, "RoomModel");
 RoomModel::RoomData::RoomData()
 	:id(-1)
+	,foreignReadCount(0)
+	,userReadCount(0)
 {
 }
 void RoomModel::RoomData::fromHash(const QVariantHash& other)
@@ -12,13 +14,20 @@ void RoomModel::RoomData::fromHash(const QVariantHash& other)
 		name = other["name"].toString();
 	if (other.contains("tag"))
 		tag = other["tag"].toString();
+	if (other.contains("userReadCount"))
+		userReadCount = other["tag"].toInt();
+	if (other.contains("foreignReadCount"))
+		foreignReadCount = other["tag"].toInt();
 }
 QVariantHash RoomModel::RoomData::toHash() const
 {
 	QVariantHash out;
-	out["id"] = id;
-	out["name"] = name;
-	out["tag"] = tag;
+	if(id!=-1)
+		out["id"] = id;
+	if(!name.isEmpty())
+		out["name"] = name;
+	if(!tag.isEmpty())
+		out["tag"] = tag;
 	return out;
 }
 const QHash<int, QByteArray> RoomModel::_roleNames = QHash<int, QByteArray>({
@@ -26,6 +35,8 @@ const QHash<int, QByteArray> RoomModel::_roleNames = QHash<int, QByteArray>({
 	{IDRole,"id"},
 	{TagRole, "tag"},
 	{HashRole, "hash"},
+	{UserReadMessagesCountRole, "userReadCount"},
+	{ForeignReadMesssagesCountRole, "foreignReadCount"}
 	}
 );
 RoomModel::RoomModel(QObject* parent)
@@ -51,6 +62,10 @@ QVariant RoomModel::data(const QModelIndex& index, int role) const
 		return _rooms.at(index.row()).tag;
 	case HashRole:
 		return _rooms.at(index.row()).toHash();
+	case ForeignReadMesssagesCountRole:
+		return _rooms.at(index.row()).foreignReadCount;
+	case UserReadMessagesCountRole:
+		return _rooms.at(index.row()).userReadCount;
 	default:
 		return QVariant();
 	}
@@ -138,6 +153,22 @@ bool RoomModel::setData(const QModelIndex& index, const QVariant& value, int rol
 				_idToIndex.insert(_rooms[index.row()].id, index.row());
 			}
 
+			return true;
+		}break;
+	case ForeignReadMesssagesCountRole:
+		if (value.canConvert<uint>()) {
+			if (value.toInt() == _rooms[index.row()].foreignReadCount)
+				return true;
+			_rooms[index.row()].foreignReadCount = value.toUInt();
+			emit dataChanged(index, index, QList<int>() << ForeignReadMesssagesCountRole);
+			return true;
+		}break;
+	case UserReadMessagesCountRole:
+		if (value.canConvert<uint>()) {
+			if (value.toInt() == _rooms[index.row()].userReadCount)
+				return true;
+			_rooms[index.row()].userReadCount = value.toUInt();
+			emit dataChanged(index, index, QList<int>() << UserReadMessagesCountRole);
 			return true;
 		}break;
 	return false;

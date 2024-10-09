@@ -18,14 +18,16 @@ set(APP_SOURCES
 	${APP_SOURCE}/abstractchatwindow.cpp
 	${APP_SOURCE}/abstractchatwindow.cpp
 	${APP_SOURCE}/app.h
+	${APP_SOURCE}/qmlobjectconverter.h
 	${APP_SOURCE}/qml/qml.qrc
 	${APP_SOURCE}/resources/resources.qrc
-	CACHE INTERNAL ""
-)
+	CACHE INTERNAL "")
 add_executable (app
 	${APP_SOURCES}
 )
-
+file(REAL_PATH "../qml" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
+set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")
 #file(REAL_PATH "../components" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 #list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
 #set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")

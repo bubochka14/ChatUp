@@ -21,6 +21,8 @@ public:
 	void setName(const QString& other);
 	Status status() const;
 	void setStatus(Status other);
+	QString tag() const;
+	void setTag(const QString other);
 	QVariantHash toHash() const;
 	static int checkId(const QVariantHash& data, bool& st)
 	{
@@ -35,15 +37,18 @@ public:
 public slots:
 	void extractFromHash(const QVariantHash& other);
 signals:
+	void tagChanged();
 	void idChanged();
 	void nameChanged();
 	void statusChanged();
 private:
 	Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged);
+	Q_PROPERTY(QString tag READ tag WRITE setTag NOTIFY tagChanged);
 	Q_PROPERTY(int id READ id WRITE setId NOTIFY idChanged);
 	Q_PROPERTY(Status status READ status WRITE setStatus NOTIFY statusChanged);
 	Status _status;
 	QString _name;
+	QString _tag;
 	int _id;
 };
 

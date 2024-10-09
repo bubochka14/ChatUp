@@ -101,7 +101,7 @@ public:
 		addUser(anotherUser);
 		createRoom("test_room1");
 		createRoom("test_room2");
-		int test_room1_id = userRooms()->data(userRooms()->index(0), RoomModel::IDRole).toInt();
+`		int test_room1_id = userRooms()->data(userRooms()->index(0), RoomModel::IDRole).toInt();
 		int test_room2_id = userRooms()->data(userRooms()->index(1), RoomModel::IDRole).toInt();
 
 		createMessage("loading message from current user", test_room1_id, currentUser->id());
@@ -159,7 +159,6 @@ TEST(ChatClientManualTest, ChatWindow)
 	NiceMock<MockStartup> autoStartup;
 	NiceMock<MockNetworkFactory> mockNetFact;
 	NiceMock<MockAuthenticationMaster> mockAuth;
-	NiceMock<MockClientMessageDispatcher> mockDisp;
 
 	testUser->setId(1);
 	testUser->setName("test_current_user");
@@ -167,7 +166,6 @@ TEST(ChatClientManualTest, ChatWindow)
 	emit mockAuth.authentificated(testUser.get());
 
 
-	ON_CALL(mockNetFact, createDispatcher).WillByDefault(Return(&mockDisp));
 	ON_CALL(mockNetFact, createAuthenticationMaster).WillByDefault(Return(&mockAuth));
 	ON_CALL(mockNetFact, createChatController).WillByDefault(Return(controller.get()));
 	ON_CALL(mockWindowFact, createStartupWindow).WillByDefault(Return(&autoStartup));

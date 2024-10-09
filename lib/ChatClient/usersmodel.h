@@ -17,11 +17,11 @@ public:
 	{
 		IdRole = Qt::UserRole,
 		NameRole,
+		TagRole,
 		StatusRole
 	};
 	explicit UsersModel(QObject* parent = nullptr);
 	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-	bool updateFromHash(const QVariantHash& hash);
 	//bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	//bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
 	QVariant data(const QModelIndex& index, int role = IdRole) const override;

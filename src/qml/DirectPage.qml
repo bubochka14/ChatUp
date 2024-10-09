@@ -5,20 +5,24 @@ import ChatClient
 
 Item {
     id: root
-    required property AbstractChatController controller
+    required property RoomController roomController
+    required property MessageController messageController
+    required property UserController userController
     property bool roomSelected: false
     RowLayout {
         id: mainLayout
         spacing: 0
         anchors.fill: parent
-        RoomList {
-            id: roomList
-            // Layout.minimumWidth: 120
-            Layout.fillHeight: true
-            Layout.preferredWidth: Math.max(220, parent.width / 4)
-            Layout.maximumWidth: 420
-            onSelectedRoomIDChanged: {
+        ColumnLayout {
+            RoomList {
+                id: roomList
+                // Layout.minimumWidth: 120
+                Layout.fillHeight: true
+                Layout.preferredWidth: Math.max(220, parent.width / 4)
+                Layout.maximumWidth: 420
+                onSelectedRoomIDChanged: {
 
+                }
             }
         }
         ColumnLayout {

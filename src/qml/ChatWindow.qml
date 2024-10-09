@@ -8,11 +8,15 @@ ApplicationWindow {
     id: root
     width: 650
     height: 600
+    minimumWidth: 650
+    minimumHeight: 600
     visible: false
     signal languageSet(string language)
     signal logout
     color: "transparent"
-    required property AbstractChatController controller
+    required property RoomController roomController
+    required property MessageController messageController
+    required property UserController userController
         WindowAgent {
         id: windowAgent
     }
@@ -46,12 +50,16 @@ ApplicationWindow {
                 id: stack
                 RoomsPage {
                     id: roomsPage
-                    controller: root.controller
+                    roomController: root.roomController
+                    messageController: root.messageController
+                    userController: root.userController
                 }
-                DirectPage {
-                    id: directPage
-                    controller: root.controller
-                }
+                // DirectPage {
+                //     id: directPage
+                //     roomController: root.roomController
+                //     messageController: root.messageController
+                //     userController: root.userController
+                // }
 
                 SettingsPage {
                     id: settingsPage
@@ -69,7 +77,7 @@ ApplicationWindow {
 
     ProfileViewer {
         id: profileViewer
-        user: controller.currentUser
+        user: userController.currentUser
         anchors.centerIn: parent
     }
 

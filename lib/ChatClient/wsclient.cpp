@@ -39,6 +39,7 @@ void WSClient::onConnected()
 
 void WSClient::onTextMessageReceived(const QString& textMessage)
 {
+    qCDebug(LC_WSClient) << "Received: " << textMessage;
     QJsonObject&& obj = QJsonDocument::fromJson(textMessage.toUtf8()).object();
     if (obj.value("type") == "response")
     {

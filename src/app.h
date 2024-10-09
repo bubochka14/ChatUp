@@ -19,6 +19,7 @@ class App : public QObject
 	AuthenticationMaster* _authMaster;
 	NetworkFactory* _netFactory;
 	AbstractWindowFactory* _windowFactory;
+	ChatControllerFactory* _controllerFactory;
 
 public:
 	explicit App(const QString& host,int port,QObject* parent = nullptr);

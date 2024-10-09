@@ -23,6 +23,8 @@ set(LIB_SOURCES
 	"networkfactory.cpp"
 	"applicationsettings.h" 
 	"applicationsettings.cpp"
+	"callerchatcontrollers.h"
+	"callerchatcontrollers.cpp"
     "servermethodcaller.h" 
 	"servermethodcaller.cpp" 
 	"callerauthentificationmaster.h"

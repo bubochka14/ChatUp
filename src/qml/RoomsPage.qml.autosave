@@ -94,6 +94,14 @@ RowLayout {
             Layout.fillHeight: true
             Layout.fillWidth: true
         }
+        RoundedFrame
+        {
+            id: usersList
+            UsersView{
+                anchors.fill: parent
+                
+            }
+        }
     }
     CreateRoomDialog {
         id: createRoomDialog

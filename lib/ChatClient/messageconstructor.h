@@ -41,8 +41,6 @@ public:
 	void setReply(QList<QVariantHash>&& other);
 	bool extractFromHash(const QVariantHash&) override;
 	QVariantHash toHash() const override;
-	~WSReply() { 
-		qDebug() << "i destroyed";}
 
 private:
 	int _repTo;
@@ -71,6 +69,7 @@ class CHAT_CLIENT_EXPORT WSMessageConstructor
 public:
 	static WSReply* replyMsg(int replyTo, const QList<QVariantHash>& reply = QList<QVariantHash>());
 	static WSMethodCall* methodCallMsg(const QString& method,const QVariantHash& args = QVariantHash());
+	static WSMethodCall* methodCallMsg(const QString& method,QVariantHash&& args = QVariantHash());
 protected:
 	static void defaultMsgInstallation(WSMessage* other);
 private:

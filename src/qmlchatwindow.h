@@ -11,7 +11,14 @@ class QmlChatWindow : public AbstractChatWindow
 	QML_ELEMENT;
 	QML_UNCREATABLE("");
 public:
-	explicit QmlChatWindow(QQmlEngine* eng,AbstractChatController* controller,const QUrl&, QObject* parent = nullptr);
+	explicit QmlChatWindow(
+		QQmlEngine* eng,
+		RoomController*,
+		MessageController*,
+		UserController*,
+		const QUrl&, 
+		QObject* parent = nullptr
+	);
 	bool hasError() const;
 	QString errorString() const; 
 public slots:
@@ -20,6 +27,5 @@ public slots:
 private:
 	bool _hasError;
 	QString _error;
-	AbstractChatController* _controller;
 	QQuickWindow* _window;
 };

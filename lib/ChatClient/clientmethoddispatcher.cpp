@@ -22,7 +22,7 @@ void WSClientMethodDispatcher::handleMethodCall(WSMethodCall* call)
 		}
 	}
 }
-void WSClientMethodDispatcher::handler(const QString& method, std::function<void(const QVariantHash&)> handler)
+void WSClientMethodDispatcher::addHandler(const QString& method, std::function<void(const QVariantHash&)> handler)
 {
 	if (_handlers.contains(method))
 		_handlers[method].append(handler);

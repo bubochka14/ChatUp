@@ -66,7 +66,6 @@ ColoredFrame {
         })
     }
     function markAsRead(messageIndex) {
-        console.log("MARK", root.roomID, messageIndex)
         messageController.markAsRead(root.roomID, messageIndex)
     }
 

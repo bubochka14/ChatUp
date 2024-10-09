@@ -6,6 +6,7 @@
 #include "chatclient_include.h"
 #include "QWKQuick/quickwindowagent.h"
 #include <quickfuture.h>
+#include "qmlobjectconverter.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_QML_WINDOW_FACTORY);
 class QmlWindowFactory : public AbstractWindowFactory
 {
@@ -13,7 +14,7 @@ class QmlWindowFactory : public AbstractWindowFactory
 public:
 	explicit QmlWindowFactory(QObject* parent = nullptr);
 	StartupWindow* createStartupWindow() override;
-	AbstractChatWindow* createChatWindow(AbstractChatController* controller) override;
+	AbstractChatWindow* createChatWindow(RoomController*, UserController*, MessageController*) override;
 private:
 	QQmlEngine* _engine;
 };

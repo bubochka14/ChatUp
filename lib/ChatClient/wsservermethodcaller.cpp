@@ -158,9 +158,14 @@ QFuture<QVariantHash> WSServerMethodCaller::loginUser(const QVariantHash& h)
 	return QtConcurrent::run(customMethod, "loginUser", this, h)
 		.then([](HashList&& v) {return v.takeFirst(); });
 }
-QFuture<HashList> WSServerMethodCaller::getUsers(const QVariantHash& h)
+QFuture<QVariantHash> WSServerMethodCaller::getUsers(const QVariantHash& h)
 {
-	return QtConcurrent::run(customMethod, "getUsers", this, h);
+	return QtConcurrent::run(customMethod, "getUsers", this, h)
+		.then([](HashList&& v) {return v.takeFirst(); });
+}
+QFuture<HashList> WSServerMethodCaller::findUsers(const QVariantHash& h)
+{
+	return QtConcurrent::run(customMethod, "findUsers", this, h);
 }
 QFuture<QVariantHash> WSServerMethodCaller::addUserToRoom(const QVariantHash& h)
 {
@@ -170,4 +175,15 @@ QFuture<QVariantHash> WSServerMethodCaller::addUserToRoom(const QVariantHash& h)
 QFuture<HashList> WSServerMethodCaller::getRoomUsers(const QVariantHash& h)
 {
 	return QtConcurrent::run(customMethod, "getRoomUsers", this, h);
+}
+QFuture<QVariantHash> WSServerMethodCaller::setReadMessagesCount(const QVariantHash& h)
+{
+	return QtConcurrent::run(customMethod, "setReadMessagesCount", this, h)
+		.then([](HashList&& v) {return v.takeFirst(); });
+
+}
+QFuture<QVariantHash> WSServerMethodCaller::getReadMessagesCount(const QVariantHash& h)
+{
+	return QtConcurrent::run(customMethod, "getReadMessagesCount", this, h)
+		.then([](HashList&& v) {return v.takeFirst(); });
 }

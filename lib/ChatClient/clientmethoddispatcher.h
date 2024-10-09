@@ -24,7 +24,7 @@ public:
 	explicit WSClientMethodDispatcher(WSClient* client, QObject* parent = nullptr);
 public slots:
 	void handleMethodCall(WSMethodCall* call);
-	void handler(const QString& method, Handler handler) override;
+	void addHandler(const QString& method, Handler handler) override;
 
 private:
 	QMap<QString, QList<Handler>> _handlers;

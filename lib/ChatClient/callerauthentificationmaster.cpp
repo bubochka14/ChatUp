@@ -8,7 +8,7 @@ CallerAuthentificationMaster::CallerAuthentificationMaster(ServerMethodCaller* c
 void CallerAuthentificationMaster::loginUser(const QString& login, const QString& password)
 {
 	UserInfo* newUser = new UserInfo;
-	_authFuture = _caller->loginUser(login, password);
+	_authFuture = _caller->loginUser({ {"login",login}, {"password",password}});
 	_authFuture.then([=](QVariantHash&& hash)
 		{
 			newUser->extractFromHash(hash);
@@ -27,7 +27,7 @@ void CallerAuthentificationMaster::loginUser(const QString& login, const QString
 void CallerAuthentificationMaster::registerUser(const QString& login, const QString& password)
 {
 	UserInfo* newUser = new UserInfo;
-	_authFuture = _caller->registerUser(login, password);
+	_authFuture = _caller->registerUser({ {"login",login}, {"password",password} });
 	_authFuture.then([=](QVariantHash&& hash)
 		{
 			newUser->extractFromHash(hash);

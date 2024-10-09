@@ -39,7 +39,6 @@ ColoredFrame {
             label.text: delegate.name
             label.font.bold: true
             onClicked:{
-                console.log(selectedRoomID, delegate.id)
                 selectedRoomID = delegate.id
                 selectedRoomIndex = index
                 listView.currentIndex = index

@@ -2,65 +2,100 @@
 Q_LOGGING_CATEGORY(LC_MESSAGE_MODEL,"MessageModel")
 MessageModel::MessageData::MessageData()
 	:id(-1)
-	,roomId(-1)
 	,userId(-1)
-	,status(Loading)
 {
 
 }
 const QHash<int, QByteArray> MessageModel::_roleNames = QHash<int, QByteArray>({
 	{IdRole,"id" },
-	{UserIdRole,"userId"},
-	{RoomIdRole,"roomId"},
+	{UserIdRole,"userID"},
 	{BodyRole,"body"},
 	{TimeRole,"time"},
 	{HashRole,"hash"},
-	{StatusRole,"messageStatus"}
+	{StatusRole,"messageStatus"},
+	{MessageIndexRole,"messageIndex"}
 	}
 );
 QModelIndex MessageModel::idToIndex(int id) const
 {
-	if (!_idToIndex.contains(id))
+	if (!_idToRow.contains(id))
 	{
 		qCWarning(LC_MESSAGE_MODEL) << "Specified message id " << id << " not found";
 		return QModelIndex();
 	}
-	return index(_idToIndex[id]);
+	return index(_idToRow[id]);
 }
-
+bool MessageModel::addSpecialMessageStatus(int row, MessageModel::MessageStatus other)
+{
+	if (row >= rowCount() || row < 0)
+		return false;	
+	_specialStatuses.insert(row, other);
+	emit dataChanged(index(row), index(row),QList<int>() << StatusRole);
+	return true;
+}
+bool MessageModel::removeSpecialMessageStatus(int row)
+{
+	if (!_specialStatuses.contains(row))
+		return false;
+	_specialStatuses.remove(row);
+	emit dataChanged(index(row), index(row), QList<int>() << StatusRole);
+	return true;
+}
+uint32_t MessageModel::userReadMessagesCount() const
+{
+	return _userReadMessagesCount;
+}
+uint32_t MessageModel::foreignReadMessagesCount() const
+{
+	return _foreignReadMessagesCount;
+}
+void MessageModel::setForeignReadMessagesCount(uint32_t other)
+{
+	if (_foreignReadMessagesCount == other)
+		return;
+	uint32_t lastCount = _foreignReadMessagesCount;
+	_foreignReadMessagesCount = other;
+	int indexOffset = data(index(0), MessageIndexRole).toInt() - (rowCount() - 1);
+	emit foreignReadMessagesCountChanged();
+	auto topIndex = index(lastCount - indexOffset);
+	auto bottomIndex = index(_foreignReadMessagesCount - indexOffset - 1);
+	emit dataChanged(index(0), index(rowCount() - 1));
+}
+void MessageModel::setUserReadMessagesCount(uint32_t other)
+{
+	if (_userReadMessagesCount == other)
+		return;
+	_userReadMessagesCount = other;
+	emit userReadMessagesCountChanged();
+}
 QVariantHash MessageModel::MessageData::toHash() const
 {
 	QVariantHash out;
 	out["id"] = id;
 	out["time"] = time;
 	out["body"] = body;
-	out["userId"] = userId;
-	out["roomId"] = roomId;
-	out["status"] = QString(QMetaEnum::fromType<MessageStatus>().valueToKey(status)).toLower();
+	out["userID"] = userId;
+	out["messageIndex"] = messageIndex;
 	return out;
 }
 void MessageModel::MessageData::extractFromHash(const QVariantHash& other)
 {
 	if (other.contains("id"))
 		id = other["id"].toInt();
-	if (other.contains("userId"))
-		userId = other["userId"].toInt();
-	if (other.contains("roomId"))
-		roomId = other["roomId"].toInt();
+	if (other.contains("userID"))
+		userId = other["userID"].toInt();
 	if (other.contains("time"))
 		time = other["time"].toDateTime();
 	if (other.contains("body"))
 		body = other["body"].toByteArray();	
-	if (other.contains("status"))
-	{
-		QString&& statusStr = other["status"].toString();
-		statusStr.replace(0, 1, statusStr[0].toUpper());
-		status = MessageStatus(QMetaEnum::fromType<MessageStatus>().
-			keyToValue(statusStr.toStdString().c_str()));
-	}
+	if (other.contains("messageIndex"))
+		messageIndex = other["messageIndex"].toUInt();
 }
-MessageModel::MessageModel(QObject* parent )
+MessageModel::MessageModel(int currentUserID,QObject* parent )
 	:QAbstractListModel(parent)
+	,_currentUserID(currentUserID)
+	,_userReadMessagesCount(0)
+	,_foreignReadMessagesCount(0)
 {
 }
 QHash<int, QByteArray> MessageModel::roleNames() const
@@ -82,16 +117,24 @@ QVariant MessageModel::data(const QModelIndex& index, int role) const
 		return _messages.at(index.row()).id;
 	case UserIdRole:
 		return _messages.at(index.row()).userId;
-	case RoomIdRole:
-		return _messages.at(index.row()).roomId;
 	case BodyRole:
 		return _messages.at(index.row()).body;
 	case TimeRole:
 		return _messages.at(index.row()).time;
+	case MessageIndexRole:
+		return _messages.at(index.row()).messageIndex;
 	case HashRole:
 		return _messages.at(index.row()).toHash();
 	case StatusRole:
-		return _messages.at(index.row()).status;
+	{
+		if (_specialStatuses.contains(index.row()))
+			return _specialStatuses[index.row()];
+		auto it = _messages.cbegin() + index.row();
+		if ((*it).userId == _currentUserID)
+			return (*it).messageIndex > foreignReadMessagesCount() ? Sent : Read;
+		else
+			return (*it).messageIndex > userReadMessagesCount() ? Sent : Read;
+	}
 	default:
 		return QVariant();
 	}
@@ -106,7 +149,7 @@ bool MessageModel::insertRows(int row, int count, const QModelIndex& parent)
 	{
 		for (auto i = _messages.begin() + row + 1; i < _messages.end(); ++i)
 		{
-			_idToIndex[i->id] += count;
+			_idToRow[i->id] += count;
 		}
 	}
 	_messages.insert(_messages.begin() + row, count, std::move(MessageData()));
@@ -119,7 +162,7 @@ bool MessageModel::removeRows(int row, int count, const QModelIndex& parent)
 	if (row<0 || row + count > rowCount() || count <= 0)
 		return false;
 	beginRemoveRows(parent, row, row + count - 1);
-	_idToIndex.remove(_messages[row].id);
+	_idToRow.remove(_messages[row].id);
 	_messages.erase(_messages.begin() + row, _messages.begin() + row+ count);
 	endRemoveRows();
 	return true;
@@ -135,15 +178,9 @@ bool MessageModel::setData(const QModelIndex& index, const QVariant& value, int 
 	case IdRole:
 		if (value.canConvert<int>())
 		{
-			_idToIndex[value.toInt()] = index.row();
+			_idToRow[value.toInt()] = index.row();
 			_messages[index.row()].id = value.value<int>();
 			emit dataChanged(index, index, QList<int>() << IdRole);
-			return true;
-		}
-	case RoomIdRole:
-		if (value.canConvert<int>()) {
-			_messages[index.row()].roomId = value.value<int>();
-			emit dataChanged(index, index, QList<int>() << RoomIdRole);
 			return true;
 		}
 	case UserIdRole:
@@ -164,16 +201,16 @@ bool MessageModel::setData(const QModelIndex& index, const QVariant& value, int 
 			emit dataChanged(index, index, QList<int>() << TimeRole);
 			return true;
 		}
+	case MessageIndexRole:
+		if (value.canConvert<uint>()) {
+			_messages[index.row()].messageIndex = value.toUInt();
+			emit dataChanged(index, index, QList<int>() << TimeRole);
+			return true;
+		}
 	case HashRole:
 		if (value.canConvert<QVariantHash>()) {
 			_messages[index.row()].extractFromHash(value.value<QVariantHash>());
 			emit dataChanged(index, index);
-			return true;
-		}
-	case StatusRole:
-		if (value.canConvert<MessageStatus>()) {
-			_messages[index.row()].status = value.value<MessageStatus>();
-			emit dataChanged(index, index, QList<int>() << StatusRole);
 			return true;
 		}
 	};

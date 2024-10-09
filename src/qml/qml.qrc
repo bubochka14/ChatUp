@@ -8,7 +8,7 @@
         <file>RoomList.qml</file>
         <file>RoundedFrame.qml</file>
         <file>StartupWindow.qml</file>
-        <file>UserList.qml</file>
+        <file>SelectUserDialog.qml</file>
         <file>LoadingPage.qml</file>
         <file>MessageDelegate.qml</file>
         <file>MenuPanel.qml</file>
@@ -17,11 +17,13 @@
         <file>ProfileViewer.qml</file>
         <file>MenuPanelItem.qml</file>
         <file>SettingsPage.qml</file>
-        <file>RoomDelegate.qml</file>
+        <file>StandardDelegate.qml</file>
         <file>RoomsPage.qml</file>
         <file>DirectPage.qml</file>
         <file>CreateRoomDialog.qml</file>
         <file>TitleBar.qml</file>
         <file>SysButton.qml</file>
+        <file>UsersView.qml</file>
+        <file>ForeignProfileViewer.qml</file>
     </qresource>
 </RCC>

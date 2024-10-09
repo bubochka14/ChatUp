@@ -9,17 +9,14 @@ WSNetworkFactory::WSNetworkFactory(const QString& host,int port,QObject* parent)
 	,_ws(new WSClient(QWebSocketProtocol::VersionLatest))
 	
 {
+	_disp = new WSClientMethodDispatcher(_ws);
 	_caller = new WSServerMethodCaller(_ws,host, port);
 }
 AuthenticationMaster* WSNetworkFactory::createAuthenticationMaster()
 {
 	return new CallerAuthentificationMaster(_caller,parent());
 }
-AbstractChatController* WSNetworkFactory::createChatController()
+ChatControllerFactory* WSNetworkFactory::createControllerFactory()
 {
-	return new CallerChatController(_caller);
-}
-ClientMethodDispatcher* WSNetworkFactory::createDispatcher()
-{
-	return new WSClientMethodDispatcher(_ws);
+	return new CallerControllerFactory(_caller,_disp);
 }

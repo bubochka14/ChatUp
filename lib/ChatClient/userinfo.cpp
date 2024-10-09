@@ -10,6 +10,19 @@ void UserInfo::extractFromHash(const QVariantHash& other)
 	}
 	if (other.contains("name"))
 		setName(other["name"].toString());
+	if (other.contains("tag"))
+		setTag(other["tag"].toString());
+}
+QString UserInfo::tag() const
+{
+	return _tag;
+}
+void UserInfo::setTag(const QString other)
+{
+	if (_tag == other)
+		return;
+	_tag = other;
+	emit tagChanged();
 }
 UserInfo::UserInfo(QObject* parent)
 	:QObject(parent)
@@ -53,5 +66,6 @@ QVariantHash UserInfo::toHash() const
 	out["id"] = _id;
 	out["name"] = _name;
 	out["status"] = statusEnum.valueToKey(_status);
+	out["tag"] = _tag;
 	return out;
 }

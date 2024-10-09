@@ -1,12 +1,16 @@
 #include "qmlchatwindow.h"
-QmlChatWindow::QmlChatWindow(QQmlEngine* eng, AbstractChatController* controller,
+QmlChatWindow::QmlChatWindow(QQmlEngine* eng, RoomController* room,MessageController* message,UserController* user, 
 	const QUrl& url, QObject* parent)
 	:AbstractChatWindow(parent)
 	,_hasError(false)
-	,_controller(controller)
 {
 	QQmlComponent comp(eng,url, QQmlComponent::PreferSynchronous);
-	QObject* windowObj = comp.createWithInitialProperties({ {"controller",QVariant::fromValue(_controller)}, {"visible",false} });
+	QObject* windowObj = comp.createWithInitialProperties({ 
+		{"roomController",QVariant::fromValue(room)}, 
+		{"userController",QVariant::fromValue(user)}, 
+		{"messageController",QVariant::fromValue(message)}, 
+		{"visible",false} }
+		);
 	if (!windowObj)
 	{
 		_error =  comp.errorString();
@@ -19,10 +23,6 @@ QmlChatWindow::QmlChatWindow(QQmlEngine* eng, AbstractChatController* controller
 		_error = "Cannot cast root object of "+ url.toString() + " to QQuickWindow";
 		_hasError = true;
 	}
-	connect(this, &AbstractChatWindow::controllerChanged, this, [=]()
-		{
-			_window->setProperty("controller", QVariant::fromValue(this->controller()));
-		});
 }
 bool QmlChatWindow::hasError() const
 {
@@ -34,11 +34,11 @@ QString QmlChatWindow::errorString() const
 }
 void QmlChatWindow::show()
 {
-	if(_window)
-	_window->show();
+	if(!hasError())
+		_window->show();
 }
 void QmlChatWindow::hide()
 {
-	if (_window)
-	_window->hide();
+	if (!hasError())
+		_window->hide();
 }
