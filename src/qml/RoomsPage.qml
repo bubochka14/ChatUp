@@ -5,6 +5,7 @@ import QtQuick.Controls.Material
 import ChatClient
 import QuickFuture
 import ObjectConverter
+
 RowLayout {
     id: root
     spacing: 0
@@ -30,7 +31,7 @@ RowLayout {
         }
         listView.footer: StandardDelegate {
             id: createRoomFooter
-            label.text:  qsTr("Create")
+            label.text: qsTr("Create")
             icon: Rectangle {
                 height: 50
                 width: 50
@@ -65,24 +66,36 @@ RowLayout {
                 font.bold: true
                 id: titleLabel
             }
-            MouseArea {
-                id: addUserBtn
-                height: 30
-                width: 30
-                anchors.verticalCenter: parent.verticalCenter
+            Row {
                 anchors.right: parent.right
                 anchors.rightMargin: 15
-                cursorShape: Qt.PointingHandCursor
-                onClicked: selectUserDialog.open()
-                Image {
-                    id: addUserIcon
-                    anchors.centerIn: parent
-                    height: 25
-                    width: 25
-                    mipmap: true
-                    source: Qt.resolvedUrl("pics/add-user.svg")
+                spacing:10
+                Button
+                {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: "call"
+                }
+                MouseArea {
+                    id: addUserBtn
+                    anchors.verticalCenter: parent.verticalCenter
+                    height: 30
+                    width: 30
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: selectUserDialog.open()
+                    Image {
+                        id: addUserIcon
+                        anchors.centerIn: parent
+                        height: 25
+                        width: 25
+                        mipmap: true
+                        source: Qt.resolvedUrl("pics/add-user.svg")
+                    }
                 }
             }
+        }
+        CallBox {
+            Layout.preferredHeight: 250
+            Layout.fillWidth: true
         }
 
         ChatBox {
@@ -105,12 +118,14 @@ RowLayout {
         anchors.centerIn: parent
         title: qsTr("Add memder:")
         onSeacrhPatternChanged: {
-            Future.onFinished(userController.getUsers(ObjectConverter.toHash({
-                                                          "name": seacrhPattern
-                                                      }), 5), function (users) {
-                                                          selectUserDialog.usersModel = users
-                                                      })
+            Future.onFinished(userController.findUsers(ObjectConverter.toHash({
+                                                                                  "name": seacrhPattern
+                                                                              }),
+                                                       5), function (users) {
+                                                           selectUserDialog.usersModel = users
+                                                       })
         }
-        onUserSelected: id=>  roomController.addUserToRoom(id, roomList.selectedRoomID)
+        onUserSelected: id => roomController.addUserToRoom(
+                            id, roomList.selectedRoomID)
     }
 }

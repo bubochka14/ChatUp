@@ -3,7 +3,6 @@
 #include <qqmlengine.h>
 #include <qquickwindow.h>
 #include <qqmlcomponent.h>
-#include "chatclient_include.h"
 class QmlStartupWindow : public StartupWindow
 {
 	Q_OBJECT;

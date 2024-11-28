@@ -23,7 +23,13 @@ QmlChatWindow::QmlChatWindow(QQmlEngine* eng, RoomController* room,MessageContro
 		_error = "Cannot cast root object of "+ url.toString() + " to QQuickWindow";
 		_hasError = true;
 	}
+	connect(_window, SIGNAL(logout()), this, SLOT(handleLogout()));
 }
+void QmlChatWindow::handleLogout()
+{
+	emit logout();
+}
+
 bool QmlChatWindow::hasError() const
 {
 	return _hasError;

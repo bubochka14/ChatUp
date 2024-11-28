@@ -3,9 +3,8 @@
 #include "qmlstartupwindow.h"
 #include "qmlchatwindow.h"
 #include <qloggingcategory.h>
-#include "chatclient_include.h"
 #include "QWKQuick/quickwindowagent.h"
-#include <quickfuture.h>
+//#include <quickfuture.h>
 #include "qmlobjectconverter.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_QML_WINDOW_FACTORY);
 class QmlWindowFactory : public AbstractWindowFactory

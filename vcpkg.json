@@ -1,0 +1,19 @@
+{
+  "dependencies": [
+    {
+      "name": "ffmpeg",
+      "features": [
+        "swscale",
+        "x264",
+        "x265",
+        "opus",
+        "avformat",
+        "avfilter",
+        "avdevice",
+        "avcodec"
+      ]
+    },
+    "nlohmann-json",
+    "openssl"
+  ]
+}

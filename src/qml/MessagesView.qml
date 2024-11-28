@@ -24,7 +24,7 @@ Item {
         height: Math.min(contentHeight + 5, parent.height)
         anchors.rightMargin: 15
         reuseItems: true
-        spacing: 15
+        spacing: 30
         ScrollBar.vertical: bar
         clip: true
         boundsBehavior: Flickable.StopAtBounds

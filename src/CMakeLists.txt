@@ -22,9 +22,8 @@ set(APP_SOURCES
 	${APP_SOURCE}/qml/qml.qrc
 	${APP_SOURCE}/resources/resources.qrc
 	CACHE INTERNAL "")
-add_executable (app
-	${APP_SOURCES}
-)
+add_executable (app 
+	${APP_SOURCES})
 file(REAL_PATH "../qml" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
 set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")
@@ -38,7 +37,8 @@ set_target_properties(app PROPERTIES CXX_STANDARD 17)
 if ((MSVC) AND (MSVC_VERSION GREATER_EQUAL 1914))
 	target_compile_options(app PUBLIC "/Zc:__cplusplus")
 endif()
-
+target_include_directories(app PRIVATE C:/Users/Denis/source/repos/QtChatClient/lib/network
+    C:/Users/Denis/source/repos/QtChatClient/lib/core)
 target_compile_definitions(app
 	PRIVATE APP_NAME="${CMAKE_PROJECT_NAME}" 
 	ORG_NAME="${ORG_NAME}" 
@@ -46,11 +46,14 @@ target_compile_definitions(app
 	QM_DIR="${APP_QM_DIR}"
 ) 
 target_link_libraries(app PRIVATE 
+	Core
+	network
+#	Media
+	Calls
 	Qt6::Core 
 	Qt6::Qml 
-	Qt6::Quick 
-	ChatClient	
-	quickfuture
+	Qt6::Quick 	
+#	quickfuture
 	QWindowKit::Quick
 	QWindowKit::Core
 )

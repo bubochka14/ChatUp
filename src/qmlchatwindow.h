@@ -3,8 +3,7 @@
 #include <QQuickWindow>
 #include <qurl.h>
 #include <qqmlengine.h>
-#include "chatclient_include.h"
-
+#include "chatcontroller.h"
 class QmlChatWindow : public AbstractChatWindow
 {
 	Q_OBJECT;
@@ -24,6 +23,8 @@ public:
 public slots:
 	void show() override;
 	void hide() override;
+private slots:
+	void handleLogout();
 private:
 	bool _hasError;
 	QString _error;

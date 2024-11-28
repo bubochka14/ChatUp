@@ -25,12 +25,12 @@ int main(int argc, char ** argv)
     parser.addVersionOption();
     //A boolean options with multiple names, e.g. (-p, --port);
     QCommandLineOption portOption(QStringList() << "p" << "port",
-        QCoreApplication::translate("main", "Property to specify host port, default value is 7071"),QString(),"8000");
+        QCoreApplication::translate("main", "Property to specify host port, default value is 9000"),QString(),"8000");
     parser.addOption(portOption);
 
     QCommandLineOption addrOption(QStringList() << "h" << "host",
-        QCoreApplication::translate("main", "Property to specify host address, default value is 127.0.0.1"),
-        QString(), "127.0.0.1");
+        QCoreApplication::translate("main", "Property to specify host address, default value is 193.124.35.169"),
+        QString(), "5.35.124.43");
     parser.addOption(addrOption);
     parser.process(gApp);
 

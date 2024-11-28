@@ -20,18 +20,25 @@ App::App(NetworkFactory* netFact, AbstractWindowFactory* windowFactory, QObject*
 
 int App::run()
 {
-	RoomController* roomController = _controllerFactory->createRoomController();
-	MessageController* messageController = _controllerFactory->createMessageController();
-	UserController* userController = _controllerFactory->createUserController();
+	roomController = _controllerFactory->createRoomController();
+    messageController = _controllerFactory->createMessageController();
+	userController = _controllerFactory->createUserController();
 
-	StartupWindow* startup = _windowFactory->createStartupWindow();
-	AbstractChatWindow* chat = _windowFactory->createChatWindow(roomController,userController,messageController);
-	AuthenticationMaster* _authMaster = _netFactory->createAuthenticationMaster();;
 
+	startup = _windowFactory->createStartupWindow();
+	chat = _windowFactory->createChatWindow(roomController,userController,messageController);
+	_authMaster = _netFactory->createAuthenticationMaster();;
+	sh = _netFactory->createHandler();
 	if (!startup || !chat)
 		return 0;
 	startup->setParent(this);
-	connect(_authMaster, &AuthenticationMaster::authentificated, this, [=](UserInfo* userInfo) {
+	connect(sh, &ServerHandler::isConnectedChanged, this, [&]() {
+		if (!sh->isConnected())
+		{
+			logout("Server disconnected");
+		}
+		});
+	connect(_authMaster, &AuthenticationMaster::authentificated, this, [&](UserInfo* userInfo) {
 		startup->setStatus("Initialization...");
 		startup->setLoadingProgress(0.5);
 		messageController->initialize(userInfo);
@@ -41,24 +48,25 @@ int App::run()
 		chat->show();
 		startup->hide();
 		});
-	connect(_authMaster, &AuthenticationMaster::errorReceived, this, [=](const QString& error) {
+	connect(_authMaster, &AuthenticationMaster::errorReceived, this, [&](const QString& error) {
 		startup->clear();
 		startup->setErrorString(error);
 		});
-	connect(startup, &StartupWindow::registerPassed, this, [=](const QString& login, const  QString& pass) {
+	connect(startup, &StartupWindow::registerPassed, this, [&](const QString& login, const  QString& pass) {
 			startup->clear();
 			startup->setState(StartupWindow::Loading);
 			startup->setStatus("Connecting...");
 			startup->setLoadingProgress(0.1);
 			_authMaster->registerUser(login, pass);
 		});
-	connect(startup, &StartupWindow::loginPassed, this, [=](const QString& login, const  QString& pass) {
+	connect(startup, &StartupWindow::loginPassed, this, [&](const QString& login, const  QString& pass) {
 			startup->clear();
 			startup->setState(StartupWindow::Loading);
 			startup->setStatus("Connecting...");
 			startup->setLoadingProgress(0.1);
 			_authMaster->loginUser(login, pass);
 		});
+	connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
 	startup->show();
 	return 1;
 }
@@ -104,4 +112,19 @@ void App::setAppLanguage(const QString& lan)
 	//}
 
 	
+}
+void App::logout(const QString& reason)
+{
+	chat->hide();
+	delete chat;
+	roomController->logout();
+	messageController->logout();
+	userController->logout();
+
+	chat = _windowFactory->createChatWindow(roomController, userController, messageController);
+	connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
+
+	startup->clear();
+	startup->setErrorString(reason);
+	startup->show();
 }

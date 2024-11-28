@@ -2,14 +2,12 @@
 #include <QQmlApplicationEngine>
 #include <QGuiApplication>
 #include <qtranslator.h>
-#include "servermethodcaller.h"
-#include "RoomModel.h"
-#include "wsclient.h"
+//#include "servermethodcaller.h"
 #include "applicationsettings.h"
 #include "qmlwindowfactory.h"
 #include "clientmethoddispatcher.h"
 #include "networkfactory.h"
-#include "qffuture.h"
+//#include "qffuture.h"
 #include <QWKQuick/qwkquickglobal.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LC_ChatClient)
@@ -27,5 +25,14 @@ public:
 	int run();
 public slots:
 	void setAppLanguage(const QString& lan = QString());
+	void logout(const QString& reason="");
+private:
+	RoomController* roomController;
+	MessageController* messageController ;
+	UserController* userController;
 
+
+	StartupWindow* startup;
+	AbstractChatWindow* chat;
+	ServerHandler* sh;
 };

@@ -12,10 +12,10 @@ Page {
         id: bar
         height: 60
         TabButton {
-            text: qsTr("Sign up")
+            text: qsTr("Sign in")
         }
         TabButton {
-            text: qsTr("Sign in")
+            text: qsTr("Sign up")
         }
     }
     ColumnLayout {

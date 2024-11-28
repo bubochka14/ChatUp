@@ -25,5 +25,7 @@
         <file>SysButton.qml</file>
         <file>UsersView.qml</file>
         <file>ForeignProfileViewer.qml</file>
+        <file>CallBox.qml</file>
+        <file>CallParticipantView.qml</file>
     </qresource>
 </RCC>

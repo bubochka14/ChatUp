@@ -8,13 +8,9 @@ RowLayout {
     property UserInfo user
     property bool currentUser: false
     property alias statusIcon: statusIcon
-    signal profileClicked()
+    signal profileClicked
     id: root
     layoutDirection: currentUser ? Qt.RightToLeft : Qt.LeftToRight
-    Label{
-        text:messageIndex
-    }
-
     Image {
         id: icon
         source: "pics/profile.svg"
@@ -24,36 +20,54 @@ RowLayout {
         Layout.alignment: Qt.AlignBottom
         MouseArea {
             anchors.fill: parent
-            onClicked: {root.profileClicked(); console.log(id,user,userID, body,roomID)}
             cursorShape: Qt.PointingHandCursor
+            onClicked: root.profileClicked()
         }
     }
     RoundedFrame {
-        id: messageCloud
+        id:messageCloud
         radius: 15
         Material.elevation: 50
         Material.background: currentUser ? "#3193ec" : "#19182a"
-        Layout.minimumWidth: Math.max(messageBody.contentWidth,
-                                      messageTime.contentWidth) + 16
         Layout.preferredWidth: Math.max(messageBody.contentWidth,
-                                        messageTime.contentWidth) + 16
-        Layout.minimumHeight: messageBody.contentHeight + messageTime.contentHeight + 16
-        Layout.preferredHeight: messageBody.contentHeight + messageTime.contentHeight + 16
-        TextEdit {
-            id: messageBody
-            text: body
-            selectByMouse: true
-            width: root.width * 0.5
-            color: "white"
-            readOnly: true
-            font.pointSize: 10
-            font.hintingPreference: Font.PreferNoHinting
-            wrapMode: TextEdit.Wrap
+                                        messageTime.contentWidth) + 24
+        Layout.preferredHeight: bodyColumn.height + 16
+        Column {
+            id:bodyColumn
+            spacing:0
+            TextEdit
+            {
+                id:nameField
+                visible: !root.currentUser
+                color: "gray"
+                text: user.name
+                readOnly: true
+                selectByMouse: true
+                MouseArea
+                {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.profileClicked()                }
+
+            }
+
+            TextEdit {
+                id: messageBody
+                text: body
+                selectByMouse: true
+                width: root.width * 0.5
+                color: "white"
+                readOnly: true
+                font.pointSize: 10
+                font.hintingPreference: Font.PreferNoHinting
+                wrapMode: TextEdit.Wrap
+            }
         }
         TextEdit {
             id: messageTime
-            anchors.bottom: parent.bottom
-            anchors.right:  parent.right
+            anchors.topMargin: 10
+            anchors.right: parent.right
+            anchors.top: parent.bottom
             selectByMouse: true
             color: "white"
             readOnly: true
@@ -62,7 +76,6 @@ RowLayout {
             font.pointSize: 6
         }
     }
-
     AnimatedImage {
         id: statusIcon
         mipmap: true

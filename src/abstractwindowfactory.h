@@ -1,10 +1,8 @@
 #pragma once 
 #include <qobject.h>
 #include "startupwindow.h"
-#include "applicationsettings.h"
 #include "abstractchatwindow.h"
 #include "chatcontroller.h"
-#include "chatclient_include.h"
 
 class AbstractWindowFactory : public QObject
 {

@@ -12,7 +12,7 @@ ApplicationWindow {
     minimumHeight: 600
     visible: false
     signal languageSet(string language)
-    signal logout
+    signal logout()
     color: "transparent"
     required property RoomController roomController
     required property MessageController messageController
@@ -54,15 +54,20 @@ ApplicationWindow {
                     messageController: root.messageController
                     userController: root.userController
                 }
-                // DirectPage {
-                //     id: directPage
-                //     roomController: root.roomController
-                //     messageController: root.messageController
-                //     userController: root.userController
-                // }
+                Page{
+                    Label
+                    {
+                        anchors.centerIn: parent
+                        text:"Coming soon"
+                    }
+                }
 
-                SettingsPage {
-                    id: settingsPage
+                Page{
+                    Label
+                    {
+                        anchors.centerIn: parent
+                        text:"Coming soon"
+                    }
                 }
             }
         }

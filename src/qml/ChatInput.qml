@@ -13,6 +13,7 @@ ColoredFrame {
     function clear() {
         inputBox.text = ""
     }
+
     RowLayout {
         id: layout
         anchors.right: parent.right
@@ -51,12 +52,15 @@ ColoredFrame {
                 Material.containerStyle: Material.containerStyle
                 wrapMode: TextEdit.Wrap
                 Keys.onReturnPressed: event => {
-                                        sendButton.clicked()
-                                    }
-                Keys.onEnterPressed: event => {
-                                        sendButton.clicked()
-                                    }
+                                          if (event.modifiers & Qt.ControlModifier)
+                                          inputBox.append("\n")
+                                          else
+                                          sendButton.clicked()
+                                      }
 
+                Keys.onEnterPressed: event => {
+                                         sendButton.clicked()
+                                     }
             }
             Row {
                 id: buttonsRow
