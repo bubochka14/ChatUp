@@ -25,6 +25,7 @@ public:
 	QFuture<void> deleteRoom(int id) override;
 	QFuture<void> updateRoom(const QVariantHash& data) override;
 	QFuture<bool> initialize(UserInfo* user) override;
+
 protected:
 	void connectToDispatcher();
 private:
@@ -72,14 +73,17 @@ private:
 	QMap<int, QFuture<UserInfo*>> _calls;
 
 };
-class CC_NETWORK_EXPORT CallerControllerFactory : public ChatControllerFactory
+class CC_NETWORK_EXPORT CallerControllerManager : public ControllerManager
 {
 public:
-	explicit CallerControllerFactory(ServerMethodCaller* caller,ClientMethodDispatcher* disp, QObject* parent = nullptr);
-	RoomController* createRoomController() override;
-	MessageController* createMessageController() override;
-	UserController* createUserController() override;
+	explicit CallerControllerManager(ServerMethodCaller* caller,ClientMethodDispatcher* disp, QObject* parent = nullptr);
+	RoomController* roomController() override;
+	MessageController* messageController() override;
+	UserController* userController() override;
+	Calls::Controller* callController() override;
 private:
-	ServerMethodCaller* _caller;
-	ClientMethodDispatcher* _disp;
+	RoomController* room;
+	MessageController* message;
+	UserController* user;
+	Calls::Controller* call;
 };

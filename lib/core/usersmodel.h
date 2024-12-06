@@ -1,6 +1,5 @@
 #pragma once
 #include <QAbstractListModel>
-#include<QStandardItemModel>
 #include <qhash.h>
 #include "userinfo.h"
 #include <qloggingcategory.h>

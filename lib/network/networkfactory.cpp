@@ -16,9 +16,9 @@ AuthenticationMaster* WSNetworkFactory::createAuthenticationMaster()
 {
 	return new CallerAuthentificationMaster(_caller,parent());
 }
-ChatControllerFactory* WSNetworkFactory::createControllerFactory()
+ControllerManager* WSNetworkFactory::createControllerManager()
 {
-	return new CallerControllerFactory(_caller,_disp);
+	return new CallerControllerManager(_caller,_disp);
 }
 ServerHandler* WSNetworkFactory::createHandler()
 {

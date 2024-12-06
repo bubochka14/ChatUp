@@ -1,4 +1,3 @@
-find_package(Qt6 REQUIRED COMPONENTS core Widgets Qml Quick WebSockets Network Concurrent QuickControls2 Multimedia MultimediaWidgets) 
 find_package(FFMPEG REQUIRED)
 
 set(LIB_NAME Media)
@@ -17,6 +16,8 @@ set(LIB_SOURCES
 	"media_include.h"
 	)
 QT_ADD_LIBRARY(${LIB_NAME} SHARED)
+add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
+
 qt_add_qml_module(Media 
     URI ${LIB_PREFIX}.Media
 	NO_GENERATE_PLUGIN_SOURCE
@@ -39,14 +40,10 @@ target_link_directories(${LIB_NAME} PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(${LIB_NAME}  PRIVATE 
 	Core
 	Qt6::Core 
-	Qt6::Qml 
-	Qt6::Quick 
 	Qt6::WebSockets 
 	Qt6::Network
 	Qt6::Concurrent
-	Qt6::QuickControls2
 	Qt6::Multimedia Qt6::MultimediaWidgets
 	${FFMPEG_LIBRARIES}
 	avdevice
 )
-message("SSSSS",${FFMPEG_LIBRARIES} ${FFMPEG_LIBRARY_DIRS})

@@ -84,5 +84,5 @@ RoomModel* RoomController::userDirects() const
 	return _directs;
 }
 UserController::UserController(QObject* parent):AbstractChatController(parent) {}
-MessageController::MessageController(QObject * parent):AbstractChatController(parent) {}
-ChatControllerFactory::ChatControllerFactory(QObject* parent): QObject(parent){}
+MessageController::MessageController(QObject* parent) :AbstractChatController(parent) {}
+ControllerManager::ControllerManager(QObject* parent) :QObject(parent) {}

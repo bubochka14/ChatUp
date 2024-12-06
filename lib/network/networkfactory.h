@@ -12,7 +12,7 @@ class CC_NETWORK_EXPORT NetworkFactory : public  QObject
 	Q_OBJECT;
 public:
 	virtual AuthenticationMaster* createAuthenticationMaster() = 0;
-	virtual ChatControllerFactory* createControllerFactory() = 0;
+	virtual ControllerManager* createControllerManager() = 0;
 	virtual ServerHandler* createHandler() = 0;
 	virtual ~NetworkFactory() = default;
 protected:
@@ -23,7 +23,7 @@ class CC_NETWORK_EXPORT WSNetworkFactory : public NetworkFactory
 public:
 	explicit WSNetworkFactory(const QString& host,int port,QObject* parent = nullptr);
 	AuthenticationMaster* createAuthenticationMaster() override;
-	ChatControllerFactory* createControllerFactory() override;
+	ControllerManager* createControllerManager() override;
 	ServerHandler* createHandler() override;
 
 private:

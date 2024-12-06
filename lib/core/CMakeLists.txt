@@ -1,7 +1,5 @@
-find_package(Qt6 REQUIRED COMPONENTS core Widgets Qml Quick WebSockets Network Concurrent QuickControls2) 
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Multimedia)
 
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
 set(LIB_NAME Core)
 set(LIB_SOURCES
 	"res.qrc"
@@ -17,13 +15,19 @@ set(LIB_SOURCES
 	"startupwindow.h" 
 	"startupwindow.cpp" 
 	"applicationsettings.cpp"
+	"cache.h"
+	"participatemodel.h"
+	"participatemodel.cpp"
 	"messagemodel.h" 
 	"messagemodel.cpp"
 	"taskqueue.h"
 	"taskqueue.cpp"
+	"idmodel.h"
+	"idmodel.cpp"
 	"core_include.h"
 	)
-QT_ADD_LIBRARY(${LIB_NAME} SHARED)
+add_library(${LIB_NAME} SHARED)
+add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
 qt_add_qml_module(${LIB_NAME} 
     URI ${LIB_PREFIX}.Core
 	NO_GENERATE_PLUGIN_SOURCE
@@ -43,11 +47,7 @@ install(TARGETS ${LIB_NAME}
 )   
 target_link_libraries(${LIB_NAME}  PRIVATE 
 	Qt6::Core 
-	Qt6::Qml 
-	Qt6::Quick 
-	Qt6::WebSockets 
-	Qt6::Network
-	Qt6::Concurrent
-	Qt6::QuickControls2
+	Qt6::Gui 
+	Qt6::Multimedia 
 )
 

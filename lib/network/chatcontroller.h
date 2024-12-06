@@ -8,6 +8,7 @@
 #include "qfuturewatcher.h"
 #include "usersmodel.h"
 #include <qloggingcategory.h>
+#include "callscontroller.h"
 #include "network_include.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_CHAT_CONTROLLER);
 class CC_NETWORK_EXPORT AbstractChatController : public QObject
@@ -89,14 +90,21 @@ public:
 	Q_INVOKABLE virtual QFuture<void> deleteUser() = 0;
 	//Q_INVOKABLE virtual QFuture<UsersModel*> search(const QVariantHash&,size_t conut) = 0;
 };
-class CC_NETWORK_EXPORT ChatControllerFactory : public QObject
+class CC_NETWORK_EXPORT ControllerManager : public QObject
 {
 	Q_OBJECT;
+	QML_ELEMENT;
+	QML_UNCREATABLE("");
+	Q_PROPERTY(RoomController* roomController READ roomController);
+	Q_PROPERTY(MessageController* messageController READ messageController);
+	Q_PROPERTY(UserController* userController READ userController);
+	Q_PROPERTY(Calls::Controller* callController READ callController);
 public:
-	virtual RoomController* createRoomController() =0;
-	virtual MessageController* createMessageController() =0 ;
-	virtual UserController* createUserController() =0;
-	virtual ~ChatControllerFactory() = default;
+	virtual RoomController* roomController() =0;
+	virtual MessageController* messageController() =0 ;
+	virtual UserController* userController() =0;
+	virtual Calls::Controller* callController() = 0;
+	virtual ~ControllerManager() = default;
 protected:
-	explicit ChatControllerFactory(QObject* parent = nullptr);
+	explicit ControllerManager(QObject* parent = nullptr);
 };

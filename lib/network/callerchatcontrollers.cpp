@@ -12,7 +12,7 @@ CallerRoomController::CallerRoomController(ServerMethodCaller* caller, ClientMet
 CallerMessageController::CallerMessageController(ServerMethodCaller* caller, ClientMethodDispatcher* disp, QObject* parent)
 	:MessageController(parent)
 	, _caller(caller)
-	, _tempMessageCounter(0)
+	, _tempMessageCounter(1)
 	, _disp(disp)
 
 {
@@ -251,7 +251,7 @@ QFuture<void> CallerMessageController::deleteMessage(int roomID, int messId)
 }
 void CallerMessageController::reset()
 {
-	_tempMessageCounter = 0;
+	_tempMessageCounter = 1;
 	for (auto& i : _history)
 	{
 		i->deleteLater();
@@ -315,23 +315,29 @@ QFuture <void> CallerUserController::deleteUser()
 	//todo
 	return QtFuture::makeReadyFuture();
 }
-CallerControllerFactory::CallerControllerFactory(ServerMethodCaller* caller, ClientMethodDispatcher* dispatcher, QObject* parent)
-	:ChatControllerFactory(parent)
-	,_caller(caller)
-	,_disp(dispatcher)
+CallerControllerManager::CallerControllerManager(ServerMethodCaller* caller, ClientMethodDispatcher* dispatcher, QObject* parent)
+	:ControllerManager(parent)
+	,message( new CallerMessageController(caller,dispatcher))
+	,room(new CallerRoomController(caller,dispatcher))
+	,call(new Calls::Controller)
+	,user(new CallerUserController(caller,dispatcher))
 {
 
 }
-RoomController* CallerControllerFactory::createRoomController()
+RoomController* CallerControllerManager::roomController()
 {
-	return new CallerRoomController(_caller,_disp);
+	return room;
 }
-MessageController* CallerControllerFactory::createMessageController()
+MessageController* CallerControllerManager::messageController()
 {
-	return new CallerMessageController(_caller, _disp);
+	return message;
 }
 
-UserController* CallerControllerFactory::createUserController() 
+UserController* CallerControllerManager::userController()
 {
-	return new CallerUserController(_caller, _disp);
+	return user;
+}
+Calls::Controller* CallerControllerManager::callController()
+{
+	return call;
 }

@@ -1,14 +1,15 @@
-find_package(Qt6 REQUIRED COMPONENTS Core Widgets Qml Quick WebSockets Network Concurrent QuickControls2) 
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
+find_package(Qt6 REQUIRED COMPONENTS Core Multimedia Concurrent)
 set(LIB_NAME Calls)
 
 set(LIB_SOURCES
 	"callcontroller.cpp"
 	"callcontroller.h"
+	"calls_include.h"
 )
+
 QT_ADD_LIBRARY(${LIB_NAME} SHARED)
+add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
+
 qt_add_qml_module(${LIB_NAME} 
     URI ${LIB_PREFIX}.Calls
 	NO_GENERATE_PLUGIN_SOURCE
@@ -28,10 +29,6 @@ install(TARGETS ${LIB_NAME}
 )   
 target_link_libraries(${LIB_NAME}  PRIVATE 
 	Qt6::Core 
-	Qt6::Qml 
-	Qt6::Quick 
-	Qt6::WebSockets 
-	Qt6::Network
-	Qt6::Concurrent
-	Qt6::QuickControls2
+	Qt6::Concurrent 
+	Qt6::Multimedia 
 )

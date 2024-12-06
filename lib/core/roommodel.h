@@ -2,57 +2,47 @@
 #include <QAbstractListModel>
 #include <QLoggingCategory>
 #include <qqmlengine.h>
-#include <qstandarditemmodel.h>
 #include <qqmlengine.h>
 #include "core_include.h"
+#include "idmodel.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_ROOM_MODEL)
-class CC_CORE_EXPORT RoomModel : public QAbstractListModel
+struct RoomData
+{
+	RoomData();
+	void fromHash(const QVariantHash& other);
+	QVariantHash toHash() const;
+	int id;
+	QString name;
+	QString tag;
+	bool hasCall;
+	static int checkId(const QVariantHash& data, bool& success)
+	{
+		if (data.contains("id"))
+		{
+			success = true;
+			return data["id"].toInt();
+		}
+		success = false;
+		return 0;
+	}
+};
+class CC_CORE_EXPORT RoomModel : public IdentifyingModel<RoomData>
 {
 	Q_OBJECT;
 	QML_ELEMENT;
 public:  
-	struct RoomData
-	{
-		RoomData();
-		void fromHash(const QVariantHash& other);
-		QVariantHash toHash() const;
-		int id;
-		size_t foreignReadCount;
-		size_t userReadCount;
-		QString name;
-		QString tag;
-		static int checkId(const QVariantHash& data, bool& success)
-		{
-			if (data.contains("id"))
-			{
-				success = true;
-				return data["id"].toInt();
-			}
-			success = false;
-			return 0;
-		}
-	};
-	QVector<RoomData> _rooms;
-	QMap<int, int>    _idToIndex;
-	static const QHash<int, QByteArray> _roleNames;
-public:
 	enum RoleNames
 	{
-		NameRole = Qt::UserRole,
-		IDRole,
+		IDRole = IdentifyingModel<RoomData>::IDRole(),
+		NameRole,
 		TagRole,
 		HashRole,
-		UserReadMessagesCountRole,
-		ForeignReadMesssagesCountRole
+		HasCallRole
 
 	}; Q_ENUM(RoleNames)
 	explicit RoomModel(QObject* parent = nullptr);
-	int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-	Q_INVOKABLE  QVariant data(const QModelIndex& index, int role = NameRole) const override;
-	bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
-	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override;
-	Q_INVOKABLE QModelIndex idToIndex(int id);
-	bool setData(const QModelIndex& index, const QVariant& value, int role = NameRole) override;
-private:
-	QHash<int, QByteArray> roleNames() const;
+	Q_INVOKABLE QModelIndex idToIndex(int id) const;
+protected:
+	bool edit(RoomData&, const QVariant&, int row, int role) override;
+	QVariant read(const RoomData&, int row, int role) const override;
 };
