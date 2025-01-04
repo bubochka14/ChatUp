@@ -12,14 +12,14 @@ RowLayout {
     spacing: 0
     required property ControllerManager manager
     property bool roomSelected: false
+    property alias selectedRoomID : chatBox.roomID
     RoomList {
         id: roomList
         // Layout.minimumWidth: 120
         Layout.fillHeight: true
         Layout.preferredWidth: Math.max(220, parent.width / 4)
         Layout.maximumWidth: 420
-        Component.onCompleted: syncronizeRooms()
-        roomModel: manager.roomController.userGroups
+        roomModel: manager.groupController.model
         onSelectedRoomChanged: {
             if (!roomSelected)
                 roomSelected = true
@@ -70,6 +70,7 @@ RowLayout {
                 Button {
                     anchors.verticalCenter: parent.verticalCenter
                     text: "call"
+                    onClicked: manager.callController.handler(root.selectedRoomID).join()
                 }
                 MouseArea {
                     id: addUserBtn
@@ -103,7 +104,7 @@ RowLayout {
     CreateRoomDialog {
         id: createRoomDialog
         anchors.centerIn: parent
-        onAccepted: manager.roomController.createGroup(roomName)
+        onAccepted: manager.groupController.create(roomName)
     }
     SelectUserDialog {
         id: selectUserDialog

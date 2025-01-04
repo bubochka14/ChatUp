@@ -6,7 +6,7 @@ import ChatClient.Network
 import ChatClient.Core
 
 RowLayout {
-    property UserInfo user
+    property UserHandler user
     property bool currentUser: false
     property alias statusIcon: statusIcon
     signal profileClicked

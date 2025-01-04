@@ -2,23 +2,43 @@
 #include <qobject.h>
 #include <wsclient.h>
 #include "network_include.h"
-class CC_NETWORK_EXPORT ServerHandler : public QObject
+#include "messageconstructor.h"
+#include "authenticationmaster.h"
+#include <taskqueue.h>
+#include <qnetworkreply.h>
+#include <qqueue.h>
+#include <qloggingcategory.h>
+#include <rtc/channel.hpp>
+Q_DECLARE_LOGGING_CATEGORY(LC_SERVER_HANDLER);
+using NetworkError = QNetworkReply::NetworkError;
+
+class CC_NETWORK_EXPORT MethodCallFailure : std::exception
 {
-	Q_OBJECT;
-	Q_PROPERTY(bool isConnected READ isConnected NOTIFY isConnectedChanged);
 public:
-	explicit ServerHandler(QObject* parent = nullptr);
-	bool isConnected() const;
-signals:
-	void isConnectedChanged();
-protected:
-	void setIsConnected(bool);
-private:
-	bool isCon;
+	QString message;
+	NetworkError error;
 };
-class CC_NETWORK_EXPORT WSServerHandler : public  ServerHandler
+class CC_NETWORK_EXPORT ServerHandler 
 {
-	Q_OBJECT;
 public:
-	explicit WSServerHandler(WSClient* cl);
+	explicit ServerHandler(std::shared_ptr<rtc::Channel>, QObject* parent = nullptr);
+	bool isConnected() const;
+	void serverMethod(const char* method, QVariantHash args, QPromise<HashList>* prom);
+	using Callback = std::function<void(QVariantHash&&)>;
+	void addClientHandler(Callback&& h, const QString& method);
+protected:
+	void handleTimeout();
+	void handleTextMessage(std::string);
+	void handleError(std::string);
+	void setIsConnected(bool);
+	void handleMethodCall(WSMethodCall* call);
+	void handleReply(WSReply* reply);
+private:
+	bool _isConnected;
+	QHash<int, QPromise<HashList>*> _requests;
+	QHash<QString, QList<Callback>> _clientHandlers;
+	QQueue<WSMessage*> _msgQueue;
+	Transport* _transport;
+	//QTimer _timeoutTimer;
+	QThread thread;
 };

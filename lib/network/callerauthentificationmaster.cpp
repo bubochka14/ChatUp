@@ -1,45 +1,39 @@
 #include "callerauthentificationmaster.h"
-CallerAuthentificationMaster::CallerAuthentificationMaster(ServerMethodCaller* caller, QObject* parent)
-	:AuthenticationMaster(parent)
-	,_caller(caller)
+CallerAuthenticationMaster::CallerAuthenticationMaster(NetworkManager* handler)
+	:AuthenticationMaster(handler)
+	,_handler(handler)
 {
 
 }
-void CallerAuthentificationMaster::loginUser(const QString& login, const QString& password)
+QFuture<void> CallerAuthenticationMaster::loginUser()
 {
-	UserInfo* newUser = new UserInfo;
-	_authFuture = _caller->loginUser({ {"login",login}, {"password",password}});
-	_authFuture.then([=](QVariantHash&& hash)
-		{
-			newUser->extractFromHash(hash);
-			emit authentificated(newUser);
+	Api::Login loginCall;
+	loginCall.login = currentCredentials().login;
+	loginCall.password = currentCredentials().password;
+	return loginCall.exec(_handler).then([this](User::Data&& user) {
+		if (!user.id)
+			throw QString("invalid user received");
+
+		setCurrentUserID(user.id);
+		setIsAuthenticated(true);
 		})
-		.onFailed([=](MethodCallFailure& fail)
-			{
-				QScopedPointer<UserInfo> userScope(newUser);
-				emit errorReceived(fail.message);
-			})
-		.onFailed([=]() {
-			QScopedPointer<UserInfo>(user);
-			emit errorReceived("Authentification fail");
+		.onFailed([](MethodCallFailure& e) {
+		throw e.message;
 			});
 }
-void CallerAuthentificationMaster::registerUser(const QString& login, const QString& password)
+QFuture<void> CallerAuthenticationMaster::registerUser()
 {
-	UserInfo* newUser = new UserInfo;
-	_authFuture = _caller->registerUser({ {"login",login}, {"password",password} });
-	_authFuture.then([=](QVariantHash&& hash)
-		{
-			newUser->extractFromHash(hash);
-			emit authentificated(newUser);
+	Api::Register reg;
+	reg.login = currentCredentials().login;
+	reg.password = currentCredentials().password;
+	return reg.exec(_handler).then([this](User::Data&& user) {
+		if (!user.id)
+			throw QString("invalid user received");
+
+		setCurrentUserID(user.id);
+		setIsAuthenticated(true);
 		})
-		.onFailed([=](MethodCallFailure& fail)
-			{
-				QScopedPointer<UserInfo> userScope(newUser);
-				emit errorReceived(fail.message);
-			})
-		.onFailed([=]() {
-			QScopedPointer<UserInfo>(user);
-			emit errorReceived("Authentification fail");
-			});
+		.onFailed([](MethodCallFailure& e) {
+		throw e.message;
+			});;
 }

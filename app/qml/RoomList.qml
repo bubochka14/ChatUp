@@ -43,7 +43,7 @@ ColoredFrame {
                         sourceSize.width: 30
                     }
                 }
-                label.text: delegate.name + delegate.id
+                label.text: delegate.name
                 label.font.bold: true
                 onClicked: {
                     listView.currentIndex = index

@@ -2,8 +2,7 @@
 #include <qobject.h>
 #include "startupwindow.h"
 #include "abstractchatwindow.h"
-#include "chatcontroller.h"
-
+#include "controllers/controllermanager.h"
 class AbstractWindowFactory : public QObject
 {
 	Q_OBJECT;

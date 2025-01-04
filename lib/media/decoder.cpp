@@ -1,6 +1,7 @@
 #include "decoder.h"
 using namespace media;
 static int counter = 0;
+
 void DataBuffer::pushData(Binary bin)
 {
 	data.emplace_back(std::move(bin));
@@ -74,7 +75,7 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 		return false;
 	}
 	input->onDataChanged([=](std::weak_ptr<AVPacket> wpack, size_t index) {
-		quene.pushTask([=]() {
+		quene.enqueue([=]() {
 			auto pack = wpack.lock();
 			if (!pack)
 				return;

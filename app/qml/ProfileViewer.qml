@@ -7,7 +7,6 @@ import ChatClient.Core
 
 Dialog {
     id: root
-    property UserInfo user
     width: 250
     height: 400
     modal: true
@@ -53,13 +52,23 @@ Dialog {
             width: 75
         }
         Label {
+            id: tagLbl
+            property string tag
             Layout.alignment: Qt.AlignHCenter
-            text: "Tag: " + root.user.tag
+            text: "Tag: " + tag
         }
 
         Label {
+            id: nameLbl
+            property string name
             Layout.alignment: Qt.AlignHCenter
-            text: "Name: " + root.user.name
+            text: "Name: " +name
         }
+    }
+    function show(user)
+    {
+        tagLbl.tag = user.tag
+        nameLbl.name = user.name
+        open()
     }
 }

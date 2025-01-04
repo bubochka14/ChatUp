@@ -1,0 +1,57 @@
+#include "controllermanager.h"
+ControllerManager::ControllerManager(QObject* parent)
+	:QObject(parent)
+{
+
+}
+CallerControllerManager::CallerControllerManager(NetworkManager* m, QObject* parent)
+	:ControllerManager(parent)
+	, message(new Message::CallerController(m))
+	, group(new Group::CallerController(m))
+	, call(new Call::Controller(m))
+	, user(new User::CallerController(m))
+{
+
+}
+QFuture<void> CallerControllerManager::initializeAll()
+{
+	QList<QFuture<void>> futures({
+		message->initialize().onFailed([this](const QString&err) 
+			{_lastError = err; }),
+		user->initialize().onFailed([this](const QString& err) 
+			{_lastError = err; }),
+		group->initialize().onFailed([this](const QString& err) 
+			{_lastError = err; }),
+		call->initialize().onFailed([this](const QString& err) 
+			{_lastError = err; })
+		});
+	return QtFuture::whenAll(futures.begin(), futures.end())
+		.then([this](const QList<QFuture<void>>& results)
+			{
+				if (_lastError.has_value())
+					throw _lastError.value();
+			})
+		.onFailed([] {
+		qDebug() << 123;
+			});
+
+}
+
+
+Group::Controller* CallerControllerManager::groupController()
+{
+	return group;
+}
+Message::Controller* CallerControllerManager::messageController()
+{
+	return message;
+}
+
+User::Controller* CallerControllerManager::userController()
+{
+	return user;
+}
+Call::Controller* CallerControllerManager::callController()
+{
+	return call;
+}

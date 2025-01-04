@@ -62,7 +62,7 @@ Item {
                                           if (user) {
                                               listView.usersCache[userID] = user
                                               item.user = user
-                                              item.currentUser = manager.userController.currentUser.id
+                                              item.currentUser = manager.userController.currentUser().id
                                                       === item.user.id
                                           } else
                                               console.error(
@@ -72,12 +72,12 @@ Item {
 
             width: ListView.view.width
             Component.onCompleted: {
-                Future.onFinished(manager.userController.getUserInfo(userID),
+                Future.onFinished(manager.userController.get(userID),
                                   function (user) {
                                       if (user) {
                                           listView.usersCache[userID] = user
                                           setSource("MessageDelegate.qml", {
-                                                        "currentUser": manager.userController.currentUser.id
+                                                        "currentUser": manager.userController.currentUser().id
                                                                        === user.id,
                                                         "user": user
                                                     })

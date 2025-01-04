@@ -24,16 +24,6 @@ public:
 	QString tag() const;
 	void setTag(const QString other);
 	QVariantHash toHash() const;
-	static int checkId(const QVariantHash& data, bool& st)
-	{
-		if (data.contains("id"))
-		{
-			st = true;
-			return data["id"].toInt();
-		}
-		st = false;
-		return 0;
-	}
 public slots:
 	void extractFromHash(const QVariantHash& other);
 signals:

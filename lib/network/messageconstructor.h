@@ -4,32 +4,30 @@
 #include <qmetatype.h>
 #include <QJsonObject>
 #include "network_include.h"
-#include <QMetaEnum>
-class CC_NETWORK_EXPORT WSMessage : public QObject
+#include <unordered_map>
+#include <nlohmann/json.hpp>
+using HashList = QList<QVariantHash>;
+class CC_NETWORK_EXPORT RPCMessage
 {
-	Q_OBJECT;
 public:
-	QString apiVersion() const;
 	int messageId() const;
 	void setApiVersion(const QString&);
 	void setMessageId(int other);
-	virtual QVariantHash toHash() const;
+	virtual json toHash() const;
 	virtual bool extractFromHash(const QVariantHash&);
-	explicit WSMessage(QObject* parent = nullptr);
+	explicit RPCMessage();
 private:
-	QString _api;
 	int     _id;
 };
-class CC_NETWORK_EXPORT WSReply : public WSMessage
+class CC_NETWORK_EXPORT RPCReply : public RPCMessage
 {
-	Q_OBJECT;
 public:
 	enum ReplyStatus{
 		unknown,
 		success,
 		error
-	}; Q_ENUM(ReplyStatus);
-	explicit WSReply(QObject* parent = nullptr);
+	}; 
+	explicit RPCReply();
 	int replyTo() const;
 	ReplyStatus status() const;
 	QList<QVariantHash> reply() const;
@@ -48,10 +46,10 @@ private:
 	ReplyStatus _status;
 	QList<QVariantHash> _reply;
 };
-class CC_NETWORK_EXPORT WSMethodCall : public WSMessage
+class CC_NETWORK_EXPORT RPCMethodCall : public RPCMessage
 {
 public:
-	explicit WSMethodCall(QObject* parent = nullptr);
+	explicit RPCMethodCall();
 	QString method() const;
 	QVariantHash args() const;
 	void setArgs(const QVariantHash& other);
@@ -64,14 +62,14 @@ private:
 	QString _method;
 	QVariantHash _args;
 };
-class CC_NETWORK_EXPORT WSMessageConstructor
+class CC_NETWORK_EXPORT RPCMessageConstructor
 {
 public:
-	static WSReply* replyMsg(int replyTo, const QList<QVariantHash>& reply = QList<QVariantHash>());
-	static WSMethodCall* methodCallMsg(const QString& method,const QVariantHash& args = QVariantHash());
-	static WSMethodCall* methodCallMsg(const QString& method,QVariantHash&& args = QVariantHash());
+	static RPCReply*      replyMsg(int replyTo, const QList<QVariantHash>& reply = QList<QVariantHash>());
+	static RPCMethodCall* methodCallMsg(std::string method,const QVariantHash& args = QVariantHash());
+	static RPCMethodCall* methodCallMsg(std::string method, std::unordered_map args);
 protected:
-	static void defaultMsgInstallation(WSMessage* other);
+	static void defaultMsgInstallation(RPCMessage* other);
 private:
 	static int generateID();
 };

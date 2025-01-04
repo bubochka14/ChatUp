@@ -6,6 +6,7 @@ Rectangle {
     property var boxHeight
     property var boxWidth
     property alias model: view.model
+    onModelChanged: console.log("change",model)
     GridView {
         id: view
         property var spacing: 15
@@ -15,6 +16,7 @@ Rectangle {
         // Component.onCompleted:resetSize()
         cellWidth: baseWidth
         cellHeight: baseHeight
+        Component.onCompleted :console.log("Model",root.model)
         delegate:RoundedFrame
         {
             height: GridView.view.cellHeight - view.spacing

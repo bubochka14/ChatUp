@@ -1,27 +1,48 @@
 #pragma once
 #include "applicationsettings.h"
 #include <qobject.h>
-#include "callerauthentificationmaster.h"
+#include "authenticationmaster.h"
 #include "network_include.h"
 #include "serverhandler.h"
-
+#include <deque>
 class CC_NETWORK_EXPORT NetworkManager : public  QObject
 {
 	Q_OBJECT;
 public:
-	virtual AuthenticationMaster* authenticationMaster() =0;
-	virtual ServerHandler* serverHandler() =0;
+	using Callback = std::function<void(QVariantHash&&)>;
+	void addClientHandler(Callback&& h, const QString& method);
+	int userID() const;
+	void setCredentials(Credentials cr);
+	bool initialize();
+	enum Priority
+	{
+		QueuedCall,
+		TopQueuedCall,
+		DirectCall
+	};
+protected:
+	struct MethodInfo
+	{
+		const char* method;
+		QVariantHash args;
+		QPromise<HashList>* prom;
+		int priority;
+	};
+public:
+	QFuture<HashList> serverMethod(const char* method, QVariantHash args, Priority priority= QueuedCall);
 protected:
 	explicit NetworkManager(QObject* parent = nullptr);
-};
-class CC_NETWORK_EXPORT WSNetworkManager : public NetworkManager
-{
-public:
-	explicit WSNetworkManager(const QString& host, int port, QObject * parent = nullptr);
-	AuthenticationMaster* authenticationMaster() override;
-	ServerHandler* serverHandler() override;
+	virtual AuthenticationMaster* createAuthenticationMaster() = 0;
+	virtual ServerHandler* createServerHandler() = 0;
+	QPromise<HashList>* makePromise();
 private:
-	AuthenticationMaster* _auth;
+	void threadFunc();
+	std::thread _networkThread;
+	std::deque<MethodInfo> _methodsQueue;
+	std::deque<MethodInfo> _readBuffer;
+	std::atomic<int> _active;
+	std::condition_variable _condvar;
+	std::mutex _mutex;
 	ServerHandler* _handler;
-	WSClient* ws;
+	AuthenticationMaster* _auth;
 };

@@ -4,8 +4,7 @@
 #include <qurl.h>
 #include <qqmlapplicationengine.h>
 #include <qqmlcomponent.h>
-
-#include "chatcontroller.h"
+#include "controllers/controllermanager.h"
 class QmlChatWindow : public AbstractChatWindow
 {
 	Q_OBJECT;

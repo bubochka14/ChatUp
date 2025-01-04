@@ -1,5 +1,7 @@
 
 find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick LinguistTools QuickControls2 Multimedia)
+find_package(LibDataChannel CONFIG REQUIRED)
+
 qt_standard_project_setup(REQUIRES 6.8)
 
 set(APP_BINARY ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
@@ -81,7 +83,8 @@ target_compile_definitions(app
 target_link_libraries(app PRIVATE
         ChatClient::Core
         ChatClient::Network
-#	ChatClient::Media
+        LibDataChannel::LibDataChannel
+
         Qt6::Core
         Qt6::QuickControls2
         Qt6::Qml

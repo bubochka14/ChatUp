@@ -1,6 +1,7 @@
 #include "microphoneinput.h"
 
 using namespace media;
+
 MicrophoneInput::MicrophoneInput(const Device& dev)
 	:out(createPacketPipe())
     ,ctx(createFormatContext())

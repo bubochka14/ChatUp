@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import ChatClient.Core
+import QuickFuture
 import ChatClient.Network
 import QWindowKit 1.0
 
@@ -13,13 +14,13 @@ ApplicationWindow {
     minimumHeight: 600
     visible: false
     signal languageSet(string language)
-    signal logout()
+    signal logout
     color: "transparent"
     required property ControllerManager manager
-        WindowAgent {
+    WindowAgent {
         id: windowAgent
     }
-    background: Item{}
+    background: Item {}
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -27,7 +28,7 @@ ApplicationWindow {
             id: titleBar
             Layout.fillWidth: true
             agent: windowAgent
-            window:root
+            window: root
             Layout.preferredHeight: 32
         }
         RowLayout {
@@ -40,7 +41,10 @@ ApplicationWindow {
                 Layout.fillHeight: true
                 width: 75
                 onLogoutClicked: root.logout()
-                onProfileClicked: profileViewer.open()
+                onProfileClicked: {
+
+                    profileViewer.show(manager.userController.currentUser())
+                }
                 onRoomsClicked: stack.currentIndex = 0
                 onDirectClicked: stack.currentIndex = 1
                 onSettingsClicked: stack.currentIndex = 2
@@ -51,19 +55,17 @@ ApplicationWindow {
                     id: roomsPage
                     manager: root.manager
                 }
-                Page{
-                    Label
-                    {
+                Page {
+                    Label {
                         anchors.centerIn: parent
-                        text:"Coming soon"
+                        text: "Coming soon"
                     }
                 }
 
-                Page{
-                    Label
-                    {
+                Page {
+                    Label {
                         anchors.centerIn: parent
-                        text:"Coming soon"
+                        text: "Coming soon"
                     }
                 }
             }
@@ -79,7 +81,6 @@ ApplicationWindow {
 
     ProfileViewer {
         id: profileViewer
-        user: manager.userController.currentUser
         anchors.centerIn: parent
     }
 

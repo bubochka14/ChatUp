@@ -1,15 +1,17 @@
 #pragma once
 #include "authenticationmaster.h"
 #include "network_include.h"
-
-class CC_NETWORK_EXPORT CallerAuthentificationMaster : public AuthenticationMaster
+#include "serverhandler.h"
+#include "api/authentication.h"
+class CC_NETWORK_EXPORT CallerAuthenticationMaster : public AuthenticationMaster
 {
 	Q_OBJECT;
 public:
-	explicit CallerAuthentificationMaster(ServerMethodCaller* caller, QObject* parent = nullptr);
-	void loginUser(const QString& login, const QString& password) override;
-	void registerUser(const QString& login, const QString& password) override;
+	explicit CallerAuthenticationMaster(NetworkManager* handler);
+	QFuture<void> loginUser() override;
+	QFuture<void> registerUser() override;
 private:
-	ServerMethodCaller* _caller;
-	QFuture<QVariantHash> _authFuture;
+	NetworkManager* _handler;
+	std::optional<QFuture<void>> _loginFuture;
+	std::optional<QFuture<void>> _registerFuture;
 };

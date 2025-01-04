@@ -1,111 +1,50 @@
 #include "wsclient.h"
-#include <QtCore/QDebug>
-Q_LOGGING_CATEGORY(LC_WSClient, "WebSocketClient");
-WSClient::WSClient(QWebSocketProtocol::Version ver,QObject* parent)
-    :QObject(parent)
-    ,_webSocket(new QWebSocket(QString(),ver,this))
-    ,_connected(false)
-    ,_autodelete(true)
+using namespace Qt::StringLiterals;
+WSClient::WSClient(QObject* parent)
+    :Transport(parent)
+    ,_ws(std::make_shared<rtc::WebSocket>())
 {
-    connect(_webSocket, &QWebSocket::connected, this, &WSClient::onConnected);
-    connect(_webSocket, &QWebSocket::disconnected, this, &WSClient::closed);
-    connect(_webSocket, &QWebSocket::errorOccurred, this, &WSClient::errorReceived);
-    connect(this, &WSClient::errorReceived, this, &WSClient::onError);
-    connect(_webSocket, &QWebSocket::textMessageReceived,
-        this, &WSClient::onTextMessageReceived);
-}
-bool WSClient::autoDeleteMessages() const
-{
-    return _autodelete;
-}
-void WSClient::setAutoDeleteMessages(bool st)
-{
-    _autodelete = st;
-}
-bool WSClient::connect2Server(const QUrl& url)
-{
-    if (isConnected())
-        return true;
-    _webSocket->open(QUrl(url));
-    qCDebug(LC_WSClient) << "Request " << _webSocket->request().url();
-}
-void WSClient::onConnected()
-{
-    _connected = true;
-    qCDebug(LC_WSClient) << "WebSocket connected";
-    emit connected();
+    _ws->onError([this](std::string s) {
+        emit errorReceived(QString::fromStdString(s));
+        });
+    _ws->onMessage([this](auto data) {
+        // data holds either std::string or rtc::binary
+        if (!std::holds_alternative<std::string>(data))
+            return;
+        emit textReceived(QString::fromStdString(std::get<std::string>(data)));
+        }); 
+    _ws->onClosed([this]() {emit closed(); });
+    _ws->onOpen([this]() {
+        emit connected();
+        });
 
 }
-
-void WSClient::onTextMessageReceived(const QString& textMessage)
+void WSClient::connect2Server(QUrl url) noexcept
 {
-    QJsonObject&& obj = QJsonDocument::fromJson(textMessage.toUtf8()).object();
-    if (obj.value("type") == "response")
-    {
-        WSReply* reply = new WSReply;
-        if (!reply->extractFromHash(obj.toVariantHash()))
-        {
-            qCWarning(LC_WSClient) << "Cannot handle reply message";
-            //reply->deleteLater();
-        }
-        else
-        {
-            if (reply->status() == WSReply::error)
-            {
-                qDebug() << "Error " << reply->errorString();
-            }
-            emit replyReceived(reply);
-            //if(autoDeleteMessages())
-            //    reply->deleteLater();
-        }
+    try {
+        _ws->open(url.toString().toStdString());
     }
-    else if (obj.value("type") == "methodCall")
+    catch (std::string err)
     {
-        WSMethodCall* call = new WSMethodCall;
-        qDebug() << obj.toVariantHash();
-        if (!call->extractFromHash(obj.toVariantHash()))
-        {
-            qCWarning(LC_WSClient) << "Cannot handle methodCall message";
-            //call->deleteLater();
-        }
-        else
-        {
-            emit methodCallReceived(call);
-            //if (autoDeleteMessages())
-            //    call->deleteLater();
-        }
+        emit errorReceived(QString::fromStdString(std::move(err)));
     }
-    else
+    catch (...)
     {
-        qCWarning(LC_WSClient) << "Unknown message type received";
+        emit errorReceived("Unknown WebSocket error"_L1);
     }
 }
-bool WSClient::sendMessage(WSMessage* message)
+bool WSClient::sendText(QString message) noexcept
 {
-    QByteArray&& msg = QJsonDocument::fromVariant(message->toHash()).toJson();
-   // qCDebug(LC_WSClient).noquote() << "Sending ws message: " << msg;
-    _webSocket->sendBinaryMessage(msg);
+    try {
+        _ws->send(message.toStdString().c_str());
+    }
+    catch (std::string err)
+    {
+        emit errorReceived(QString::fromStdString(std::move(err)));
+    }
+    catch (...)
+    {
+        emit errorReceived("Unknown WebSocket error"_L1);
+    }
     return true;
-}
-void WSClient::onError(QAbstractSocket::SocketError error)
-{
-    _lastError = _webSocket->errorString();
-    if (error == QAbstractSocket::RemoteHostClosedError)
-        _connected = false;
-}
-WSClient::~WSClient()
-{
-}
-QString WSClient::lastError() const
-{
-    return _lastError;
-}
-void WSClient::onDisconnect()
-{
-    _connected = false;
-    qCDebug(LC_WSClient) << "Socket disconnected ";
-}
-bool WSClient::isConnected() const
-{
-    return _connected;
 }

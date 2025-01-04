@@ -2,6 +2,8 @@
 #include <QAbstractItemModel>
 #include <unordered_map>
 #include <deque>
+#include <qloggingcategory.h>
+
 template<class T, template<class>class C = std::deque>
 class IdentifyingModel : public QAbstractListModel
 {
@@ -61,6 +63,23 @@ public:
 		}
 		return index(_index[id]);
 	}
+	bool setData(const QModelIndex& index, T val)
+	{
+		if (!index.isValid() || index.row() >= rowCount() || index.row() < 0)
+		{
+			return false;
+		}
+		int newID = read(val, index.row(), IDRole()).toInt();
+		int oldID = read(_data[index.row()], index.row(), IDRole()).toInt();
+		if (oldID != newID)
+		{
+			_index[newID] = index.row();
+			if (_index.contains(oldID))
+				_index.remove(oldID);
+		}
+		_data.emplace(_data.begin() + index.row(), std::move(val));
+		return true;
+	}
 	bool setData(int id, const QVariant& value, int role)
 	{
 		if (!_index.contains(id))
@@ -104,25 +123,31 @@ public:
 		endInsertRows();
 		return true;
 	}
-	bool insertRows(int row, int count, QList<int> id)
+
+	bool insertDataList(int row, QList<T> in)
 	{
-		if (row < 0 || row >rowCount() || count <= 0 || count != id.size())
+		if (row < 0 || row >rowCount() || in.size() <= 0)
 			return false;
-		beginInsertRows(QModelIndex(), row, row + count - 1);
-		if (row + count < _data.size())
+		beginInsertRows(QModelIndex(), row, row + in.size() - 1);
+		if (row < _data.size())
 		{
 			for (auto i = _data.begin() + row + 1; i < _data.end(); ++i)
 			{
-				_index[read(*i, 0, IDRole()).toInt()] += count;
+				_index[read(*i, 0, IDRole()).toInt()] += in.size();
 			}
 		}
-		_data.insert(_data.begin() + row, count, std::move(create()));
-		for (int i = row; i < row + count; i++)
+		for (size_t i = 0; i < in.size(); i++)
 		{
-			edit(_data.at(i), id[i - row], i, IDRole());
+			_index[read(in[i], 0, IDRole()).toInt()] = row + i;
 		}
+		_data.insert(_data.begin() + row, std::make_move_iterator(in.begin()),
+			std::make_move_iterator(in.end()));
 		endInsertRows();
 		return true;
+	}
+	bool insertData(int row, T data)
+	{
+		return insertDataList(row, { std::move(data) });
 	}
 	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override final
 	{

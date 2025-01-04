@@ -1,53 +1,61 @@
 #include "taskqueue.h"
+
 TaskQueue::TaskQueue(size_t threadCount)
 	:threads(threadCount)
 	,active(true)
 {
+	std::lock_guard g(threadsMutex);
 	for (auto& i : threads)
-	{
 		i = std::thread(&TaskQueue::threadFunc, this);
+}
+std::function<void()> TaskQueue::dequeue() {
+	std::unique_lock lock(mutex);
+	while (!mJoining) {
+		std::optional<clock::time_point> time;
+		if (!mTasks.empty()) {
+			time = mTasks.top().time;
+			if (*time <= clock::now()) {
+				auto func = std::move(mTasks.top().func);
+				mTasks.pop();
+				return func;
+			}
+		}
+		mWaitingCondition.notify_all();
+		if (time)
+			mTasksCondition.wait_until(lock, *time);
+		else
+			mTasksCondition.wait(lock);
 	}
+	return nullptr;
 }
-void TaskQueue::pushTask(const task& t)
-{
-	std::lock_guard guard(mutex);
-	incomingTasks.push(t);
-	condvar.notify_one();
-}
-void TaskQueue::pushTask(task&& t)
-{
-	std::lock_guard<std::mutex> guard(mutex);
-	incomingTasks.emplace(std::move(t));
-	condvar.notify_one();
 
+bool TaskQueue::runOne() {
+	if (auto task = dequeue()) {
+		task();
+		return true;
+	}
+	return false;
 }
 TaskQueue::~TaskQueue()
 {
-	std::lock_guard g(mutex);
-	active = false;
-	condvar.notify_all();
+	{
+		std::lock_guard g(mutex);
+		mJoining = true;
+		mTasksCondition.notify_all();
+	}
+	std::lock_guard g(threadsMutex);
 	for (auto& i : threads)
 	{
 		if(i.joinable())
-		i.join();
+			i.join();
+		threads.clear();
+
 	}
 }
 
 void TaskQueue::threadFunc()
 {
-	while (1)
-	{
-		{
-			std::unique_lock lock(mutex);
-			condvar.wait(lock, [this]() {return !incomingTasks.empty() || !active; });
-			if (!active)
-				return;
-			std::swap(readBuffer, incomingTasks);
-		}
-		for (; !readBuffer.empty(); readBuffer.pop())
-		{
-			readBuffer.front()();
-		}
+	while (runOne()) {
 	}
 	
 }

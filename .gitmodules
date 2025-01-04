@@ -19,3 +19,6 @@
 [submodule "lib/framelesshelper"]
 	path = lib/framelesshelper
 	url = https://github.com/wangwenx190/framelesshelper
+[submodule "lib/libdatachannel"]
+	path = lib/libdatachannel
+	url = https://github.com/bubochka14/libdatachannel.git

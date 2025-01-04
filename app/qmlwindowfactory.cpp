@@ -21,11 +21,12 @@ QmlWindowFactory::QmlWindowFactory(QObject* parent)
     qmlRegisterType<QWK::QuickWindowAgent>("QWindowKit", 1, 0, "WindowAgent");
     qmlRegisterModule("QWindowKit", 1, 0);
 	// Registering types available via Future in QML
-	QuickFuture::registerType<UserInfo*>();
-	QuickFuture::registerType<RoomModel*>();
-	QuickFuture::registerType<MessageModel*>();
-	QuickFuture::registerType<UsersModel*>();
-	QuickFuture::registerType<ParticipateModel*>();
+	//QuickFuture::registerType<UserInfo*>();
+	QuickFuture::registerType<Group::Model*>();
+	QuickFuture::registerType<Message::Model*>();
+	QuickFuture::registerType<User::Model*>();
+	QuickFuture::registerType<User::Handler*>();
+	QuickFuture::registerType<Participate::Model*>();
 
 	qmlRegisterSingletonType<QMLObjectConverter>("ObjectConverter", 1, 0, "ObjectConverter",
 		[](QQmlEngine* engine, QJSEngine* scriptEngine) -> QObject* {

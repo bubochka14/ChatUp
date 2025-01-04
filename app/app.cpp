@@ -1,70 +1,75 @@
 #include "app.h"
 Q_LOGGING_CATEGORY(LC_ChatClient, "ChatClient")
 App::App(const QString& host, int port, QObject* parent)
-	:App(new WSNetworkFactory(host, port),new QmlWindowFactory(), parent)
+	:App(new WSNetworkManager(host, port),new QmlWindowFactory(), parent)
 
 {
 }
-App::App(NetworkFactory* netFact, AbstractWindowFactory* windowFactory, QObject* parent)
+App::App(NetworkManager* netFact, AbstractWindowFactory* windowFactory, QObject* parent)
 	:QObject(parent)
-	,_netFactory(netFact)
+	,_manager(netFact)
 	,_windowFactory(windowFactory)
 {
-	_controllerManager = _netFactory->createControllerManager();
-
-	_netFactory->setParent(this);
-	_controllerManager->setParent(this);
+	_controllerManager = new CallerControllerManager(_manager, this);
+	_manager->setParent(this);
 	_windowFactory->setParent(this);
 	setAppLanguage();
 }
 
 int App::run()
 {
-	roomController = _controllerManager->roomController();
-    messageController = _controllerManager->messageController();
-	userController = _controllerManager->userController();
-
-
 	startup = _windowFactory->createStartupWindow();
 	chat = _windowFactory->createChatWindow(_controllerManager);
-	_authMaster = _netFactory->createAuthenticationMaster();;
-	sh = _netFactory->createHandler();
 	if (!startup || !chat)
 		return 0;
 	startup->setParent(this);
-	connect(sh, &ServerHandler::isConnectedChanged, this, [&]() {
-		if (!sh->isConnected())
-		{
-			logout("Server disconnected");
-		}
-		});
-	connect(_authMaster, &AuthenticationMaster::authentificated, this, [&](UserInfo* userInfo) {
-		startup->setStatus("Initialization...");
-		startup->setLoadingProgress(0.5);
-		messageController->initialize(userInfo);
-		roomController->initialize(userInfo);
-		userController->initialize(userInfo);
-		startup->clear();
-		chat->show();
-		startup->hide();
-		});
-	connect(_authMaster, &AuthenticationMaster::errorReceived, this, [&](const QString& error) {
-		startup->clear();
-		startup->setErrorString(error);
-		});
-	connect(startup, &StartupWindow::registerPassed, this, [&](const QString& login, const  QString& pass) {
+	_manager->initialize();
+	QThread* coreThread = new QThread;;
+	QObject* context = new QObject;
+	context->moveToThread(coreThread);
+	coreThread->start();
+	connect(startup, &StartupWindow::registerPassed, this, [this, context]
+	(const QString& login, const  QString& pass) {
 			startup->clear();
 			startup->setState(StartupWindow::Loading);
-			startup->setStatus("Connecting...");
-			startup->setLoadingProgress(0.1);
-			_authMaster->registerUser(login, pass);
+			_manager->setCredentials({ login,pass });
+			_controllerManager->initializeAll()
+				.then(context, [this]() {
+				startup->clear();
+				chat->show();
+				startup->hide();
+					})
+				.onFailed([this](const QString& error)
+					{
+						startup->clear();
+						startup->setErrorString(error);
+					}
+				).onFailed([this]
+					{
+						startup->clear();
+						startup->setErrorString("Unknown error");
+					});
 		});
-	connect(startup, &StartupWindow::loginPassed, this, [&](const QString& login, const  QString& pass) {
+	connect(startup, &StartupWindow::loginPassed, this, [this,context](const QString& login, const  QString& pass) {
+		startup->clear();
+		startup->setState(StartupWindow::Loading);
+		_manager->setCredentials({ login,pass });
+		_controllerManager->initializeAll()
+			.then(context, [this]() {
 			startup->clear();
-			startup->setState(StartupWindow::Loading);
-			startup->setStatus("Connecting...");
-			startup->setLoadingProgress(0.1);
-			_authMaster->loginUser(login, pass);
+			chat->show();
+			startup->hide();
+				})
+			.onFailed([this](const QString& error)
+				{
+					startup->clear();
+					startup->setErrorString(error);
+				}
+			).onFailed([this]
+				{
+					startup->clear();
+					startup->setErrorString("Unknown error");
+				});
 		});
 	connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
 	startup->show();
@@ -117,9 +122,9 @@ void App::logout(const QString& reason)
 {
 	chat->hide();
 	delete chat;
-	roomController->logout();
+/*	roomController->logout();
 	messageController->logout();
-	userController->logout();
+	userController->logout()*/;
 
 	chat = _windowFactory->createChatWindow(_controllerManager);
 	connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });

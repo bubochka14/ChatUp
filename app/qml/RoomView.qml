@@ -21,29 +21,30 @@ Frame {
     enabled: root.roomID == chatBox.roomID
 
     SplitView {
-        id:split
+        id: split
         orientation: Qt.Vertical
         anchors.fill: parent
         CallBox {
             id: callBox
+            roomID : root.roomID
             manager: root.manager
             SplitView.minimumHeight: callBox.minimumHeight
         }
-        Item{
-        MessagesView {
+        Item {
+            MessagesView {
 
-            model: messageModel
-            manager: root.manager
-            anchors{
-                fill:parent
-                leftMargin:8
-                rightMargin:8
+                model: messageModel
+                manager: root.manager
+                anchors {
+                    fill: parent
+                    leftMargin: 8
+                    rightMargin: 8
+                }
+
+                onUserProfileClicked: id => root.showProfile(id)
+                onUnreadWasRead: index => manager.messageController.markAsRead(
+                                     root.roomID, index)
             }
-
-            onUserProfileClicked: id => root.showProfile(id)
-            onUnreadWasRead: index => manager.messageController.markAsRead(
-                                 root.roomID, index)
-        }
         }
     }
 }

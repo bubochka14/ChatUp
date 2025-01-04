@@ -58,25 +58,22 @@ ColoredFrame {
     onRoomIDChanged: {
         if (roomsCache[roomID] === undefined) {
             state = "Loading"
-            Future.onFinished(manager.messageController.getRoomHistory(roomID),
-                              function (history) {
-                                  var component = Qt.createComponent(
-                                              "RoomView.qml")
-                                  var obj = roomViewComponent.createObject(
-                                              roomContainer, {
-                                                  "manager": manager,
-                                                  "messageModel": history,
-                                                  "roomID": root.roomID,
-                                                  "chatBox": root
-                                              })
-                                  obj.showProfile.connect(showUserProfile)
-                                  roomsCache[roomID] = {
-                                      "model": history,
-                                      "item": obj
-                                  }
-                                  root.roomIndex = roomContainer.children.length - 1
-                                  root.state = "Chat"
-                              })
+            var history = manager.messageController.model(roomID)
+            manager.messageController.load(roomID,0,0,3);
+            var component = Qt.createComponent("RoomView.qml")
+            var obj = roomViewComponent.createObject(roomContainer, {
+                                                         "manager": manager,
+                                                         "messageModel": history,
+                                                         "roomID": root.roomID,
+                                                         "chatBox": root
+                                                     })
+            obj.showProfile.connect(showUserProfile)
+            roomsCache[roomID] = {
+                "model": history,
+                "item": obj
+            }
+            root.roomIndex = roomContainer.children.length - 1
+            root.state = "Chat"
         } else {
             root.roomIndex = roomContainer.getIndex(roomID)
             root.state = "Chat"
@@ -91,15 +88,15 @@ ColoredFrame {
     }
 
     function showUserProfile(id) {
-        Future.onFinished(manager.userController.getUserInfo(id),
+        Future.onFinished(manager.userController.get(id),
                           function (user) {
                               foreignProfileViewer.showProfle(user)
                           })
     }
     padding: 0
     bottomPadding: 0
-    topPadding:0
-    topInset:0
+    topPadding: 0
+    topInset: 0
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -140,7 +137,7 @@ ColoredFrame {
             visible: root.roomID != -1
             onMessageEntered: textMessage => {
                                   if (textMessage && root.roomID != -1) {
-                                      manager.messageController.createMessage(
+                                      manager.messageController.create(
                                           textMessage, root.roomID)
                                       input.clear()
                                   }
