@@ -48,7 +48,6 @@ PeerConnectionHandle::PeerConnectionHandle(std::shared_ptr<PeerConnection> pc, i
 
 				});
 			track->onFrame([this](rtc::binary data, rtc::FrameInfo info) {
-				qDebug() << "Frame received" << data.size();
 				auto pipeData = _videoRaw->holdForWriting();
 				pipeData.ptr->raw = (uint8_t*)data.data();
 				pipeData.ptr->size = data.size();
@@ -93,7 +92,6 @@ QFuture<void> PeerConnectionHandle::openLocalVideo(std::shared_ptr<FramePipe> in
 						return;
 					videoTrack->send((std::byte*)raw->raw, raw->size);
 					_videoPacketizer->output()->unmapReading(index);
-					qDebug() << "data send" << raw->size;
 				});
 
 		});
@@ -115,7 +113,7 @@ Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration c
 	:_config(std::move(config))
     ,_coordinator(std::move(coord))
 {
-	rtc::InitLogger(rtc::LogLevel::Info);
+	rtc::InitLogger(rtc::LogLevel::Warning);
 	Api::Description::handle(_coordinator, [this](Data::Description msg)
 		{
 			if (msg.id == Data::invalidID)

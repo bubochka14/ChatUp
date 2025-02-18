@@ -68,10 +68,7 @@ public:
 	QModelIndex idToIndex(int id) const
 	{
 		if (!_index.contains(id))
-		{
-			qWarning() << "Specified id " << id << " not found";
 			return QModelIndex();
-		}
 		return index(_index.at(id));
 	}
 	template<class Iter>

@@ -12,7 +12,6 @@ RowLayout {
     property bool currentUser: root.user.id === CurrentUser.id
     property alias statusIcon: statusIcon
     signal profileClicked
-    Component.onCompleted: {console.log(currentUser, root.user.id,CurrentUser.id)}
     layoutDirection: currentUser ? Qt.RightToLeft : Qt.LeftToRight
     Image {
         id: icon
