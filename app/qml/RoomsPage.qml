@@ -72,9 +72,11 @@ RowLayout {
                 anchors.right: parent.right
                 anchors.rightMargin: 15
                 spacing: 10
-                Button {
+                IconButton {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: "call"
+                    source: Qt.resolvedUrl("pics/call")
+                    height: 26
+                    width: 26
                     onClicked: manager.callController.handler(root.selectedRoomID).join()
                 }
                 MouseArea {
@@ -87,8 +89,8 @@ RowLayout {
                     Image {
                         id: addUserIcon
                         anchors.centerIn: parent
-                        height: 25
-                        width: 25
+                        height: 26
+                        width: 26
                         mipmap: true
                         source: Qt.resolvedUrl("pics/add-user.svg")
                     }

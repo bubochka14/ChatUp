@@ -29,21 +29,20 @@ Rectangle {
             name: "disconnected"
             PropertyChanges {
                 root.visible: false
-                interactionBtn.text: "Call"
             }
         },
         State {
             name: "notJoined"
             PropertyChanges {
                 root.visible: true
-                interactionBtn.text: "Join"
+                interactionBtn.source: Qt.resolvedUrl("pics/startcall")
             }
         },
         State {
             name: "joined"
             PropertyChanges {
                 root.visible: true
-                interactionBtn.text: "Disconnect"
+                interactionBtn.source: Qt.resolvedUrl("pics/endcall")
             }
         }
     ]
@@ -73,8 +72,10 @@ Rectangle {
         Row {
             spacing: 5
             Layout.alignment: Qt.AlignHCenter
-            Button {
+            IconButton {
                 id: interactionBtn
+                height: 45
+                width: 45
                 onClicked: {
                     if (root.state == "joined") {
                         root.callHandler.disconnect()
@@ -83,8 +84,10 @@ Rectangle {
                     }
                 }
             }
-            Button {
-                text: root.callHandler.hasVideo ? "Media OFF" : "Media ON"
+            IconButton {
+                height: 45
+                width: 45
+                source: root.callHandler.hasVideo ? Qt.resolvedUrl("pics/cameraopen"):Qt.resolvedUrl("pics/cameraclose")
                 onClicked: {
                     if (root.callHandler.hasVideo) {
                         root.callHandler.closeVideo()
@@ -94,8 +97,12 @@ Rectangle {
                     }
                 }
             }
-            Button {
-                text: root.callHandler.hasAudio ? "Audio OFF" : "Audio ON"
+            IconButton {
+                height: 45
+                width: 45
+                source: root.callHandler.hasAudio ? Qt.resolvedUrl(
+                                                        "pics/micround") : Qt.resolvedUrl(
+                                                        "pics/nomicround")
                 onClicked: root.callHandler.hasAudio = !root.callHandler.hasAudio
             }
         }
