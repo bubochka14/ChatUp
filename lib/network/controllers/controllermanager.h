@@ -27,7 +27,7 @@ protected:
 class CC_NETWORK_EXPORT CallerControllerManager : public ControllerManager
 {
 public:
-	explicit CallerControllerManager(NetworkManager* manager,
+	explicit CallerControllerManager(std::shared_ptr<NetworkCoordinator> manager,
 		QObject* parent = nullptr
 	);
 	Group::Controller* groupController() override;

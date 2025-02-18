@@ -23,9 +23,10 @@ QmlWindowFactory::QmlWindowFactory(QObject* parent)
 	// Registering types available via Future in QML
 	//QuickFuture::registerType<UserInfo*>();
 	QuickFuture::registerType<Group::Model*>();
+	QuickFuture::registerType<void>();
 	QuickFuture::registerType<Message::Model*>();
 	QuickFuture::registerType<User::Model*>();
-	QuickFuture::registerType<User::Handler*>();
+	QuickFuture::registerType<User::Handle*>();
 	QuickFuture::registerType<Participate::Model*>();
 
 	qmlRegisterSingletonType<QMLObjectConverter>("ObjectConverter", 1, 0, "ObjectConverter",
@@ -46,7 +47,7 @@ StartupWindow* QmlWindowFactory::createStartupWindow()
 	}
 	return window;
 }
-AbstractChatWindow* QmlWindowFactory::createChatWindow(ControllerManager* manager)
+AbstractChatWindow* QmlWindowFactory::createChatWindow(std::shared_ptr<ControllerManager> manager)
 {
 	auto window = new QmlChatWindow(_engine, manager);
 	if (window->hasError())

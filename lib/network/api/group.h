@@ -1,15 +1,18 @@
 #pragma once
 #include "networkmanager.h"
 #include "data.h"
+#include "core.h"
+#include <QFuture>
 namespace Group::Api
 {
 	struct Create 
 	{
 		Create() = default;
-		QString name;
-		std::optional<QString> tag;
-		QFuture<Data> exec(NetworkManager* h);
-		//void handle(NetworkManager* h)
+		std::string name;
+		std::optional<std::string> tag;
+		QFuture<ExtendedData> exec(std::shared_ptr<NetworkCoordinator> net);
+		static void handle(std::shared_ptr<NetworkCoordinator> net,
+			std::function<void(ExtendedData&&)> h);
 	private:
 		static constexpr char methodName[] = "createRoom";
 
@@ -18,9 +21,11 @@ namespace Group::Api
 	{
 		Update() = default;
 		int roomID = 0;
-		std::optional<QString> name;
-		std::optional<QString> tag;
-		QFuture<Data> exec(NetworkManager* h);
+		std::optional<std::string> name;
+		std::optional<std::string> tag;
+		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> h);
+		static void handle(std::shared_ptr<NetworkCoordinator> net, std::function<void(Data&&)> h);
+
 	private:
 		static constexpr char methodName[] = "updateRoom";
 	};
@@ -31,7 +36,7 @@ namespace Group::Api
 	struct GetAll 
 	{
 		GetAll() = default;
-		QFuture<QList<Data>> exec(NetworkManager* h);
+		QFuture<std::vector<ExtendedData>> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "getUserRooms";
 	};
@@ -40,7 +45,7 @@ namespace Group::Api
 		AddUser() = default;
 		int roomID =0;
 		int userID =0;
-		QFuture<void> exec(NetworkManager* h);
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "addUserToRoom";
 	};
@@ -48,7 +53,7 @@ namespace Group::Api
 	{
 		Delete() = default;
 		int roomID =0;
-		QFuture<void> exec(NetworkManager* h);
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "deleteRoom";
 	};
@@ -56,7 +61,7 @@ namespace Group::Api
 	{
 		GetHistory() = default;
 		int roomID = 0;
-		QFuture<QList<Message::Data>> exec(NetworkManager* h);
+		QFuture<std::vector<Message::Data>> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "getRoomHistory";
 
@@ -66,7 +71,7 @@ namespace Group::Api
 		MarkRead() = default;
 		size_t count=0;
 		int roomID=0;
-		QFuture<void> exec(NetworkManager* h);
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "setReadMessagesCount";
 

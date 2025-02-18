@@ -13,6 +13,11 @@ RowLayout {
     required property ControllerManager manager
     property bool roomSelected: false
     property alias selectedRoomID : chatBox.roomID
+    Component.onCompleted:
+    {
+        manager.groupController.load(2);
+    }
+
     RoomList {
         id: roomList
         // Layout.minimumWidth: 120

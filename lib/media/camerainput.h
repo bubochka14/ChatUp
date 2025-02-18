@@ -1,7 +1,6 @@
 #pragma once
 
 #include <QObject>
-#include <QDebug>
 extern "C" {
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
@@ -17,34 +16,29 @@ extern "C" {
 #include <mutex>
 #include "media.h"
 #include "media_include.h"
-namespace media {
-    
-    class CC_MEDIA_EXPORT CameraInput
+#include <qloggingcategory.h>
+Q_DECLARE_LOGGING_CATEGORY(LC_CAMERA)
+
+namespace Media::Video {
+    class CC_MEDIA_EXPORT Camera
     {
     public:
-        struct Config
-        {
-
-            std::string name;
-            std::string dsc;
-
-        };
-        explicit CameraInput(Config info);
-        std::shared_ptr<media::PacketPipe> output() ;
-        std::optional<Video::Source> open() ;
+        explicit Camera(std::string device);
+        std::shared_ptr<Media::PacketPipe> output() ;
+        std::optional<Video::SourceConfig> open() ;
         bool isOpened();
-        void close() ;
-        static std::vector<Config> availableDevices();
-        Config currentDevice() const;
-        ~CameraInput();
+        void close();
+        static std::vector<std::string> availableDevices();
+        Device currentDevice() const;
+        ~Camera();
         AVFormatContext* ctx();
     private:
         void threadFunc();
-        std::shared_ptr<media::PacketPipe> out;
+        std::shared_ptr<Media::PacketPipe> out;
         AVFormatContext* ictx;
         std::mutex mutex;
         std::thread cameraThread;
-        Config device;
+        std::string device;
         std::atomic<bool> active;
     };
 }

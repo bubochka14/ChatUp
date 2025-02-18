@@ -9,15 +9,22 @@ set(LIB_SOURCES
 	"encoder.h"
 	"encoder.cpp"
 	"media.h"
+	"media.cpp"
 	"microphoneinput.h"
+	"streamsource.h"
+	"streamsource.cpp"
 	"microphoneinput.cpp"
 	"camerainput.h"
 	"camerainput.cpp"
 	"audiooutput.h"
+	"camerapipeline.h"
+	"camerapipeline.cpp"
 	"media_include.h"
+	"rtppacketizer.h"
+	"rtppacketizer.cpp"
 	)
 add_library(${LIB_NAME} SHARED ${LIB_SOURCES})
-#add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
+add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
 target_compile_definitions(${LIB_NAME} PRIVATE 	
 	CC_MEDIA_SHARED
 )
@@ -26,7 +33,10 @@ target_include_directories(${LIB_NAME} PUBLIC
 	PUBLIC ${FFMPEG_INCLUDE_DIRS}
 )
 target_link_directories(${LIB_NAME} PUBLIC ${FFMPEG_LIBRARY_DIRS})
-
+set_target_properties(app PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED YES
+)
 include(GNUInstallDirs)
 install(TARGETS ${LIB_NAME}
     BUNDLE DESTINATION .

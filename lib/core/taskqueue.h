@@ -19,15 +19,20 @@ public:
 		bool operator>(const Task& other) const {
 			if (priority == other.priority)
 				return time < other.time;
-			return priority < other.priority;
+			return priority > other.priority;
 		}
 		bool operator<(const Task& other) const {
 			if(priority == other.priority)
 				return time > other.time; 
-			return priority > other.priority;
+			return priority < other.priority;
 		}
 	};
 	TaskQueue(size_t threadCount = 1);
+	template <class F, class... Args>
+	void schedule(clock::duration delay, F&& f, Args &&...args) noexcept
+	{
+		return schedule(clock::now() + delay, std::forward<F>(f), std::forward<Args>(args)...);
+	}
 	template <class F, class... Args>
 	void enqueue(F&& f, Args &&...args) noexcept{
 		return schedule(clock::now(), std::forward<F>(f), std::forward<Args>(args)...);

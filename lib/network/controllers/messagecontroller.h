@@ -31,7 +31,7 @@ namespace Message {
 	{
 		Q_OBJECT;
 	public:
-		explicit CallerController(NetworkManager*,
+		explicit CallerController(std::shared_ptr<NetworkCoordinator>,
 			QObject* parent = nullptr);
 		Model* model(int roomID) override;
 		QFuture<void> load(int roomID,int row, int fromIndex, int  toIndex) override;
@@ -43,7 +43,7 @@ namespace Message {
 	protected:
 		void connectToDispatcher();
 	private:
-		NetworkManager* _manager;
+		std::shared_ptr<NetworkCoordinator> _manager;
 		QMap<int, Model*> _history;
 		int _tempMessageCounter;
 

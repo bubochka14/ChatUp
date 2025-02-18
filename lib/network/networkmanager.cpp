@@ -1,63 +1,139 @@
 #include "networkmanager.h"
-NetworkManager::NetworkManager(QObject* parent)
-	:QObject(parent)
-	,_handler(nullptr)
-	,_auth(nullptr)
+using namespace std::chrono_literals;
+
+void Api::Login::fromCredentials(Credentials other)
 {
-}
-void NetworkManager::setCredentials(Credentials cr)
-{
-	if (_auth)
-		_auth->setCredentials(std::move(cr));
+	login = std::move(other.login);
+	password = std::move(other.password);
 }
 
-bool NetworkManager::initialize()
+QFuture<User::Data> Api::Login::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-
-	_handler = createServerHandler();
-	_auth = createAuthenticationMaster();
+	return h->serverMethod(methodName, {
+		{"login",login },{"password",password} }, NetworkCoordinator::DirectCall)
+		.then([](json&& res) {
+		return User::Data(res);
+			});
+}
+int NetworkCoordinator::currentUser() const
+{
+	return _user;
+}
+NetworkCoordinator::NetworkCoordinator(std::string host, int port)
+	:_handler(std::make_shared<ServerHandler>(
+		"ws://" + std::move(host) + ":" + std::to_string(port),
+		std::make_shared<rtc::WebSocket>()))
+	,_user(User::invalidID)
+{
 	_active = true;
-	_networkThread = std::thread(&NetworkManager::threadFunc, this);
-	return true;
+	_networkThread = std::thread(&NetworkCoordinator::threadFunc, this);
+
 }
-int NetworkManager::userID() const
+QFuture<void> NetworkCoordinator::initialize()
 {
-	return _auth->currentUserID().value_or(User::invalidID);
+	auto promise = std::make_shared<QPromise<void>>();
+	promise->start();
+	auto future = promise->future();
+	Api::Login req;
+	req.fromCredentials(_credentials);
+	req.exec(shared_from_this())
+		.then([this, promise = std::move(promise)](User::Data&& res)
+			{
+				promise->finish();
+				_user = res.id;
+				_condvar.notify_one();
+			});							
+	return future;
 }
-QFuture<HashList> NetworkManager::serverMethod(const char* method,
-	QVariantHash args, Priority priority)
+void NetworkCoordinator::setCredentials(Credentials other)
 {
-	auto promise = makePromise();
+	_credentials =  std::move(other);
+}
+QFuture<json> NetworkCoordinator::serverMethod(std::string method,
+	json args, Priority priority)
+{
+	auto promise = std::make_unique<QPromise<json>>();
+	promise->start();
+	auto future = promise->future();
+	switch (priority) {
+	case DirectCall:
+		{
+			std::lock_guard g(_mutex);
+			_directCalls.emplace_back(MethodInfo{
+				std::move(method),
+				std::move(args),
+				std::move(promise),
+				priority
+				});
+		}
+		break;
+	case AuthorizedCall:
 	{
 		std::lock_guard g(_mutex);
-		_methodsQueue.emplace_back(MethodInfo{ method,std::move(args),promise, priority });
+		_authorizedCalls.emplace_front(MethodInfo{
+			std::move(method),
+			std::move(args),
+			std::move(promise),
+			priority
+			});
+		break;
+
+	}
 	}
 	_condvar.notify_one();
-	return promise->future();
+	return future;
 }
-QPromise<HashList>* NetworkManager::makePromise()
+
+void NetworkCoordinator::addClientHandler(std::string method, Callback&& h)
 {
-	return new QPromise<HashList>;
+	_handler->addClientHandler(std::move(h), method);
 }
-void NetworkManager::addClientHandler(Callback&& h, const QString& method)
+NetworkCoordinator::MethodInfo NetworkCoordinator::takeMethod()
 {
+	if (!_directCalls.empty())
+	{
+		auto res = std::move(_directCalls.front());
+		_directCalls.pop_front();
+		return res;
+	}
+	if (!_authorizedCalls.empty())
+	{
+		auto res = std::move(_authorizedCalls.front());
+		_authorizedCalls.pop_front();
+		return res;
+	}
 
 }
-void NetworkManager::threadFunc()
+void NetworkCoordinator::threadFunc()
 {
+	MethodInfo&& info = MethodInfo();
 	while (1)
 	{
 		{
 			std::unique_lock lock(_mutex);
-			_condvar.wait(lock, [this]() {return !_methodsQueue.empty() || !_active; });
-			if (!_active)
-				return;
-			std::swap(_readBuffer, _methodsQueue);
+			_condvar.wait(lock, [this]() 
+				{
+					return (!_directCalls.empty()
+						|| !_authorizedCalls.empty())
+						&& _active;
+			});
+			while(!_handler->isConnected())
+			{
+				try
+				{
+					_handler->connect().waitForFinished();
+				}
+				catch (...) {}
+				if (!_handler->isConnected())
+					std::this_thread::sleep_for(200ms);
+			}
+			info = takeMethod();
 		}
-		for (; !_readBuffer.empty(); _readBuffer.pop_front())
-		{
-			_handler->serverMethod(_readBuffer.front().method,
-				std::move(_readBuffer.front().args),_readBuffer.front().prom);
-		}
+		_handler->serverMethod(info.method,
+			std::move(info.args)).then(
+				[promise = std::move(info.prom)](json&& res) {
+					promise->emplaceResult(std::move(res));
+					promise->finish();
+				});
 	}
 }

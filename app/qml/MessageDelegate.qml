@@ -6,11 +6,13 @@ import ChatClient.Network
 import ChatClient.Core
 
 RowLayout {
-    property UserHandler user
-    property bool currentUser: false
+    id: root
+
+    property UserHandle user
+    property bool currentUser: root.user.id === CurrentUser.id
     property alias statusIcon: statusIcon
     signal profileClicked
-    id: root
+    Component.onCompleted: {console.log(currentUser, root.user.id,CurrentUser.id)}
     layoutDirection: currentUser ? Qt.RightToLeft : Qt.LeftToRight
     Image {
         id: icon

@@ -1,44 +1,46 @@
 #pragma once
-#include <qobject.h>
-#include <wsclient.h>
 #include "network_include.h"
-#include "messageconstructor.h"
-#include "authenticationmaster.h"
+#include "rpc.h"
+#include "data.h"
 #include <taskqueue.h>
 #include <qnetworkreply.h>
-#include <qqueue.h>
 #include <qloggingcategory.h>
-#include <rtc/channel.hpp>
+#include <rtc/rtc.hpp>
+#include <unordered_map>
+#include <qfuture>
 Q_DECLARE_LOGGING_CATEGORY(LC_SERVER_HANDLER);
 using NetworkError = QNetworkReply::NetworkError;
 
 class CC_NETWORK_EXPORT MethodCallFailure : std::exception
 {
 public:
-	QString message;
+	std::string message;
 	NetworkError error;
 };
-class CC_NETWORK_EXPORT ServerHandler 
+class CC_NETWORK_EXPORT ServerHandler
 {
 public:
-	explicit ServerHandler(std::shared_ptr<rtc::Channel>, QObject* parent = nullptr);
+	explicit ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket>);
 	bool isConnected() const;
-	void serverMethod(const char* method, QVariantHash args, QPromise<HashList>* prom);
-	using Callback = std::function<void(QVariantHash&&)>;
-	void addClientHandler(Callback&& h, const QString& method);
+	QFuture<void> connect();
+	QFuture<json> serverMethod(std::string, json args);
+
+	using Callback = std::function<void(json&&)>;
+	void addClientHandler(Callback&& h, std::string method);
 protected:
 	void handleTimeout();
 	void handleTextMessage(std::string);
 	void handleError(std::string);
-	void setIsConnected(bool);
-	void handleMethodCall(WSMethodCall* call);
-	void handleReply(WSReply* reply);
+	void handleMethodCall(RPC::MethodCall call);
+	void handleReply(RPC::Reply reply);
 private:
-	bool _isConnected;
-	QHash<int, QPromise<HashList>*> _requests;
-	QHash<QString, QList<Callback>> _clientHandlers;
-	QQueue<WSMessage*> _msgQueue;
-	Transport* _transport;
-	//QTimer _timeoutTimer;
-	QThread thread;
+	std::atomic<bool> _isConnected;
+	std::unordered_map<int, std::shared_ptr<QPromise<json>>> _requests;
+	std::unordered_map<std::string, std::vector<Callback >> _clientHandlers;
+	std::shared_ptr<rtc::WebSocket> _transport;
+	std::string _url;
+	std::mutex _connectionMutex;
+	std::shared_ptr<QPromise<void>> _connectionPromise;
+	TaskQueue _taskQueue;
+
 };

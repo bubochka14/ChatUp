@@ -1,14 +1,15 @@
 #pragma once
 #include "data.h";
 #include <QString>
+#include <QFuture>
 #include "networkmanager.h"
 namespace User::Api
 {
 	struct Get
 	{
 		Get() = default;
-		int id = User::invalidID;
-		QFuture<Data> exec(NetworkManager* handler);
+		std::optional<int> id;
+		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> handler);
 	private:
 		static constexpr char methodName[] = "getUser";
 	};
@@ -18,22 +19,31 @@ namespace User::Api
 		Find() = default;
 		std::optional<int> limit;
 		bool useRegexp = false;
-		std::optional<QString> name;
-		std::optional<QString> tag;
-		std::optional<int> id;
-		QFuture<QList<int>> exec(NetworkManager* handler);
+		std::optional<std::string> name;
+		std::optional<std::string> tag;
+		std::optional<std::string> id;
+		QFuture<std::vector<int>> exec(std::shared_ptr<NetworkCoordinator> handler);
 	private:
 		static constexpr char methodName[] = "findUsers";
 	};
 	struct Update 
 	{
 		Update() = default;
-		std::optional<QString> name;
-		std::optional<QString> tag;
+		std::optional<std::string> name;
+		std::optional<std::string> tag;
 		//std::optional<Data::Status> status;
-		QFuture<Data*> exec(NetworkManager* handler);
+		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> handler);
 	private:
 		static constexpr char methodName[] = "updateUser";
 	};
-	
+	//register
+	struct Create
+	{
+		Create() = default;
+		std::string login;
+		std::string password;
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
+	private:
+		static constexpr char methodName[] = "registerUser";
+	};
 }

@@ -2,19 +2,17 @@
 using namespace Message::Api;
 using namespace Message;
 using namespace Qt::Literals::StringLiterals;
-void Create::handle(NetworkManager* serv, std::function<void(Data&&)> h)
+void Create::handle(std::shared_ptr<NetworkCoordinator> serv, std::function<void(Data&&)> h)
 {
 	static constexpr char methodName[] = "postMessage";
-	serv->addClientHandler([handler = std::move(h)](QVariantHash&& hash) {
-		Message::Data out;
-		out.fromHash(std::move(hash));
-		handler(std::move(out));
-		}, methodName);
+	serv->addClientHandler(methodName,[handler = std::move(h)](json&& res) {
+		handler(Message::Data(res));
+		});
 
 }
-QFuture<QList<Data>> Find::exec(NetworkManager* h)
+QFuture<std::vector<Data>> Find::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return QtFuture::makeReadyValueFuture(QList<Data>());
+	return QtFuture::makeReadyValueFuture(std::vector<Data>());
 	/*QVariantHash args;
 	if (messageIndex.has_value())
 		args["messageIndex"] = messageIndex.value();
@@ -32,43 +30,40 @@ QFuture<QList<Data>> Find::exec(NetworkManager* h)
 		return out;
 		});*/
 }
-QFuture<QList<Data>> GetByIndex::exec(NetworkManager* h)
+QFuture<std::vector<Data>> GetByIndex::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(methodName, { { "from"_L1,startIndex },
-		{"to"_L1,endIndex},{"roomID"_L1,roomID} }).then([](HashList&& res) {
-		QList<Data> out(res.size());
-		for (size_t i = 0; i < out.length(); i++)
-		{
-			out[i].fromHash(res.takeFirst());
-		}
-		return out;
+	return h->serverMethod(methodName, { 
+			{"from",startIndex },
+			{"to",endIndex},
+			{"roomID",roomID} 
+		}).then([](json&& res) {
+			std::vector<Data> out(res.size());
+			int idx = 0;
+			for (auto& i : res)
+			{
+				out[idx++] = i;
+			}
+			return out;
 		});
 }
 
-QFuture<Data> Create::exec(NetworkManager* h)
+QFuture<Data> Create::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(methodName, { { "body"_L1,std::move(body) },
-		{"roomID",roomID} }).then([](HashList&& res) {
-		Data out;
-		out.fromHash(std::move(res.takeFirst()));
-		return out;
+	return h->serverMethod(methodName, { { "body",std::move(body) },
+		{"roomID",roomID} }).then([](json&& res) {
+		return Data(res);
 	});
 }
-QFuture<Data> Update::exec(NetworkManager* h)
+QFuture<Data> Update::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	QVariantHash args;
-	if (body.has_value())
-		args.emplace("body"_L1, *std::move(body));
-
-	return h->serverMethod(methodName,std::move(args)).then([](HashList&& res) {
-		Data out;
-		out.fromHash(std::move(res.takeFirst()));
-		return out;
+	json args = { {"body",std::move(body)}};
+	return h->serverMethod(methodName,std::move(args)).then([](json&& res) {
+		return Data(res);
 		});
 
 }
 
-QFuture<void> Delete::exec(NetworkManager* h)
+QFuture<void> Delete::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(methodName,{ {"id"_L1,messageID} }).then([](HashList&&) {});
+	return h->serverMethod(methodName,{ {"id"_L1,messageID} }).then([](json&&) {});
 }

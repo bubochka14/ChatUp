@@ -3,14 +3,14 @@
     {
       "name": "ffmpeg",
       "features": [
+        "avcodec",
+        "avdevice",
+        "avfilter",
+        "avformat",
+        "opus",
         "swscale",
         "x264",
-        "x265",
-        "opus",
-        "avformat",
-        "avfilter",
-        "avdevice",
-        "avcodec"
+        "x265"
       ]
     },
     "nlohmann-json",

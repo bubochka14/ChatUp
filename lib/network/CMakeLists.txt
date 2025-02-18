@@ -1,27 +1,30 @@
 find_package(Qt6 REQUIRED COMPONENTS Core WebSockets Network Concurrent Multimedia)
-find_package(LibDataChannel CONFIG REQUIRED)
-
 set(LIB_NAME Network)
 set(LIB_SOURCES
-
+    "callernetworkmanager.h"
+    "callernetworkmanager.cpp"
     "authenticationmaster.h"
     "authenticationmaster.cpp"
     "callerauthentificationmaster.cpp"
     "callerauthentificationmaster.h"
-    "messageconstructor.cpp"
-    "messageconstructor.h"
+    "rpc.cpp"
+    "rpc.h"
     "networkmanager.h"
     "networkmanager.cpp"
-    "wsnetworkmanager.cpp"
-    "wsnetworkmanager.cpp"
+    "wsnetworkfactory.cpp"
+    "wsnetworkfactory.h"
+    "connectionhandler.h"
+    "networkfactory.h"
     "network_include.h"
+    "networkinterface.h"
     "serverhandler.h"
+    "rtcservice.h"
+    "rtcservice.cpp"
     "serverhandler.cpp"
-    "transport.h"
-    "wsclient.h"
-    "wsclient.cpp"
     "api/authentication.h"
     "api/authentication.cpp"
+    "api/sdp.cpp"
+    "api/sdp.h"
     "api/group.h"
     "api/group.cpp"
     "api/message.h"
@@ -30,6 +33,7 @@ set(LIB_SOURCES
     "api/user.cpp"
     "api/call.cpp"
     "api/call.h"
+    "streamsourceprovider.h"
     "controllers/callcontroller.h"
     "controllers/callcontroller.cpp"
     "controllers/controllermanager.h"
@@ -53,6 +57,10 @@ add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
 
 target_include_directories(${LIB_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+set_target_properties(app PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED YES
 )
 target_compile_definitions(${LIB_NAME} PRIVATE 	
 	CC_NETWORK_SHARED

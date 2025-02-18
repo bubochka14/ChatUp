@@ -5,18 +5,14 @@
 #include <qfuture>
 namespace Call::Api
 {
-	struct Request
-	{
-		int roomID = Group::invalidID;
-		int	userID = User::invalidID;
-	};
 
 	struct Join
 	{
 		Join() = default;
 		int roomID = Group::invalidID;
-		QFuture<void> exec(NetworkManager* h);
-		static void handle(NetworkManager* h, std::function<void(Request&&)> cb);
+		std::string sdp;
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
+		static void handle(std::shared_ptr<NetworkCoordinator> h, std::function<void(Participate::Data&&)> cb);
 	private:
 		static constexpr char callName[] = "joinCall";
 
@@ -25,8 +21,8 @@ namespace Call::Api
 	{
 		Disconnect() = default;
 		int roomID = Group::invalidID;
-		QFuture<void> exec(NetworkManager* h);
-		static void handle(NetworkManager* h, std::function<void(Request&&)> cb);
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
+		static void handle(std::shared_ptr<NetworkCoordinator> h, std::function<void(Participate::Data&&)> cb);
 	private:
 		static constexpr char callName[] = "disconnectCall";
 

@@ -36,12 +36,11 @@ int main(int argc, char ** argv)
 
     QString host = parser.value(addrOption);
     int port = parser.value(portOption).toInt();
-    qDebug() << "host: " << host << ", port: " << port;
     QUrl url;
     url.setPort(port);
     url.setScheme(u"ws"_s);
     url.setHost(host);
-    App client(host,port);
+    App client(host.toStdString(), port);
     if (client.run())
         return gApp.exec();
     return -1;

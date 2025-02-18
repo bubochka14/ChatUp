@@ -3,13 +3,23 @@
 #include <unordered_map>
 #include <deque>
 #include <qloggingcategory.h>
+#include "core_include.h"
+class CC_CORE_EXPORT IdentifyingModelBase : public QAbstractListModel
+{
+	Q_OBJECT;
+	Q_PROPERTY(int rowCount READ rowCount NOTIFY rowCountChanged);
 
+public:
+	explicit IdentifyingModelBase(QObject* parent = nullptr);
+signals:
+	void rowCountChanged();
+};
 template<class T, template<class>class C = std::deque>
-class IdentifyingModel : public QAbstractListModel
+class IdentifyingModel : public IdentifyingModelBase
 {
 public:
 	explicit IdentifyingModel(const QHash<int,QByteArray> & roles,QObject* parent)
-		:QAbstractListModel(parent)
+		:IdentifyingModelBase(parent)
 	{
 		_roles.insert(roles);
 	}
@@ -24,12 +34,13 @@ public:
 	{
 		if (!_index.contains(id))
 			return QVariant();
-		return read(_data[id],_index[id], role);
+		return read(_data[id], _index.at(id), role);
 
 	}
 	bool setData(const QModelIndex& index, const QVariant& value, int role) override final
 	{
-		if (!index.isValid() || !value.isValid() || index.row() >= rowCount() || index.row() < 0)
+		if (!index.isValid() || !value.isValid() || 
+			index.row() >= rowCount() || index.row() < 0)
 		{
 			return false;
 		}
@@ -41,7 +52,7 @@ public:
 				if (!edit(_data[index.row()], value, index.row(), role))
 					return false;
 				_index[value.toInt()] = index.row();
-				_index.remove(lastID);
+				_index.erase(lastID);
 				return true;
 			}
 		}
@@ -61,7 +72,24 @@ public:
 			qWarning() << "Specified id " << id << " not found";
 			return QModelIndex();
 		}
-		return index(_index[id]);
+		return index(_index.at(id));
+	}
+	template<class Iter>
+	bool insertRange(int row, Iter begin, Iter end)
+	{
+		int distance = std::distance(begin, end) - 1;
+		if (row > rowCount() || row < 0 || distance <0)
+		{
+			return false;
+		}
+		beginInsertRows(QModelIndex(), row, row+distance);
+		_data.insert(_data.begin(), begin, end);
+		for (size_t i = row; i <= row + distance; i++)
+		{
+			_index.insert({read( _data[i],i,IDRole()).toInt(), i });
+		}
+		endInsertRows();
+
 	}
 	bool setData(const QModelIndex& index, T val)
 	{
@@ -75,7 +103,7 @@ public:
 		{
 			_index[newID] = index.row();
 			if (_index.contains(oldID))
-				_index.remove(oldID);
+				_index.erase(oldID);
 		}
 		_data.emplace(_data.begin() + index.row(), std::move(val));
 		return true;
@@ -93,7 +121,7 @@ public:
 				if(id != value.toInt())
 				{
 					_index[value.toInt()] = _index[id];
-					_index.remove(id);
+					_index.erase(id);
 				}
 			}
 			QModelIndex changed = index(_index[id]);
@@ -131,7 +159,7 @@ public:
 		beginInsertRows(QModelIndex(), row, row + in.size() - 1);
 		if (row < _data.size())
 		{
-			for (auto i = _data.begin() + row + 1; i < _data.end(); ++i)
+			for (auto i = _data.begin() + row; i < _data.end(); ++i)
 			{
 				_index[read(*i, 0, IDRole()).toInt()] += in.size();
 			}
@@ -155,9 +183,13 @@ public:
 		if (row<0 || row + count > rowCount() || count <= 0)
 			return false;
 		beginRemoveRows(parent, row, row + count - 1);
-		_index.remove(read(_data[row], row, IDRole()).toInt());
+		_index.erase(read(_data[row], row, IDRole()).toInt());
 		free(std::move(_data[row]));
 		_data.erase(_data.begin() + row, _data.begin() + row + count);
+		for (size_t i = row; i < _data.size(); i++)
+		{
+			_index[read(_data[i], i, IDRole()).toInt()] -= count;
+		}
 		endRemoveRows();
 		return true;
 	}
@@ -173,7 +205,7 @@ protected:
 	virtual void free(T&&) {};
 private:
 	//id to row
-	QHash<int, int> _index;
+	std::unordered_map<int, int> _index;
 	QHash<int, QByteArray> _roles;
 	C<T> _data;
 };

@@ -45,7 +45,7 @@ QVariant Model::read(const Data& par, int row, int role) const
 	case HasVideo:
 		return par.hasVideo;
 	case HasAudio:
-		return par.hasVideo;
+		return par.hasAudio;
 	}
 	return QVariant();
 }

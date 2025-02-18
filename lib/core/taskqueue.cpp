@@ -9,22 +9,23 @@ TaskQueue::TaskQueue(size_t threadCount)
 		i = std::thread(&TaskQueue::threadFunc, this);
 }
 std::function<void()> TaskQueue::dequeue() {
-	std::unique_lock lock(mutex);
-	while (!mJoining) {
-		std::optional<clock::time_point> time;
-		if (!mTasks.empty()) {
-			time = mTasks.top().time;
-			if (*time <= clock::now()) {
-				auto func = std::move(mTasks.top().func);
-				mTasks.pop();
-				return func;
-			}
-		}
-		mWaitingCondition.notify_all();
+	std::optional<clock::time_point> time;
+	while (true) {
+		std::unique_lock lock(mutex);
 		if (time)
 			mTasksCondition.wait_until(lock, *time);
 		else
-			mTasksCondition.wait(lock);
+			mTasksCondition.wait(lock, [this]() {return !mTasks.empty() || mJoining; });
+		if (mJoining)
+			break;
+		time = mTasks.top().time;
+		if (*time <= clock::now()) {
+			auto func = std::move(mTasks.top().func);
+			mTasks.pop();
+			return func;
+		}
+		//mWaitingCondition.notify_all();
+
 	}
 	return nullptr;
 }

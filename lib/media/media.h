@@ -9,10 +9,13 @@ extern "C" {
 #include <qaudioformat.h>
 #include "datapipe.h"
 #include <memory>
-namespace media
+#include <qabstractvideobuffer.h>
+#include <qvideosink.h>
+#include <QFuture>
+#include <qdebug>
+namespace Media
 {
     static bool Inited = false;
-
 #ifdef av_err2str
 #undef av_err2str
 #include <string>
@@ -43,8 +46,17 @@ namespace media
 #endif
             ;
     }
+    struct Raw
+    {
+        const uint8_t* raw = nullptr;
+        size_t size = 0;
+    };
+
     using PacketPipe = DataPipe<4, AVPacket>;
-    using FramePipe  = DataPipe<32, AVFrame>;
+    using FramePipe = DataPipe<32, AVFrame>;
+    using BytePipe = DataPipe<2, std::vector<std::byte>>;
+    using RawPipe = DataPipe<2, Raw>;
+
     static std::shared_ptr<AVPacket> createPacket()
     {
         return std::shared_ptr<AVPacket>(av_packet_alloc(), [](AVPacket* p) {av_packet_free(&p); });
@@ -69,6 +81,7 @@ namespace media
             }
         );
     }
+
     namespace Audio
     {
         struct Source
@@ -121,74 +134,7 @@ namespace media
         }
     }
     namespace Video {
-        struct Source
-        {
-            int height;
-            int width;
-            AVCodecID codecID;
-            AVPixelFormat format;
-        };
-        static QVideoFrameFormat::PixelFormat toQtPixel(AVPixelFormat avPixelFormat)
-        {
-            switch (avPixelFormat) {
-            default:
-                break;
-            case AV_PIX_FMT_NONE:
-                Q_ASSERT(!"Invalid avPixelFormat!");
-                return QVideoFrameFormat::Format_Invalid;
-            case AV_PIX_FMT_ARGB:
-                return QVideoFrameFormat::Format_ARGB8888;
-            case AV_PIX_FMT_0RGB:
-                return QVideoFrameFormat::Format_XRGB8888;
-            case AV_PIX_FMT_BGRA:
-                return QVideoFrameFormat::Format_BGRA8888;
-            case AV_PIX_FMT_BGR0:
-                return QVideoFrameFormat::Format_BGRX8888;
-            case AV_PIX_FMT_ABGR:
-                return QVideoFrameFormat::Format_ABGR8888;
-            case AV_PIX_FMT_0BGR:
-                return QVideoFrameFormat::Format_XBGR8888;
-            case AV_PIX_FMT_RGBA:
-                return QVideoFrameFormat::Format_RGBA8888;
-            case AV_PIX_FMT_RGB0:
-                return QVideoFrameFormat::Format_RGBX8888;
-            case AV_PIX_FMT_YUVJ422P:
-                return QVideoFrameFormat::Format_YUV422P;
-            case AV_PIX_FMT_YUV422P:
-                return QVideoFrameFormat::Format_YUV422P;
-            case AV_PIX_FMT_YUV420P:
-                return QVideoFrameFormat::Format_YUV420P;
-            case AV_PIX_FMT_YUV420P10:
-                return QVideoFrameFormat::Format_YUV420P10;
-            case AV_PIX_FMT_UYVY422:
-                return QVideoFrameFormat::Format_UYVY;
-            case AV_PIX_FMT_YUYV422:
-                return QVideoFrameFormat::Format_YUYV;
-            case AV_PIX_FMT_NV12:
-                return QVideoFrameFormat::Format_NV12;
-            case AV_PIX_FMT_NV21:
-                return QVideoFrameFormat::Format_NV21;
-            case AV_PIX_FMT_GRAY8:
-                return QVideoFrameFormat::Format_Y8;
-            case AV_PIX_FMT_GRAY16:
-                return QVideoFrameFormat::Format_Y16;
-            case AV_PIX_FMT_P010:
-                return QVideoFrameFormat::Format_P010;
-            case AV_PIX_FMT_P016:
-                return QVideoFrameFormat::Format_P016;
-            case AV_PIX_FMT_MEDIACODEC:
-                return QVideoFrameFormat::Format_SamplerExternalOES;
-            }
-
-            const AVPixFmtDescriptor* descriptor = av_pix_fmt_desc_get(avPixelFormat);
-
-            if (descriptor->flags & AV_PIX_FMT_FLAG_RGB)
-                return QVideoFrameFormat::Format_RGBA8888;
-
-            if (descriptor->comp[0].depth > 8)
-                return QVideoFrameFormat::Format_P016;
-            return QVideoFrameFormat::Format_YUV420P;
-        }
+        CC_MEDIA_EXPORT QVideoFrameFormat::PixelFormat toQtPixel(AVPixelFormat avPixelFormat);
         static AVPixelFormat toAVPixel(QVideoFrameFormat::PixelFormat pixelFormat)
         {
             switch (pixelFormat) {
@@ -249,5 +195,56 @@ namespace media
                 return AV_PIX_FMT_MEDIACODEC;
             }
         }
-    }
-}
+        struct SourceConfig
+        {
+            int height = 0;
+            int width = 0;
+            AVRational aspectRatio;
+            AVPixelFormat format = AV_PIX_FMT_NONE;
+            AVCodecID codecID = AV_CODEC_ID_NONE;
+
+        };
+        class CC_MEDIA_EXPORT StreamSource : public QObject
+        {
+            Q_OBJECT;
+        public:
+            virtual std::shared_ptr<FramePipe> frameOutput() = 0;
+            virtual QFuture<SourceConfig> open() = 0;
+            virtual void close() = 0;
+            virtual bool isOpen() = 0;
+        };
+        class CC_MEDIA_EXPORT QtVideoBuffer : public QAbstractVideoBuffer
+        {
+        public:
+            QtVideoBuffer();
+            void setFrame(std::shared_ptr<AVFrame> fr);
+            QVideoFrameFormat format() const override;
+            QAbstractVideoBuffer::MapData map(QVideoFrame::MapMode mapMode) override;
+        private:
+            std::shared_ptr<AVFrame> frame;
+        };
+        struct CC_MEDIA_EXPORT SinkConnector
+        {
+            SinkConnector(std::shared_ptr<FramePipe> pipe, QVideoSink* sink);
+            ~SinkConnector();
+        private:
+            struct FrameData
+            {
+                QtVideoBuffer* buf;
+                size_t pipeIndex = -1;
+                std::optional<QVideoFrame> qframe;
+            };
+            FrameData current;
+            FrameData prev;
+            int listenerIndex;
+            QVideoSink* sink;
+            std::shared_ptr<Media::FramePipe> input;
+        };
+
+    }//Video
+    struct Device
+    {
+        std::string name;
+        std::string dsc;
+    };
+}//Media

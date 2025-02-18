@@ -1,6 +1,5 @@
 
 find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick LinguistTools QuickControls2 Multimedia)
-find_package(LibDataChannel CONFIG REQUIRED)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -50,6 +49,10 @@ qt_add_qml_module(app
     QML_FILES ${qml_files}
     RESOURCES ${app_resources}
 )
+set_target_properties(app PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED YES
+)
 
 #file(REAL_PATH "../components" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 #list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
@@ -83,6 +86,7 @@ target_compile_definitions(app
 target_link_libraries(app PRIVATE
         ChatClient::Core
         ChatClient::Network
+        ChatClient::Media
         LibDataChannel::LibDataChannel
 
         Qt6::Core

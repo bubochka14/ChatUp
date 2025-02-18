@@ -1,8 +1,5 @@
 #pragma once
-#include <QString>
 #include <QFuture>
-#include <qvariant.h>
-#include <qhash.h>
 #include <network_include.h>
 #include <qvideosink.h>
 #include <qqmlengine.h>
@@ -10,8 +7,12 @@
 #include "abstractcontroller.h"
 #include "api/call.h"
 #include "networkmanager.h"
-//#include "media.h"
+#include "rtcservice.h"
+#include "rtppacketizer.h"
+#include "encoder.h"
+#include "media.h"
 //#include "audiooutput.h"
+Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
 namespace Call {
 	class Controller;
 	class Handler;
@@ -20,34 +21,43 @@ namespace Call {
 		Q_OBJECT;
 		QML_NAMED_ELEMENT(CallHandler);
 		QML_UNCREATABLE("");
-
 	public:
 		enum State
 		{
 			Disconnected,
-			HasCall,
 			InsideTheCall
 		};Q_ENUM(State)
 		explicit Handler(Controller* controller, int roomID);
 		State state() const;
 		Participate::Model* participants();
 		int roomID() const;
-		void setIsMuted(bool other);
-		bool isMuted() const;
+		bool hasVideo();
+		bool hasAudio();
+		Q_INVOKABLE QFuture<void> openVideo(Media::Video::StreamSource* source);
+		//Q_INVOKABLE QFuture<void> openAudio(Media::StreamSource* source);
+		//Q_INVOKABLE QFuture<void> connectAudioSink(int userID, QAudioSi);
 		Q_INVOKABLE QFuture<void> disconnect();
+		Q_INVOKABLE void closeVideo();
+		Q_INVOKABLE QFuture<void> closeAudio();
 		Q_INVOKABLE QFuture<void> join();
+		Q_INVOKABLE void connectVideoSink(int userID, QVideoSink*);
 		Q_INVOKABLE void release();
 	signals:
 		void participantsChanged();
 		void isMutedChanged();
 		void stateChanged();
+		void hasAudioChanged();
+		void hasVideoChanged();
 	protected:
 		void setState(State other);
+		void setHasAudio(bool);
+		void setHasVideo(bool);
 	private:
 		Q_PROPERTY(Participate::Model* participants READ participants NOTIFY participantsChanged);
 		Q_PROPERTY(State state READ state NOTIFY stateChanged);
-		Q_PROPERTY(bool isMuted READ isMuted WRITE setIsMuted NOTIFY isMutedChanged);
 		Q_PROPERTY(int roomID READ roomID CONSTANT)
+		Q_PROPERTY(bool hasVideo READ hasVideo NOTIFY hasVideoChanged)
+		Q_PROPERTY(bool hasAudio READ hasAudio NOTIFY hasAudioChanged)
 
 		Controller* _controller;
 		Participate::Model* _prt;
@@ -56,21 +66,42 @@ namespace Call {
 		State _state;
 		friend class Controller;
 	};
+	struct StreamContext
+	{
+		Media::Video::StreamSource* videoSource = nullptr;
+		std::unique_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
+		//Media::StreamSource* audio = nullptr;
+		//Media::Audio::Source audioSource;
+	};
+
+
+
 	class CC_NETWORK_EXPORT Controller : public AbstractController
 	{
 		Q_OBJECT;
 		QML_NAMED_ELEMENT(CallController)
 		QML_UNCREATABLE("");
 	public:
-		explicit Controller(NetworkManager* manager, QObject* parent = nullptr);
+		explicit Controller(std::shared_ptr<NetworkCoordinator> manager,
+			QObject* parent = nullptr);
 		Q_INVOKABLE Handler* handler(int roomID);
 
 		QFuture<void> disconnect(Handler* h);
 		QFuture<void> join(Handler* h);
+		QFuture<void> openVideo(Handler* h, Media::Video::StreamSource* st);
+		void closeVideo(Handler* h);
+		//QFuture<void> openAudio(Handler* h, Media::StreamSource* st);
+		void connectVideoSink(Handler* h,int userID, QVideoSink*);
+		void setAudio(bool st, Handler* h);
+		void setVideo(bool st, Handler* h);
+		bool hasAudio(Handler* h);
+		bool hasVideo(Handler* h);
 		void release(Handler* h);
 
 	private:
 		QHash<int, Handler*> _handlers;
-		NetworkManager* _manager;
+		std::shared_ptr<NetworkCoordinator> _manager;
+		std::shared_ptr<rtc::Service> _rtc;
+		std::unordered_map<int, StreamContext> _userContexts;
 	};
 }

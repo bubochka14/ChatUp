@@ -7,32 +7,28 @@ extern "C"
 #include <memory>
 #include "media.h"
 #include <optional>
-#include <qdebug.h>
 #include "media_include.h"
-namespace media {
-    class CC_MEDIA_EXPORT MicrophoneInput
+#include <qloggingcategory.h>
+Q_DECLARE_LOGGING_CATEGORY(LC_MICROPHONE);
+
+namespace Media::Audio 
+{
+    class CC_MEDIA_EXPORT Microphone
     {
     public:
-        struct Device
-        {
-
-            std::string name;
-            std::string dsc;
-
-        };
-        explicit MicrophoneInput(const Device& info);
+        explicit Microphone(std::string devcice);
         std::shared_ptr<PacketPipe> output();
         std::optional<Audio::Source> open();
         bool isOpened();
         void close();
-        static std::vector<Device> availableDevices();
-        Device currentDevice() const;
-        ~MicrophoneInput();
+        static std::vector<std::string> availableDevices();
+        std::string currentDevice() const;
+        ~Microphone();
         std::shared_ptr<AVFormatContext> context();
     private:
         std::shared_ptr<AVFormatContext> ctx;
         std::shared_ptr<PacketPipe> out;
-        Device device;
+        std::string device;
         std::thread micThread;
         void threadFunc();
         std::mutex mutex;

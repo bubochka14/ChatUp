@@ -11,8 +11,19 @@ Rectangle {
     required property var roomID
     property var minimumHeight: 140
     property CallHandler callHandler
+    property var participantCount: 0
     signal connect
     signal disconnect
+    // Component.onCompleted:
+    // {
+    //     root.participantCount = root.callHandler.participants.rowCount()
+    // }
+    // Connections {
+    //     target: callHandler
+    //     function onProfileClicked() {
+    //         root.userProfileClicked(userID)
+    //     }
+    // }
     states: [
         State {
             name: "disconnected"
@@ -21,7 +32,7 @@ Rectangle {
                 interactionBtn.text: "Call"
             }
         },
-        State{
+        State {
             name: "notJoined"
             PropertyChanges {
                 root.visible: true
@@ -38,11 +49,12 @@ Rectangle {
     ]
     color: "black"
     state: {
-        if(root.callHandler.state == CallHandler.HasCall)
-            return "notJoined"
-        if(root.callHandler.state == CallHandler.InsideTheCall)
+        if (root.callHandler.state == CallHandler.InsideTheCall)
             return "joined"
-        else return "disconnected"
+        if (root.callHandler.participants.rowCount > 0)
+            return "notJoined"
+        else
+            return "disconnected"
     }
     Component.onCompleted: {
         root.callHandler = manager.callController.handler(root.roomID)
@@ -56,6 +68,7 @@ Rectangle {
             boxWidth: root.width
             Layout.fillHeight: true
             Layout.fillWidth: true
+            callHandler: root.callHandler
         }
         Row {
             spacing: 5
@@ -71,7 +84,19 @@ Rectangle {
                 }
             }
             Button {
-                text: "Media"
+                text: root.callHandler.hasVideo ? "Media OFF" : "Media ON"
+                onClicked: {
+                    if (root.callHandler.hasVideo) {
+                        root.callHandler.closeVideo()
+                    } else {
+                        CameraPipeline.currentDevice = CameraPipeline.availableDevices[0]
+                        root.callHandler.openVideo(CameraPipeline)
+                    }
+                }
+            }
+            Button {
+                text: root.callHandler.hasAudio ? "Audio OFF" : "Audio ON"
+                onClicked: root.callHandler.hasAudio = !root.callHandler.hasAudio
             }
         }
     }

@@ -15,7 +15,7 @@ class QmlWindowFactory : public AbstractWindowFactory
 public:
 	explicit QmlWindowFactory(QObject* parent = nullptr);
 	StartupWindow* createStartupWindow() override;
-	AbstractChatWindow* createChatWindow(ControllerManager* manager) override;
+	AbstractChatWindow* createChatWindow(std::shared_ptr<ControllerManager> manager) override;
 private:
 	QQmlEngine* _engine;
 };

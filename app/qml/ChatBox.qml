@@ -12,7 +12,6 @@ ColoredFrame {
     //for messages
     required property ControllerManager manager
     property var roomID
-    property bool hasCall: false
     property var roomsCache: ({})
     property string initalMessage: "Select room to start Messaging"
     property var roomIndex
@@ -59,27 +58,30 @@ ColoredFrame {
         if (roomsCache[roomID] === undefined) {
             state = "Loading"
             var history = manager.messageController.model(roomID)
-            manager.messageController.load(roomID,0,0,3);
-            var component = Qt.createComponent("RoomView.qml")
-            var obj = roomViewComponent.createObject(roomContainer, {
-                                                         "manager": manager,
-                                                         "messageModel": history,
-                                                         "roomID": root.roomID,
-                                                         "chatBox": root
-                                                     })
-            obj.showProfile.connect(showUserProfile)
-            roomsCache[roomID] = {
-                "model": history,
-                "item": obj
-            }
-            root.roomIndex = roomContainer.children.length - 1
-            root.state = "Chat"
+            Future.onFinished(manager.messageController.load(roomID, 0, 0, 10),
+                              function () {
+                                  var component = Qt.createComponent(
+                                              "RoomView.qml")
+                                  var obj = roomViewComponent.createObject(
+                                              roomContainer, {
+                                                  "manager": manager,
+                                                  "messageModel": history,
+                                                  "roomID": root.roomID,
+                                                  "chatBox": root
+                                              })
+                                  obj.showProfile.connect(showUserProfile)
+                                  roomsCache[roomID] = {
+                                      "model": history,
+                                      "item": obj
+                                  }
+                                  root.roomIndex = roomContainer.children.length - 1
+                                  root.state = "Chat"
+                              })
         } else {
             root.roomIndex = roomContainer.getIndex(roomID)
             root.state = "Chat"
         }
     }
-    onStateChanged: console.log(state)
     function readAll() {
         var model = roomsCache[roomID].model
         manager.messageController.markAsRead(root.roomID, model.data(
@@ -88,10 +90,9 @@ ColoredFrame {
     }
 
     function showUserProfile(id) {
-        Future.onFinished(manager.userController.get(id),
-                          function (user) {
-                              foreignProfileViewer.showProfle(user)
-                          })
+        Future.onFinished(manager.userController.get(id), function (user) {
+            foreignProfileViewer.showProfle(user)
+        })
     }
     padding: 0
     bottomPadding: 0

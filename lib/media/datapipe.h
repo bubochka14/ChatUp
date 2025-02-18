@@ -5,15 +5,19 @@
 #include <map>
 #include <shared_mutex>
 #include <semaphore>
+#include <thread>
+
 #include <condition_variable>
 #include "media_include.h"
-namespace media {
+namespace Media 
+{
+	//threadsafe
 	template<int size, class T>
-	class CC_MEDIA_EXPORT DataPipe
+	class DataPipe
 	{
 
 	public:
-		using DataCallback = std::function<void(std::weak_ptr<T>,size_t index)>;
+		using DataCallback = std::function<void(std::shared_ptr<T>,size_t index)>;
 		using Constructor = std::function<T*()>;
 		using Deleter = std::function<void(T*)>;
 
@@ -34,9 +38,18 @@ namespace media {
 				subpipes[i].ptr = std::shared_ptr<T>(temp, deleter);
 			}
 		}
-		DataPipe()
-			:DataPipe([]() {return nullptr; }, [](T*) {})
-		{}
+		DataPipe(bool constructSubpipes = true)
+			:sem(size)
+		{
+			if (constructSubpipes)
+			{
+				for (size_t i = 0; i < size; i++)
+					subpipes[i].ptr = std::make_shared<T>();
+			}else 
+				for (size_t i = 0; i < size; i++)
+					subpipes[i].ptr = nullptr;
+
+		}
 		void reset(const Constructor& constructor, const Deleter& deleter)
 		{
 			for (size_t i = 0; i < size; i++)
@@ -49,21 +62,28 @@ namespace media {
 		{
 			return subpipes[index].ptr;
 		}
-		PipeData holdForWriting(){
+		 PipeData holdForWriting(){
 			sem.acquire();
-			for (size_t i = 0; i < subpipes.size(); i++)
-			{
-				if (subpipes[i].isFree)
-				{
-					subpipes[i].isFree = false;
-					return PipeData(subpipes[i].ptr, i);
-				}
-			}
+			return getFree();
+
 		}
-		void onDataChanged(const DataCallback& c)
+		std::optional<PipeData> tryHoldForWriting()
+		{
+			if(sem.try_acquire())
+				return getFree();
+			return std::nullopt;
+		}
+		int onDataChanged(const DataCallback& c)
 		{
 			std::lock_guard<std::mutex>guard (reader_mutex);
-			listeners.push_back(c);
+			listeners[++listenerFreeIndex] = c;
+			return listenerFreeIndex;
+		}
+		void removeListener(int index)
+		{
+			std::lock_guard<std::mutex>guard(reader_mutex);
+			listeners.erase(index);
+
 		}
 		void unmapWriting(size_t index, bool notifyReaders)
 		{
@@ -76,9 +96,9 @@ namespace media {
 				return;
 			}
 			subpipes[index].readings = listeners.size();
-			for (size_t i = 0; i < listeners.size(); i++)
+			for (auto& l : listeners)
 			{
-				listeners[i](std::weak_ptr(subpipes[index].ptr), index);
+				l.second(subpipes[index].ptr, index);
 			}
 
 		}
@@ -92,6 +112,19 @@ namespace media {
 		}
 
 	private:
+		PipeData getFree()
+		{
+			for (size_t i = 0; i < subpipes.size(); i++)
+			{
+				if (subpipes[i].isFree)
+				{
+					subpipes[i].isFree = false;
+					return PipeData(subpipes[i].ptr, i);
+				}
+			}
+			//should never happen
+			throw std::logic_error("Get free pipe error");
+		}
 		struct SubPipe
 		{
 			std::shared_ptr<T> ptr;
@@ -99,13 +132,13 @@ namespace media {
 			size_t readings = 0;
 		};
 		std::weak_ptr<T> make_weak_ptr(std::shared_ptr<T> ptr) { return ptr; }
-		std::vector<DataCallback> listeners;
+		std::map<int,DataCallback> listeners;
 		Constructor constructor;
 		Deleter     deleter;
-		std::counting_semaphore<size> sem;
 		std::mutex reader_mutex;
+		std::counting_semaphore<size> sem;
 		std::array<SubPipe, size> subpipes;
-		
+		inline static int listenerFreeIndex = 0;
 	};
 
 }

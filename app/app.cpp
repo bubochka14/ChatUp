@@ -1,77 +1,93 @@
 #include "app.h"
 Q_LOGGING_CATEGORY(LC_ChatClient, "ChatClient")
-App::App(const QString& host, int port, QObject* parent)
-	:App(new WSNetworkManager(host, port),new QmlWindowFactory(), parent)
+App::App(std::string host, int port)
+	:App(std::make_shared<NetworkCoordinator>(host,port),
+		std::make_shared<QmlWindowFactory>())
 
 {
 }
-App::App(NetworkManager* netFact, AbstractWindowFactory* windowFactory, QObject* parent)
-	:QObject(parent)
-	,_manager(netFact)
-	,_windowFactory(windowFactory)
+App::App(std::shared_ptr<NetworkCoordinator> netFact,
+	std::shared_ptr<AbstractWindowFactory> windowFactory)
+	:_windowFactory(windowFactory)
+	,_network(netFact)
 {
-	_controllerManager = new CallerControllerManager(_manager, this);
-	_manager->setParent(this);
-	_windowFactory->setParent(this);
+	_controllerManager = std::make_shared<CallerControllerManager>(_network);
 	setAppLanguage();
 }
 
+void App::handleRegistration(const QString& login, const QString& pass)
+{
+	startup->clear();
+	startup->setState(StartupWindow::Loading);
+	startup->setStatus("Connecting");
+	_controllerManager->userController()->create(pass, login)
+		.then([this, login, pass]() {
+		_network->setCredentials({ pass.toStdString(),login.toStdString() });
+		_network->initialize()
+			.then(this, [this]() {
+			chat->initialize().then(this, [this]()
+				{
+					startup->hide();
+					chat->show();
+					startup->clear();
+				});
+				});
+
+			});
+	
+	/*	.then(context, [this]() {
+		startup->clear();
+		chat->show();
+		startup->hide();
+			})
+		.onFailed(this, [this](const QString& error)
+			{
+				startup->clear();
+				startup->setErrorString(error);
+			}
+		).onFailed([this]
+			{
+				startup->clear();
+				startup->setErrorString("Unknown error");
+			});*/
+}
+void App::handleLogin(const QString& login, const QString& pass)
+{
+	startup->clear();
+	startup->setState(StartupWindow::Loading);
+	_network->setCredentials({ login.toStdString(),pass.toStdString() });
+	_network->initialize()
+		.then(this, [this]() 
+			{
+				chat->initialize().then(this, [this]()
+					{
+						startup->hide();
+						chat->show();
+						startup->clear();
+					});
+
+			})
+		.onFailed(this, [this](const QString& error)
+			{
+				startup->clear();
+				startup->setErrorString(error);
+			}
+		).onFailed(this, [this]
+			{
+				startup->clear();
+				startup->setErrorString("Unknown error");
+			});
+}
 int App::run()
 {
+
 	startup = _windowFactory->createStartupWindow();
 	chat = _windowFactory->createChatWindow(_controllerManager);
 	if (!startup || !chat)
 		return 0;
-	startup->setParent(this);
-	_manager->initialize();
-	QThread* coreThread = new QThread;;
-	QObject* context = new QObject;
-	context->moveToThread(coreThread);
-	coreThread->start();
-	connect(startup, &StartupWindow::registerPassed, this, [this, context]
-	(const QString& login, const  QString& pass) {
-			startup->clear();
-			startup->setState(StartupWindow::Loading);
-			_manager->setCredentials({ login,pass });
-			_controllerManager->initializeAll()
-				.then(context, [this]() {
-				startup->clear();
-				chat->show();
-				startup->hide();
-					})
-				.onFailed([this](const QString& error)
-					{
-						startup->clear();
-						startup->setErrorString(error);
-					}
-				).onFailed([this]
-					{
-						startup->clear();
-						startup->setErrorString("Unknown error");
-					});
-		});
-	connect(startup, &StartupWindow::loginPassed, this, [this,context](const QString& login, const  QString& pass) {
-		startup->clear();
-		startup->setState(StartupWindow::Loading);
-		_manager->setCredentials({ login,pass });
-		_controllerManager->initializeAll()
-			.then(context, [this]() {
-			startup->clear();
-			chat->show();
-			startup->hide();
-				})
-			.onFailed([this](const QString& error)
-				{
-					startup->clear();
-					startup->setErrorString(error);
-				}
-			).onFailed([this]
-				{
-					startup->clear();
-					startup->setErrorString("Unknown error");
-				});
-		});
-	connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
+	QObject::connect(startup, &StartupWindow::registerPassed, this, &App::handleRegistration);
+	QObject::connect(startup, &StartupWindow::loginPassed, this, &App::handleLogin);
+	//connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
 	startup->show();
 	return 1;
 }
@@ -126,8 +142,8 @@ void App::logout(const QString& reason)
 	messageController->logout();
 	userController->logout()*/;
 
-	chat = _windowFactory->createChatWindow(_controllerManager);
-	connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
+	//chat = _windowFactory->createChatWindow(_controllerManager);
+	//connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
 
 	startup->clear();
 	startup->setErrorString(reason);

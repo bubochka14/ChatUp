@@ -12,7 +12,7 @@ Model::Model(QObject* parent)
 {
 
 }
-QVariant Model::read(const Group::Data& data, int row, int role) const
+QVariant Model::read(const Group::ExtendedData& data, int row, int role) const
 {
 	switch (role)
 	{
@@ -28,7 +28,7 @@ QVariant Model::read(const Group::Data& data, int row, int role) const
 		break;
 	}
 }
-bool Model::edit(Group::Data& data, const QVariant& value, int row, int role)
+bool Model::edit(Group::ExtendedData& data, const QVariant& value, int row, int role)
 {
 	switch (role)
 	{

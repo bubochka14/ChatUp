@@ -1,13 +1,27 @@
 #include "messagecontroller.h"
 
 using namespace Message;
-CallerController ::CallerController(NetworkManager* m,
+CallerController ::CallerController(std::shared_ptr<NetworkCoordinator> m,
 	QObject* parent)
 	:Controller(parent)
 	,_manager(m)
 
 {
-
+	Api::Create::handle(_manager, [this](Message::Data&& data) {
+		QtFuture::makeReadyFuture().then(this, [this, data = std::move(data)]() {
+			if (data.id == Message::invalidID || data.roomID == Group::invalidID)
+				return;
+			Message::Model* model;
+			if (!_history.contains(data.roomID))
+			{
+				model = new Message::Model(this);
+				_history[data.roomID] = model;
+			}
+			else
+				model = _history[data.roomID];
+			model->insertData(0, std::move(data));
+			});
+		});
 }
 Controller::Controller(QObject* parent)
 	:AbstractController(parent)
@@ -15,19 +29,7 @@ Controller::Controller(QObject* parent)
 }
 QFuture<void> CallerController::initialize()
 {
-	Api::Create::handle(_manager, [this](Message::Data&& data) {
-		if (data.id == Message::invalidID || data.roomID == Group::invalidID)
-			return;
-		Message::Model* model;
-		if (!_history.contains(data.roomID))
-		{
-			model = new Message::Model(this);
-			_history[data.roomID] = model;
-		}
-		else
-			model = _history[data.roomID];
-		model->insertData(0, std::move(data));
-		});
+
 	return QtFuture::makeReadyVoidFuture();
 }
 
@@ -47,10 +49,10 @@ QFuture<void> CallerController::create(const QString& body, int roomID)
 		int tempMessageId = -(++_tempMessageCounter);
 		model->setData(model->index(0), body, Message::Model::BodyRole);
 		model->setData(model->index(0), tempMessageId, Message::Model::IdRole);
-		model->setData(model->index(0), _manager->userID(), Message::Model::UserIdRole);
+		model->setData(model->index(0), _manager->currentUser(), Message::Model::UserIdRole);
 		model->setData(model->index(0), QDateTime::currentDateTime(), Message::Model::TimeRole);
 		Message::Api::Create req;
-		req.body = body;
+		req.body = body.toStdString();
 		req.roomID = roomID;
 		return req.exec(_manager).then([=](Message::Data&& data)
 			{
@@ -75,9 +77,10 @@ QFuture<void> CallerController::load(int roomID,int row, int from, int to)
 	req.roomID = roomID;
 	req.startIndex = from;
 	req.endIndex = to;
-	return req.exec(_manager).then([this,roomID,row](QList<Message::Data>&& res) {
+	return req.exec(_manager).then([this,roomID,row](std::vector<Message::Data>&& res) {
 		auto model = _history[roomID];
-		model->insertDataList(row, std::move(res));
+		model->insertRange(row, std::make_move_iterator(res.begin()),
+			std::make_move_iterator(res.end()));
 		});
 
 }

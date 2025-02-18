@@ -9,7 +9,7 @@ class AbstractWindowFactory : public QObject
 public:
 	virtual ~AbstractWindowFactory() = default;
 	virtual StartupWindow* createStartupWindow() =0;
-	virtual AbstractChatWindow* createChatWindow(ControllerManager* manager) =0;
+	virtual AbstractChatWindow* createChatWindow(std::shared_ptr<ControllerManager> manager) = 0;
 protected:
 	explicit AbstractWindowFactory(QObject* parent = nullptr);
 

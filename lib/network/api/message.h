@@ -1,15 +1,17 @@
 #pragma once
 #include "data.h"
 #include "networkmanager.h"
+#include <string>
+#include <qfuture>
 namespace Message::Api
 {
 	struct Create 
 	{
 		Create() =default;
-		QString body;
+		std::string body;
 		int roomID = 0;
-		QFuture<Data> exec(NetworkManager* h);
-		static void handle(NetworkManager* net, std::function<void(Data&&)> h);
+		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> h);
+		static void handle(std::shared_ptr<NetworkCoordinator> net, std::function<void(Data&&)> h);
 	private:
 		static constexpr char methodName[] = "sendChatMessage";
 
@@ -17,11 +19,11 @@ namespace Message::Api
 	struct Find
 	{
 		Find() = default;
-		std::optional<QString> messageIndex;
-		std::optional<QString> id;
-		std::optional<QString> userID;
+		std::optional<std::string> messageIndex;
+		std::optional<std::string> id;
+		std::optional<std::string> userID;
 		int roomID = 0;
-		QFuture<QList<Data>> exec(NetworkManager* h);
+		QFuture<std::vector<Data>> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "findMessage";
 	};
@@ -29,8 +31,8 @@ namespace Message::Api
 	{
 		Update() = default;
 		int messageID = 0;
-		std::optional<QString> body;
-		QFuture<Data> exec(NetworkManager* h);
+		std::string body;
+		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "updateMessage";
 	};
@@ -40,7 +42,7 @@ namespace Message::Api
 		int roomID = 0;
 		int startIndex = 0;
 		int endIndex = 0;
-		QFuture<QList<Data>> exec(NetworkManager* h);
+		QFuture<std::vector<Data>> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "getMessagesByIndex";
 	};
@@ -48,7 +50,7 @@ namespace Message::Api
 	{
 		Delete();
 		int messageID = 0;
-		QFuture<void> exec(NetworkManager* h);
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
 		static constexpr char methodName[] = "deleteMessage";
 	};

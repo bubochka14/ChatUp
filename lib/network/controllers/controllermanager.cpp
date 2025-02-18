@@ -4,7 +4,7 @@ ControllerManager::ControllerManager(QObject* parent)
 {
 
 }
-CallerControllerManager::CallerControllerManager(NetworkManager* m, QObject* parent)
+CallerControllerManager::CallerControllerManager(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	:ControllerManager(parent)
 	, message(new Message::CallerController(m))
 	, group(new Group::CallerController(m))
@@ -30,9 +30,6 @@ QFuture<void> CallerControllerManager::initializeAll()
 			{
 				if (_lastError.has_value())
 					throw _lastError.value();
-			})
-		.onFailed([] {
-		qDebug() << 123;
 			});
 
 }
@@ -46,7 +43,6 @@ Message::Controller* CallerControllerManager::messageController()
 {
 	return message;
 }
-
 User::Controller* CallerControllerManager::userController()
 {
 	return user;

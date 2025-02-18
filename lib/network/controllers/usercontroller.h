@@ -7,66 +7,52 @@
 #include "api/user.h"
 #include "networkmanager.h"
 #include "abstractcontroller.h"
-
-namespace User {
-	Q_NAMESPACE;
-	class CC_NETWORK_EXPORT Handler : public QObject
-	{
-		Q_OBJECT;
-		QML_NAMED_ELEMENT(UserHandler);
-		QML_UNCREATABLE("");
-		Q_PROPERTY(User::Status status READ status NOTIFY statusChanged);
-		Q_PROPERTY(QString name READ name NOTIFY nameChanged);
-		Q_PROPERTY(QString tag READ tag NOTIFY tagChanged);
-		Q_PROPERTY(int id READ id NOTIFY idChanged);
-	public:
-		explicit Handler(User::Data&& data, QObject* parent = nullptr);
-		void release();
-		QString name() const;
-		QString tag() const;
-		int id() const;
-		User::Status status() const;
-	signals:
-		void statusChanged();
-		void nameChanged();
-		void tagChanged();
-		void idChanged();
-	private:
-		User::Data _data;
-	};
+#include "userhandle.h"
+namespace User{
 	class CC_NETWORK_EXPORT  Controller : public AbstractController
 	{
 		Q_OBJECT;
 		QML_ELEMENT;
 		QML_UNCREATABLE("Abstract controller");
+		Q_PROPERTY(Handle* empty READ empty CONSTANT)
 	public:
 		explicit Controller(QObject* parent = nullptr);
 		Q_INVOKABLE virtual QFuture<Model*> find(const QVariantHash& pattern, int limit) = 0;
-		Q_INVOKABLE virtual QFuture<Handler*> get(int userID) = 0;
+		Q_INVOKABLE virtual QFuture<Handle*> get(int userID) = 0;
+		Q_INVOKABLE virtual QFuture<Handle*> get() = 0;
 		Q_INVOKABLE virtual QFuture<void> update(const QVariantHash& data) = 0;
-		Q_INVOKABLE virtual Handler* currentUser() = 0;
+		Q_INVOKABLE virtual QFuture<void> create(const QString& password,const QString& log) = 0;
+
+		//Q_INVOKABLE virtual Handler* currentUser() = 0;
 		Q_INVOKABLE virtual QFuture<void> remove() = 0;
+		Handle* empty() const;
+	protected:
+		virtual Handle* getEmpty() const =0;
 
 	};
-	class CC_NETWORK_EXPORT CallerController : public Controller
+	class CC_NETWORK_EXPORT CallerController final: public Controller
 	{
 		Q_OBJECT;
 	public:
-		explicit CallerController(NetworkManager* manager,
+		explicit CallerController(std::shared_ptr<NetworkCoordinator> manager,
 			QObject* parent = nullptr);
 		QFuture<Model*> find(const QVariantHash& pattern, int limit) override;
-		QFuture<Handler*> get(int userID) override;
-		Handler* currentUser() override;
+		QFuture<Handle*> get(int userID) override;
+		QFuture<Handle*> get() override;
+		QFuture<void> create(const QString& password, const QString& log);
 		QFuture<void> update(const QVariantHash& data) override;
 		QFuture<void> remove() override;
 		QFuture<void> initialize() override;
+	protected:
+		Handle* getEmpty() const override;
+
 
 	protected:
 		void connectToDispatcher();
 	private:
-		NetworkManager* _manager;
-		QHash<int, Handler*> _userHandlers;
-		QHash<int, QFuture<Handler*>> _pendingRequests;
-		Handler* _empty;
+		std::shared_ptr<NetworkCoordinator> _manager;
+		QHash<int, Handle*> _userHandlers;
+		QHash<int, QFuture<Handle*>> _pendingRequests;
+		Handle* _empty;
 	};
 }

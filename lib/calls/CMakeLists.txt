@@ -21,6 +21,8 @@ target_compile_definitions(${LIB_NAME} PRIVATE
 target_include_directories(${LIB_NAME} PUBLIC 
 	${CMAKE_CURRENT_SOURCE_DIR} 
 )
+set_property(TARGET ${LIB_NAME} PROPERTY CXX_STANDARD 20)
+
 include(GNUInstallDirs)
 install(TARGETS ${LIB_NAME}
     BUNDLE DESTINATION .

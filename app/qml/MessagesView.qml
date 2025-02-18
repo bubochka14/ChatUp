@@ -42,7 +42,7 @@ Item {
             }
             onIsVisibleChanged: {
                 if (messageStatus == MessageModel.Sent
-                        && userID != manager.userController.currentUser.id
+                        && userID != CurrentUser.id
                         && isVisible
                         && enabled)
                     root.unreadWasRead(messageIndex)
@@ -55,15 +55,12 @@ Item {
                 item.statusIcon.paused = false
                 if (listView.usersCache[userID]) {
                     item.user = listView.usersCache[userID]
-                    item.currentUser = manager.userController.currentUser.id === item.user.id
                 } else
-                    Future.onFinished(manager.userController.getUserInfo(userID),
+                    Future.onFinished(manager.userController.get(userID),
                                       function (user) {
                                           if (user) {
                                               listView.usersCache[userID] = user
                                               item.user = user
-                                              item.currentUser = manager.userController.currentUser().id
-                                                      === item.user.id
                                           } else
                                               console.error(
                                                           "Cannot hanlde received UserInfo")
@@ -77,8 +74,6 @@ Item {
                                       if (user) {
                                           listView.usersCache[userID] = user
                                           setSource("MessageDelegate.qml", {
-                                                        "currentUser": manager.userController.currentUser().id
-                                                                       === user.id,
                                                         "user": user
                                                     })
                                       } else

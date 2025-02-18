@@ -1,38 +1,30 @@
 #include "call.h"
 using namespace Call::Api;
 using namespace Qt::Literals::StringLiterals;
-QFuture<void> Join::exec(NetworkManager* h)
+QFuture<void> Join::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(callName, { {"roomID"_L1,roomID} })
-	.then([](HashList&& res) {
+	return h->serverMethod(callName, { {"roomID",roomID},{"sdp",sdp} })
+	.then([](json&& res) {
 		});
 }
 
-void Join::handle(NetworkManager* h, std::function<void(Request&&)> cb)
+void Join::handle(std::shared_ptr<NetworkCoordinator> h,
+	std::function<void(Participate::Data&&)> cb)
 {
-	h->addClientHandler([handler = std::move(cb)](QVariantHash&& in) {
-		Request out;
-		out.roomID = in.contains("roomID"_L1)? in.take("roomID"_L1).toInt()
-			:Group::invalidID;
-		out.userID = in.contains("userID"_L1)? in.take("userID"_L1).toInt()
-			:User::invalidID;
-		handler(std::move(out));
-		}, callName);
+	h->addClientHandler(callName,[handler = std::move(cb)](json&& in) {
+		handler(Participate::Data(std::move(in)));
+	});
 }
-QFuture<void> Disconnect::exec(NetworkManager*h)
+QFuture<void> Disconnect::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(callName, { {"roomID"_L1,roomID} }).then([](HashList&&) {
+	return h->serverMethod(callName, { {"roomID",roomID} }).then([](json&&) {
 
 		});
 }
-void Disconnect::handle(NetworkManager* h, std::function<void(Request&&)> cb)
+void Disconnect::handle(std::shared_ptr<NetworkCoordinator> h,
+	std::function<void(Participate::Data&&)> cb)
 {
-	h->addClientHandler([handler = std::move(cb)](QVariantHash&& in) {
-		Request out;
-		out.roomID = in.contains("roomID"_L1) ? in.take("roomID"_L1).toInt()
-			: Group::invalidID;
-		out.userID = in.contains("userID"_L1) ? in.take("userID"_L1).toInt()
-			: User::invalidID;
-		handler(std::move(out));
-		}, callName);
+	h->addClientHandler(callName,[handler = std::move(cb)](json&& in) {
+		handler(Participate::Data(std::move(in)));
+		});
 }

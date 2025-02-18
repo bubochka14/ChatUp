@@ -8,10 +8,25 @@ void Controller::setModel(Group::Model* other)
 	_model->setParent(this);
 	emit modelChanged();
 }
-CallerController::CallerController(NetworkManager*m, QObject* parent)
+CallerController::CallerController(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	:Controller(parent)
-	,_manager(m)
-{}
+	,_manager(m) 
+{
+	Group::Api::Create::handle(_manager, [this](Group::ExtendedData&& group) {
+		model()->insertRow(0);
+		model()->setData(model()->index(0), std::move(group));
+		});
+	/*_manager->addClientHandler("addRoom", [this](json&& roomJson) 
+		{
+			model()->insertRow(0);
+			model()->setData(model()->index(0), std::move(roomJson));
+		});
+	_manager->addClientHandler("updateRoom", [this](json&& roomJson) 
+		{
+			Group::Data group(roomJson);
+			model()->setData(model()->idToIndex(group.id), hash, roommodel::hashrole);
+			});*/
+}
 
 Controller::Controller(QObject* parent)
 	:AbstractController(parent)
@@ -21,31 +36,12 @@ Model* Controller::model() const
 {
 	return _model;
 }
-void CallerController::connectToDispatcher() {
-	//_manager->dispatcher()->addHandler("addRoom", [=](const QVariantHash& hash) {
-	//	userGroups()->insertRow(0);
-	//	userGroups()->setData(userGroups()->index(0), hash, RoomModel::HashRole);
-	//	});
-	//_manager->dispatcher()->addHandler("updateRoom", [=](const QVariantHash& hash) {
-	//	if (!hash.contains("roomID"))
-	//	{
-	//		qCWarning(LC_CMESSAGE_CONTROLLER) << "received updateRoom data doesn`t have roomID field";
-	//		return;
-	//	}
-	//	RoomModel* model = findModel(hash["roomID"].toInt());
-	//	if (!model)
-	//	{
-	//		qCWarning(LC_CMESSAGE_CONTROLLER) << "Unknown roomID received";
-	//		return;
-	//	}
-	//	model->setData(model->idToIndex(hash["roomID"].toInt()), hash, RoomModel::HashRole);
-	//	});
-}
+
 QFuture<int> CallerController::create(const QString& name)
 {
 	Group::Api::Create req;
-	req.name = name;
-	return req.exec(_manager).then([this](Group::Data&& res) {
+	req.name = name.toStdString();
+	return req.exec(_manager).then([this](Group::ExtendedData&& res) {
 		if (!res.id)
 			throw QString("Room id receive error");
 		int newid = res.id;
@@ -57,14 +53,10 @@ QFuture<int> CallerController::create(const QString& name)
 QFuture<void> CallerController::initialize()
 {
 	Group::Api::GetAll req;
-	return req.exec(_manager).then([=](QList<Group::Data>&& rooms)
+	return req.exec(_manager).then([=](std::vector<Group::ExtendedData>&& rooms)
 		{
-			int rows = rooms.size();
-			model()->insertRows(0, rooms.count());
-			for (size_t i = 0; i < rows; i++)
-			{
-				model()->setData(model()->index(0 + i), rooms.takeFirst());
-			}
+			model()->insertRange(0, std::make_move_iterator(rooms.begin()),
+				std::make_move_iterator(rooms.end()));
 		});
 }
 QFuture<void> CallerController::addUser(int userID, int roomID)
@@ -85,7 +77,12 @@ QFuture<void> CallerController::update(const QVariantHash& data)
 	Api::Update req;
 	return req.exec(_manager).then([](Group::Data&&){});
 }
-QFuture<void> CallerController::load(int count)
+QFuture<void> CallerController::load()
 {
-	return QtFuture::makeReadyVoidFuture();
+	Api::GetAll req;
+	return req.exec(_manager).then([this](std::vector<Group::ExtendedData> res)
+		{
+			model()->insertRange(0, std::make_move_iterator(res.begin()), 
+				std::make_move_iterator(res.end()));
+		});
 }

@@ -43,7 +43,7 @@ ApplicationWindow {
                 onLogoutClicked: root.logout()
                 onProfileClicked: {
 
-                    profileViewer.show(manager.userController.currentUser())
+                    profileViewer.show(CurrentUser)
                 }
                 onRoomsClicked: stack.currentIndex = 0
                 onDirectClicked: stack.currentIndex = 1
@@ -61,12 +61,9 @@ ApplicationWindow {
                         text: "Coming soon"
                     }
                 }
+                SettingsPage
+                {
 
-                Page {
-                    Label {
-                        anchors.centerIn: parent
-                        text: "Coming soon"
-                    }
                 }
             }
         }

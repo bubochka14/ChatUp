@@ -20,7 +20,7 @@ namespace Group {
 		Q_INVOKABLE virtual QFuture<void> addUser(int userID, int roomId) = 0;
 		Q_INVOKABLE virtual QFuture<void> remove(int id) = 0;
 		Q_INVOKABLE virtual QFuture<void> update(const QVariantHash& data) = 0;
-		Q_INVOKABLE virtual QFuture<void> load(int count) = 0;
+		Q_INVOKABLE virtual QFuture<void> load() = 0;
 		Model* model() const;
 	signals:
 		void modelChanged();
@@ -34,19 +34,17 @@ namespace Group {
 	{
 		Q_OBJECT;
 	public:
-		explicit CallerController(NetworkManager* manager,
+		explicit CallerController(std::shared_ptr<NetworkCoordinator> manager,
 			QObject* parent = nullptr);
 		QFuture<int>  create(const QString& name) override;
 		QFuture<void> addUser(int userID, int roomId) override;
 		QFuture<void> remove(int id) override;
 		QFuture<void> update(const QVariantHash& data) override;
-		QFuture<void> load(int count) override;
+		QFuture<void> load() override;
 		QFuture<void> initialize() override;
 
-	protected:
-		void connectToDispatcher();
 	private:
-		NetworkManager* _manager;
+		std::shared_ptr<NetworkCoordinator> _manager;
 
 	};
 }

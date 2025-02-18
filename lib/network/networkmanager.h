@@ -1,48 +1,65 @@
 #pragma once
-#include "applicationsettings.h"
-#include <qobject.h>
-#include "authenticationmaster.h"
 #include "network_include.h"
 #include "serverhandler.h"
+#include "userhandle.h"
 #include <deque>
-class CC_NETWORK_EXPORT NetworkManager : public  QObject
+class NetworkCoordinator;
+struct CC_NETWORK_EXPORT Credentials
 {
-	Q_OBJECT;
+	std::string password;
+	std::string login;
+};
+namespace Api
+{
+	struct Login
+	{
+		Login() = default;
+		std::string login;
+		std::string password;
+		void fromCredentials(Credentials other);
+		QFuture<User::Data> exec(std::shared_ptr<NetworkCoordinator> h);
+	private:
+		static constexpr char methodName[] = "loginUser";
+
+	};
+}
+class CC_NETWORK_EXPORT NetworkCoordinator : public std::enable_shared_from_this<NetworkCoordinator>
+{
 public:
-	using Callback = std::function<void(QVariantHash&&)>;
-	void addClientHandler(Callback&& h, const QString& method);
-	int userID() const;
-	void setCredentials(Credentials cr);
-	bool initialize();
+	using Callback = std::function<void(json&&)>;
+	void addClientHandler(std::string method, Callback&& h);
+	void setCredentials(Credentials other);
+	int currentUser() const;
+	QFuture<void> initialize();
+
 	enum Priority
 	{
-		QueuedCall,
-		TopQueuedCall,
+		AuthorizedCall,
 		DirectCall
 	};
-protected:
+	virtual QFuture<json> serverMethod(
+		std::string,
+		json args,
+		Priority priority = AuthorizedCall);
+	explicit NetworkCoordinator(std::string host, int port);
+private:
+
 	struct MethodInfo
 	{
-		const char* method;
-		QVariantHash args;
-		QPromise<HashList>* prom;
+		std::string method;
+		json args;
+		std::unique_ptr<QPromise<json>> prom;
 		int priority;
 	};
-public:
-	QFuture<HashList> serverMethod(const char* method, QVariantHash args, Priority priority= QueuedCall);
-protected:
-	explicit NetworkManager(QObject* parent = nullptr);
-	virtual AuthenticationMaster* createAuthenticationMaster() = 0;
-	virtual ServerHandler* createServerHandler() = 0;
-	QPromise<HashList>* makePromise();
-private:
+	MethodInfo takeMethod();
 	void threadFunc();
+	Credentials _credentials;
 	std::thread _networkThread;
-	std::deque<MethodInfo> _methodsQueue;
-	std::deque<MethodInfo> _readBuffer;
+	std::deque<MethodInfo> _authorizedCalls;
+	std::deque<MethodInfo> _directCalls;
 	std::atomic<int> _active;
 	std::condition_variable _condvar;
 	std::mutex _mutex;
-	ServerHandler* _handler;
-	AuthenticationMaster* _auth;
+	std::shared_ptr<ServerHandler> _handler;
+	int _user;
 };

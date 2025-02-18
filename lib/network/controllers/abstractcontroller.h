@@ -1,7 +1,8 @@
 #pragma once
 #include <qobject.h>
 #include <qfuture.h>
-class  AbstractController : public QObject
+#include "network_include.h"
+class CC_NETWORK_EXPORT AbstractController : public QObject
 {
 	Q_OBJECT;
 public:

@@ -1,56 +1,42 @@
 #include "usercontroller.h"
 using namespace User;
-Handler::Handler(User::Data&& data, QObject* parent)
-	:QObject(parent)
-	, _data(std::move(data))
-{
-
-}
-void Handler::release()
-{
-
-}
-QString Handler::name() const
-{
-	return _data.name;
-}
-QString Handler::tag() const
-{
-	return _data.tag;
-}
-int Handler::id() const
-{
-	return _data.id;
-}
-User::Status Handler::status() const
-{
-	return _data.status;
-}
-CallerController::CallerController(NetworkManager* manager,
+CallerController::CallerController(std::shared_ptr<NetworkCoordinator> manager,
 	QObject* parent)
 	:Controller(parent)
 	,_manager(manager)
 {
-
+	User::Data dumpUser;
+	dumpUser.name = "null";
+	dumpUser.tag = "null";
+	_empty = new User::Handle(std::move(dumpUser), this);
 }
 Controller::Controller(QObject* parent)
 	:AbstractController(parent)
 {
 
 }
-Handler* CallerController::currentUser()
+Handle* Controller::empty() const
 {
-	if (_manager->userID() == User::invalidID)
-		return _empty;
-	if (!_userHandlers.contains(_manager->userID()))
-		return _empty;
-	return _userHandlers[_manager->userID()];
+	return getEmpty();
 }
+Handle* CallerController::getEmpty() const
+{
+	return _empty;
+}
+
 QFuture<Model*> CallerController::find(const QVariantHash& pattern, int limit)
 {
 	return QtFuture::makeReadyFuture<Model*>(new Model);
 }
-QFuture<Handler*>CallerController::get(int userID)
+QFuture<Handle*> CallerController::get()
+{
+	return Api::Get().exec(_manager).then(this,[this](User::Data&& res) {
+
+		auto handler = new Handle(std::move(res),this);
+		return handler;
+		});
+}
+QFuture<Handle*>CallerController::get(int userID)
 {
 	if (_userHandlers.contains(userID))
 		return QtFuture::makeReadyValueFuture(_userHandlers[userID]);
@@ -59,11 +45,12 @@ QFuture<Handler*>CallerController::get(int userID)
 	Api::Get req;
 	req.id = userID;
 	_pendingRequests[userID] = req.exec(_manager)
-		.then([this,userID](User::Data&& res) {
-		auto handler = new Handler(std::move(res),this);
-		_userHandlers.emplace(userID, handler);
-		return handler;
-		//_pendingRequests.remove(userID);
+		.then(this,[this,userID](User::Data&& res) 
+			{
+				auto handler = new Handle(std::move(res),this);
+				_userHandlers.emplace(userID, handler);
+				return handler;
+			//_pendingRequests.remove(userID);
 		});
 	return _pendingRequests[userID];
 }
@@ -76,11 +63,14 @@ QFuture<void> CallerController::remove()
 	return QtFuture::makeReadyVoidFuture();
 
 }
+QFuture<void> CallerController::create(const QString& password, const QString& log)
+{
+	User::Api::Create req;
+	req.login = log.toStdString();
+	req.password = password.toStdString();
+	return req.exec(_manager);
+}
 QFuture<void> CallerController::initialize()
 {
-	if (_manager->userID() == User::invalidID)
-		return QtFuture::makeExceptionalFuture(std::make_exception_ptr(QString("Unauthorized")));
-	return get(_manager->userID()).then([](Handler*) {
-
-		});
+	return QtFuture::makeReadyVoidFuture();
 }

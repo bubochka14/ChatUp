@@ -1,73 +1,79 @@
 #pragma once
 #include "group.h"
 using namespace Group::Api;
-using namespace Qt::Literals::StringLiterals;
-
-QFuture<Group::Data> Create::exec(NetworkManager* h)
+void Create::handle(std::shared_ptr<NetworkCoordinator> net,
+	std::function<void(ExtendedData&&)> h)
 {
-	QVariantHash args;
-	args.emplace("name"_L1, std::move(name));
-	args.emplace("type"_L1,"group"_L1);
+	static constexpr char methodName[] = "addRoom";
+	net->addClientHandler(methodName,[handler = std::move(h)](json&& res) {
+		handler(Group::ExtendedData(std::move(res)));
+		});
+}
+
+QFuture<Group::ExtendedData> Create::exec(std::shared_ptr<NetworkCoordinator> h)
+{
+	json args = {
+		{"name",std::move(name)},
+		{"type","group"}
+	};
 	if (tag.has_value())
-		args.emplace("tag"_L1, *std::move(tag));
-	return h->serverMethod(methodName,std::move(args)).then([](HashList&& res) {
-		Group::Data out;
-		out.fromHash(std::move(res.takeFirst()));
-		return out;
+		args.emplace("tag", *std::move(tag));
+	return h->serverMethod(methodName,std::move(args)).then([](json&& res) {
+		return Group::ExtendedData(res);
 	});
 }
-QFuture<QList<Group::Data>> GetAll::exec(NetworkManager* h)
+QFuture<std::vector<Group::ExtendedData>> GetAll::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(methodName,{ {"type"_L1,"group"_L1} }).then([](HashList&& res) {
-		QList<Group::Data> out(res.size());
-		for (size_t i = 0; i < out.size(); i++)
+	return h->serverMethod(methodName,{ {"type","group"} }).then([](json&& res) {
+		std::vector<Group::ExtendedData> out(res.size());
+		int idx = 0;
+		for (auto& i : res)
 		{
-			out[i].fromHash(res.takeFirst());
+			out[idx++] = i;
 		}
 		return out;
 		});
 }
-QFuture<Group::Data> Update::exec(NetworkManager* h)
+QFuture<Group::Data> Update::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	QVariantHash args;
+	json args;
 	if(name.has_value())
-		args.emplace("name"_L1,*std::move(name));
+		args.emplace("name",*std::move(name));
 	if (tag.has_value())
-		args.emplace("tag"_L1, *std::move(tag));
-	args.emplace("roomID"_L1,roomID);
-	return h->serverMethod(methodName,std::move(args)).then([](HashList&& res) {
-		Group::Data out;
-		out.fromHash(std::move(res.takeFirst()));
-		return out;
+		args.emplace("tag", *std::move(tag));
+	args.emplace("roomID",roomID);
+	return h->serverMethod(methodName,std::move(args)).then([](json&& res) {
+		return Group::Data(res);
 		});
 }
-QFuture<void> AddUser::exec(NetworkManager* h)
+QFuture<void> AddUser::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(methodName,{ {"roomID"_L1,roomID},{"userID"_L1,userID}})
-		.then([](HashList&& res) {
+	return h->serverMethod(methodName,{ {"roomID",roomID},{"userID",userID}})
+		.then([](json&& res) {
 		});
 }
 
-QFuture<void> Delete::exec(NetworkManager* h)
+QFuture<void> Delete::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(methodName, { {"roomID"_L1,roomID} })
-		.then([](HashList&& res) {
+	return h->serverMethod(methodName, { {"roomID",roomID} })
+		.then([](json&& res) {
 			});
 }
-QFuture<QList<Message::Data>> GetHistory::exec(NetworkManager* h)
+QFuture<std::vector<Message::Data>> GetHistory::exec(std::shared_ptr<NetworkCoordinator> h)
 {
-	return h->serverMethod(methodName,{ { "roomID",roomID } }).then([](HashList&& res) {
-		QList<Message::Data> out(res.size());
-		for (size_t i = 0; i < out.size(); i++)
+	return h->serverMethod(methodName,{ { "roomID",roomID } }).then([](json&& res) {
+		std::vector<Message::Data> out(res.size()); 
+		int idx = 0;
+		for (auto& i : res)
 		{
-			out[i].fromHash(res.takeFirst());
+			out[idx++] = i;
 		}
 		return out;
 		});
 }
-QFuture<void> MarkRead::exec(NetworkManager* h)
+QFuture<void> MarkRead::exec(std::shared_ptr<NetworkCoordinator> h)
 {
 	return h->serverMethod(methodName,{ { "roomID",roomID },{"count",count}})
-		.then([](HashList&& res) {
+		.then([](json&& res) {
 		});
 }

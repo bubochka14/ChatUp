@@ -7,14 +7,14 @@ Q_DECLARE_LOGGING_CATEGORY(LC_ROOM_MODEL)
 namespace Group {
 	//Q_NAMESPACE_EXPORT(CC_CORE_EXPORT);
 	;
-	class CC_CORE_EXPORT Model : public IdentifyingModel<Group::Data>
+	class CC_CORE_EXPORT Model : public IdentifyingModel<Group::ExtendedData>
 	{
 		Q_OBJECT;
 		//QML_ELEMENT;
 	public:
 		enum RoleNames
 		{
-			IDRole = IdentifyingModel<Group::Data>::IDRole(),
+			IDRole = IdentifyingModel<Group::ExtendedData>::IDRole(),
 			NameRole,
 			TagRole,
 			HashRole,
@@ -24,7 +24,7 @@ namespace Group {
 		explicit Model(QObject* parent = nullptr);
 		Q_INVOKABLE QModelIndex idToIndex(int id) const;
 	protected:
-		bool edit(Group::Data&, const QVariant&, int row, int role) override;
-		QVariant read(const Group::Data&, int row, int role) const override;
+		bool edit(Group::ExtendedData&, const QVariant&, int row, int role) override;
+		QVariant read(const Group::ExtendedData&, int row, int role) const override;
 	};
 }
