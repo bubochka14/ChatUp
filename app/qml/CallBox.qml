@@ -59,51 +59,59 @@ Rectangle {
         root.callHandler = manager.callController.handler(root.roomID)
         view.model = root.callHandler.participants
     }
-    ColumnLayout {
+    CallParticipantView {
+        id: view
+        boxHeight: root.height
+        boxWidth: root.width
         anchors.fill: parent
-        CallParticipantView {
-            id: view
-            boxHeight: root.height
-            boxWidth: root.width
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            callHandler: root.callHandler
+        callHandler: root.callHandler
+    }
+    Row {
+        spacing: 5
+        anchors{
+            bottom: view.bottom
+            bottomMargin: 5
+            horizontalCenter:parent.horizontalCenter
         }
-        Row {
-            spacing: 5
-            Layout.alignment: Qt.AlignHCenter
-            IconButton {
-                id: interactionBtn
-                height: 45
-                width: 45
-                onClicked: {
-                    if (root.state == "joined") {
-                        root.callHandler.disconnect()
-                    } else {
-                        root.callHandler.join()
-                    }
+        IconButton {
+            id: interactionBtn
+            height: 45
+            width: 45
+            onClicked: {
+                if (root.state == "joined") {
+                    root.callHandler.disconnect()
+                } else {
+                    root.callHandler.join()
                 }
             }
-            IconButton {
-                height: 45
-                width: 45
-                source: root.callHandler.hasVideo ? Qt.resolvedUrl("pics/cameraopen"):Qt.resolvedUrl("pics/cameraclose")
-                onClicked: {
-                    if (root.callHandler.hasVideo) {
-                        root.callHandler.closeVideo()
-                    } else {
-                        CameraPipeline.currentDevice = CameraPipeline.availableDevices[0]
-                        root.callHandler.openVideo(CameraPipeline)
-                    }
+        }
+        IconButton {
+            height: 45
+            width: 45
+            source: root.callHandler.hasVideo ? Qt.resolvedUrl(
+                                                    "pics/cameraopen") : Qt.resolvedUrl(
+                                                    "pics/cameraclose")
+            onClicked: {
+                if (root.callHandler.hasVideo) {
+                    root.callHandler.closeVideo()
+                } else {
+                    CameraPipeline.currentDevice = CameraPipeline.availableDevices[0]
+                    root.callHandler.openVideo(CameraPipeline)
                 }
             }
-            IconButton {
-                height: 45
-                width: 45
-                source: root.callHandler.hasAudio ? Qt.resolvedUrl(
-                                                        "pics/micround") : Qt.resolvedUrl(
-                                                        "pics/nomicround")
-                onClicked: root.callHandler.hasAudio = !root.callHandler.hasAudio
+        }
+        IconButton {
+            height: 45
+            width: 45
+            source: root.callHandler.hasAudio ? Qt.resolvedUrl(
+                                                    "pics/micround") : Qt.resolvedUrl(
+                                                    "pics/nomicround")
+            onClicked: {
+                if (root.callHandler.hasAudio) {
+                    root.callHandler.closeAudio()
+                } else {
+                    root.callHandler.openAudio(null)
+                }
             }
         }
     }

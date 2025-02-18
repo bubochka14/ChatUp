@@ -34,11 +34,11 @@ namespace Call {
 		bool hasVideo();
 		bool hasAudio();
 		Q_INVOKABLE QFuture<void> openVideo(Media::Video::StreamSource* source);
-		//Q_INVOKABLE QFuture<void> openAudio(Media::StreamSource* source);
+		Q_INVOKABLE QFuture<void> openAudio(Media::Audio::StreamSource* source);
 		//Q_INVOKABLE QFuture<void> connectAudioSink(int userID, QAudioSi);
 		Q_INVOKABLE QFuture<void> disconnect();
 		Q_INVOKABLE void closeVideo();
-		Q_INVOKABLE QFuture<void> closeAudio();
+		Q_INVOKABLE void closeAudio();
 		Q_INVOKABLE QFuture<void> join();
 		Q_INVOKABLE void connectVideoSink(int userID, QVideoSink*);
 		Q_INVOKABLE void release();
@@ -89,8 +89,9 @@ namespace Call {
 		QFuture<void> disconnect(Handler* h);
 		QFuture<void> join(Handler* h);
 		QFuture<void> openVideo(Handler* h, Media::Video::StreamSource* st);
+		QFuture<void> openAudio(Handler* h, Media::Audio::StreamSource* st);
 		void closeVideo(Handler* h);
-		//QFuture<void> openAudio(Handler* h, Media::StreamSource* st);
+		void closeAudio(Handler* h);
 		void connectVideoSink(Handler* h,int userID, QVideoSink*);
 		void setAudio(bool st, Handler* h);
 		void setVideo(bool st, Handler* h);

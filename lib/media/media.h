@@ -132,6 +132,15 @@ namespace Media
                 return AV_SAMPLE_FMT_NONE;
             }
         }
+        class CC_MEDIA_EXPORT StreamSource : public QObject
+        {
+            Q_OBJECT;
+        public:
+            virtual std::shared_ptr<FramePipe> frameOutput() = 0;
+            virtual QFuture<void> open() = 0;
+            virtual void close() = 0;
+            virtual bool isOpen() = 0;
+        };
     }
     namespace Video {
         CC_MEDIA_EXPORT QVideoFrameFormat::PixelFormat toQtPixel(AVPixelFormat avPixelFormat);

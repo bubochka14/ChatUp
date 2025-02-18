@@ -21,11 +21,14 @@ Rectangle {
         anchors.centerIn: parent
         cellWidth: baseWidth
         cellHeight: baseHeight
-        width: cellWidth
-        height: cellHeight
+        width: Math.floor(root.boxWidth/cellWidth) * cellWidth
+        height: Math.floor(root.boxHeight/cellHeight)* cellHeight
+        clip: true
+
         delegate: RoundedFrame {
             id: delegate
             padding: 0
+            color: "#19182a"
             property UserHandle user: UserController.empty
             states: [
                 State {
@@ -96,24 +99,30 @@ Rectangle {
             }
             Label {
                 id: nameLabel
+                font.pointSize: 8
                 anchors {
                     bottom: parent.bottom
                     left: parent.left
                     leftMargin: 10
+                    bottomMargin: 2
                 }
 
                 text: delegate.user.name
             }
-            Label {
-                id: micLbl
+            Image {
+                id: noMicLbl
                 visible: !hasAudio
+                source: Qt.resolvedUrl("pics/nomicround")
+                height:36
+                width:36
+                mipmap: true
                 anchors {
                     bottom: parent.bottom
                     right: parent.right
-                    leftMargin: 10
-                }
+                    rightMargin: 10
+                    bottomMargin: 2
 
-                text: "noMic"
+                }
             }
         }
         // onModelChanged: resetSize()

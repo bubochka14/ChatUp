@@ -103,9 +103,9 @@ void Handler::closeVideo()
 {
 	return _controller->closeVideo(this);
 }
-QFuture<void> Handler::closeAudio()
+void Handler::closeAudio()
 {
-	return QtFuture::makeReadyVoidFuture();
+	return _controller->closeAudio(this);
 
 }
 QFuture<void> Handler::openVideo(Media::Video::StreamSource* source)
@@ -140,6 +140,7 @@ QFuture<void> Controller::openVideo(Handler* h, Media::Video::StreamSource* st)
 
 			};
 			model->setData(model->idToIndex(currentUser), true, Participate::Model::HasVideo);
+			h->hasVideoChanged();
 
 		});
 
@@ -164,10 +165,6 @@ void Handler::connectVideoSink(int userID, QVideoSink* sink)
 {
 	_controller->connectVideoSink(this, userID, sink);
 }
-//QFuture<void> Controller::openAudio(Handler* h, Media::StreamSource* st)
-//{
-//	return QtFuture::makeReadyVoidFuture();
-//}
 QFuture<void> Controller::disconnect(Handler* h)
 {
 	if(h->state() != Handler::InsideTheCall)
@@ -193,6 +190,12 @@ Participate::Model* Handler::participants()
 		_prt = new Participate::Model(this);
 	return _prt;
 }
+void Controller::closeAudio(Handler* h)
+{
+	auto model = h->participants();
+	model->setData(model->idToIndex(_manager->currentUser()), false, Participate::Model::HasAudio);
+	h->hasAudioChanged();
+}
 QFuture<void> Controller::join(Handler* h)
 {
 	if (h->state() == Handler::InsideTheCall)
@@ -208,6 +211,8 @@ QFuture<void> Controller::join(Handler* h)
 		for (size_t i = 0; i < model->rowCount(); i++)
 		{
 			userID = model->data(model->index(i),Participate::Model::IDRole()).toInt();
+			if (userID == _manager->currentUser())
+				continue;
 			_rtc->establishPeerConnection(userID).then([this,model, userID]() {
 				auto pcHandle = _rtc->getPeerConnectionHandle(userID);
 				pcHandle->onRemoteVideoOpen([model,userID,this](std::shared_ptr<Media::FramePipe> fr) {
@@ -311,6 +316,17 @@ bool Handler::hasAudio()
 	return _controller->hasAudio(this);
 
 }
+QFuture<void> Handler::openAudio(Media::Audio::StreamSource* source)
+{
+	return _controller->openAudio(this, source);
+}
+QFuture<void> Controller::openAudio(Handler* h, Media::Audio::StreamSource* st)
+{
+	auto model = h->participants();
+	model->setData(model->idToIndex(_manager->currentUser()), true, Participate::Model::HasAudio);
+	h->hasAudioChanged();
+	return QtFuture::makeReadyVoidFuture();
+}
 void Controller::closeVideo(Handler* h)
 {
 	if (!_userContexts.contains(_manager->currentUser()))
@@ -321,4 +337,5 @@ void Controller::closeVideo(Handler* h)
 	_userContexts[_manager->currentUser()].videoSource->close();
 	auto model = h->participants();
 	model->setData(model->idToIndex(_manager->currentUser()), false, Participate::Model::HasVideo);
+	h->hasVideoChanged();
 }

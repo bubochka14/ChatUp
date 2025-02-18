@@ -75,8 +75,8 @@ RowLayout {
                 IconButton {
                     anchors.verticalCenter: parent.verticalCenter
                     source: Qt.resolvedUrl("pics/call")
-                    height: 26
-                    width: 26
+                    height: 20
+                    width: 20
                     onClicked: manager.callController.handler(root.selectedRoomID).join()
                 }
                 MouseArea {
