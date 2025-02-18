@@ -30,6 +30,29 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	//config.disableAutoNegotiation = true;
 	_rtc = std::make_shared<rtc::Service>(_manager, std::move(config));
 
+	_rtc->onPeerConnection([this](std::shared_ptr<rtc::PeerConnectionHandle> handle) {
+		handle->onRemoteVideoOpen([this, wHandle = std::weak_ptr(handle)](std::shared_ptr<Media::FramePipe> fp) {
+			auto peer = wHandle.lock();
+			if (!peer)
+				return;
+			if (!_activeCallRoomID.has_value())
+				qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote video current user not inside the call";
+			Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
+			Participate::Model* pt = callHandler->participants();
+			if (!pt->idToIndex(peer->userID()).isValid())
+			{
+				qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote video, peer"
+					<< peer->userID() << "not inside the call";
+				return;
+			}
+			if (!_userContexts.contains(peer->userID()))
+				_userContexts[peer->userID()] = StreamContext();
+			DumpStreamSource* str = new DumpStreamSource;
+			str->pipe = fp;
+			_userContexts[peer->userID()].videoSource = str;
+			pt->setData(pt->idToIndex(peer->userID()), true, Participate::Model::HasVideo);
+			});
+		});
 	Api::Join::handle(m, [this](Participate::Data&& part) {
 		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
 			auto h = handler(part.roomID);
@@ -178,6 +201,7 @@ QFuture<void> Controller::join(Handler* h)
 	req.roomID = h->roomID();
 	return req.exec(_manager).then([this,h]() {
 		h->setState(Handler::InsideTheCall);
+		_activeCallRoomID = h->roomID();
 		Participate::Data current;
 		Participate::Model*model = h->participants();
 		int userID;

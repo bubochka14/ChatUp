@@ -53,6 +53,7 @@ namespace rtc
 		void onPeerConnection(std::function<void(std::shared_ptr<PeerConnectionHandle>)> cb);
 	private:
 		std::shared_ptr<rtc::PeerConnectionHandle> createPeerHandle(int id);
+		std::function<void(std::shared_ptr<PeerConnectionHandle>)> _peerCb;
 		std::unordered_map<int, std::shared_ptr<PeerConnectionHandle>> _peerHandles;
 		std::unordered_map<int, std::shared_ptr<QPromise<void>>> _pending;
 		rtc::Configuration _config;

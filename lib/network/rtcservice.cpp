@@ -128,6 +128,7 @@ Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration c
 			else if (msg.type == "offer") {
 				std::cout << "Answering to " + msg.id << std::endl;
 				peerHandle = createPeerHandle(msg.id);
+				_peerCb(peerHandle);
 			}
 			else {
 				return;
@@ -142,6 +143,10 @@ Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration c
 					std::move(candidate.mid)));
 			}
 		});
+}
+void Service::onPeerConnection(std::function<void(std::shared_ptr<PeerConnectionHandle>)> cb)
+{
+	_peerCb = std::move(cb);
 }
 std::shared_ptr<rtc::PeerConnectionHandle> Service::createPeerHandle(int id)
 {

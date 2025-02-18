@@ -103,5 +103,6 @@ namespace Call {
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;
 		std::unordered_map<int, StreamContext> _userContexts;
+		std::optional<int> _activeCallRoomID;
 	};
 }
