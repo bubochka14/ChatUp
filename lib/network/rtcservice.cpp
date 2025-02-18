@@ -111,7 +111,7 @@ void PeerConnectionHandle::onRemoteVideoOpen(VideoCallBack cb)
 
 Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration config)
 	:_config(std::move(config))
-    ,_coordinator(std::move(coord))
+    ,_coordinator(coord)
 {
 	rtc::InitLogger(rtc::LogLevel::Warning);
 	Api::Description::handle(_coordinator, [this](Data::Description msg)

@@ -28,7 +28,7 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	rtc::Configuration config;
 	config.iceServers.emplace_back("stun:stun.l.google.com:19302");
 	//config.disableAutoNegotiation = true;
-	_rtc = std::make_shared<rtc::Service>(m, std::move(config));
+	_rtc = std::make_shared<rtc::Service>(_manager, std::move(config));
 
 	Api::Join::handle(m, [this](Participate::Data&& part) {
 		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
