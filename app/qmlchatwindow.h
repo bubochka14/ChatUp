@@ -9,7 +9,11 @@
 #include <qqmlcomponent.h>
 #include "controllers/controllermanager.h"
 #include "streamsource.h"
+#include <Qtimer>
 #include "camerapipeline.h"
+#include <qloggingcategory.h>
+#include "standarderror.h"
+Q_DECLARE_LOGGING_CATEGORY(LC_QML_CHAT_WINDOW);
 struct MessageControllerWrapper
 {
 	Q_GADGET;
@@ -21,9 +25,13 @@ public:
 
 	static Message::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
+		if (!singletonInstance)
+			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -44,9 +52,13 @@ public:
 
 	static Group::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
+		if (!singletonInstance)
+			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -67,9 +79,13 @@ public:
 
 	static Call::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
+		if (!singletonInstance)
+			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -90,9 +106,13 @@ public:
 
 	static User::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
+		if (!singletonInstance)
+			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -113,9 +133,13 @@ public:
 
 	static User::Handle* create(QQmlEngine* , QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
+		if (!singletonInstance)
+			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -136,9 +160,13 @@ public:
 
 	static CameraPipeline* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
+		if (!singletonInstance)
+			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -166,11 +194,15 @@ public slots:
 	void show() override;
 	void hide() override;
 private slots:
-	//void handleLogout();
+	void finalizeCreation();
 private:
 	bool _hasError;
 	QString _error;
 	std::shared_ptr<ControllerManager> _manager;
+	std::unique_ptr<QPromise<void>> _initPromise;
+	std::atomic<float> _progress;
+	QQmlIncubator _inc;
+	QTimer _creationChecker;
 	QQuickWindow* _window;
-	QQmlEngine* _engine;
+	QQmlComponent _comp;
 };

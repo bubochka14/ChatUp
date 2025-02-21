@@ -6,7 +6,6 @@ CameraPipeline::CameraPipeline()
 	,_cam(nullptr)
 	,_dev(unknownDevice)
 {
-	Media::Init();
 }
 QStringList CameraPipeline::availableDevices() const
 {

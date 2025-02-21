@@ -34,57 +34,37 @@ void App::handleRegistration(const QString& login, const QString& pass)
 				});
 
 			});
-	
-	/*	.then(context, [this]() {
-		startup->clear();
-		chat->show();
-		startup->hide();
-			})
-		.onFailed(this, [this](const QString& error)
-			{
-				startup->clear();
-				startup->setErrorString(error);
-			}
-		).onFailed([this]
-			{
-				startup->clear();
-				startup->setErrorString("Unknown error");
-			});*/
 }
 void App::handleLogin(const QString& login, const QString& pass)
 {
 	startup->clear();
 	startup->setState(StartupWindow::Loading);
+	startup->setStatus("Connecting");
 	_network->setCredentials({ login.toStdString(),pass.toStdString() });
-	_network->initialize()
-		.then(this, [this]() 
-			{
-				chat->initialize().then(this, [this]()
-					{
-						startup->hide();
-						chat->show();
-						startup->clear();
-					});
-
-			})
-		.onFailed(this, [this](const QString& error)
-			{
-				startup->clear();
-				startup->setErrorString(error);
-			}
-		).onFailed(this, [this]
-			{
-				startup->clear();
-				startup->setErrorString("Unknown error");
-			});
+	_network->initialize().then(this, [this]() {
+		chat = _windowFactory->createChatWindow(_controllerManager);
+		chat->initialize().then(this, [this](){
+			startup->hide();
+			chat->show();
+			startup->clear();
+		});
+		}).onFailed(this, [this](const QString& error){
+			startup->clear();
+			startup->setErrorString(error);
+		}
+		).onFailed(this, [this]{
+			startup->clear();
+			startup->setErrorString("Unknown error");
+		});
 }
+
 int App::run()
 {
 
 	startup = _windowFactory->createStartupWindow();
 	chat = _windowFactory->createChatWindow(_controllerManager);
 	if (!startup || !chat)
-		return 0;
+		return -1;
 	QObject::connect(startup, &StartupWindow::registerPassed, this, &App::handleRegistration);
 	QObject::connect(startup, &StartupWindow::loginPassed, this, &App::handleLogin);
 	//connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });

@@ -2,10 +2,10 @@
 QmlStartupWindow::QmlStartupWindow(QQmlEngine* eng, QObject* parent)
 	:StartupWindow(parent)
 	, _hasError(false)
+	,_comp(eng)
 {
-	QQmlComponent comp(eng);
-	comp.loadFromModule("app", "StartupWindow");
-	auto obj = comp.create();
+	_comp.loadFromModule("app", "StartupWindow");
+	auto obj = _comp.create();
 	_window = qobject_cast<QQuickWindow*>(obj);
 	if (_window)
 	{
@@ -30,7 +30,7 @@ QmlStartupWindow::QmlStartupWindow(QQmlEngine* eng, QObject* parent)
 			});
 	}else
 	{
-		_error = comp.errorString();
+		_error = _comp.errorString();
 		_hasError = true;
 	}
 }
