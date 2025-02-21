@@ -60,3 +60,55 @@ bool CameraPipeline::isOpen()
 {
 	return _isOpen;
 }
+void CameraPipeline::setIsOpen(bool other)
+{
+	_isOpen = other;
+}
+QStringList TestCameraPipeline::availableDevices() const
+{
+	QStringList cameraDevices = CameraPipeline::availableDevices();
+	cameraDevices.push_front(TestDeviceName);
+	return cameraDevices;
+}
+std::shared_ptr<Media::FramePipe>  TestCameraPipeline::frameOutput()
+{
+	if (currentDevice() == TestDeviceName)
+		return _framePipe;
+	return CameraPipeline::frameOutput();
+}
+QFuture<Media::Video::SourceConfig> TestCameraPipeline::open()
+{
+	if (currentDevice() == TestDeviceName)
+	{
+		setIsOpen(true);
+		return QtFuture::makeReadyFuture(_sourceConfig);
+	}
+	return CameraPipeline::open();
+}
+TestCameraPipeline::TestCameraPipeline()	
+{
+	_sourceConfig.format = AV_PIX_FMT_YUV420P;
+	_sourceConfig.width = 1280;
+	_sourceConfig.height = 720;
+	_framePipe = Media::createFramePipe(_sourceConfig.width, _sourceConfig.height, _sourceConfig.format);
+
+}
+TestCameraPipeline::TestCameraPipeline(Media::Video::SourceConfig sr)
+	:_sourceConfig(std::move(sr))
+{
+	_framePipe = Media::createFramePipe(_sourceConfig.width, _sourceConfig.height, _sourceConfig.format);
+
+}
+void TestCameraPipeline::close()
+{
+	if (currentDevice() == TestDeviceName)
+	{
+		setIsOpen(false);
+		return;
+	}
+	return CameraPipeline::close();
+}
+bool TestCameraPipeline::isOpen()
+{
+	return CameraPipeline::isOpen();
+}

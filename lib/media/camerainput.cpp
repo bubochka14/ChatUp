@@ -7,7 +7,7 @@ Camera::Camera(std::string dev)
     ,out(Media::createPacketPipe())
     ,active(false)
 {
-   
+    Media::Init();
 
 }
 std::vector<std::string> Camera::availableDevices()

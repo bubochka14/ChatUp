@@ -1,6 +1,7 @@
 #pragma once
 #include "vector"
 #include <string>
+#include <qstring>
 #include <memory>
 #include <media.h>
 #include <camerainput.h>
@@ -15,7 +16,7 @@ class CC_MEDIA_EXPORT CameraPipeline  : public  Media::Video::StreamSource
     Q_PROPERTY(QString currentDevice READ currentDevice WRITE setCurrentDevice NOTIFY currentDeviceChanged);
 public:
     CameraPipeline();
-    QStringList availableDevices() const;
+    virtual QStringList availableDevices() const;
     std::shared_ptr<Media::FramePipe> frameOutput() override;
     QFuture<Media::Video::SourceConfig> open() override;
     QString currentDevice();
@@ -25,10 +26,28 @@ public:
 signals:
     void availableDevicesChanged();
     void currentDeviceChanged();
+protected:
+    void setIsOpen(bool other);
 private:
     std::unique_ptr<Media::Video::Decoder> _decoder;
     std::unique_ptr<Media::Video::Camera>  _cam;
-    bool _isOpen;
+    std::atomic<bool> _isOpen;
     std::mutex mutex;
     QString _dev;
+};
+class CC_MEDIA_EXPORT TestCameraPipeline : public CameraPipeline
+{
+    Q_OBJECT;
+public:
+    TestCameraPipeline();
+    TestCameraPipeline(Media::Video::SourceConfig sr);
+    QStringList availableDevices() const override;
+    std::shared_ptr<Media::FramePipe> frameOutput() override;
+    QFuture<Media::Video::SourceConfig> open() override;
+    void close() override;
+    bool isOpen() override;
+private:
+    inline static QString TestDeviceName = QString("Test");
+    Media::Video::SourceConfig _sourceConfig;
+    std::shared_ptr<Media::FramePipe> _framePipe;
 };

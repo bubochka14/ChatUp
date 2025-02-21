@@ -69,6 +69,19 @@ namespace Media
     {
         return std::shared_ptr<AVCodecContext>(avcodec_alloc_context3(c), [](AVCodecContext* p) {avcodec_free_context(&p); });
     }
+    static std::shared_ptr<FramePipe> createFramePipe(int width, int height, AVPixelFormat fmt, size_t al = 32)
+    {
+        return std::make_shared<FramePipe>([height, width, fmt,al]() {
+            auto frame = av_frame_alloc();
+            frame->height = height;
+            frame->width = width;
+            frame->format = fmt;
+            av_frame_get_buffer(frame, al);
+            return frame;
+            }, [](AVFrame* p) {
+            av_frame_free(&p);
+            });
+    }
     static std::shared_ptr<PacketPipe> createPacketPipe()
     {
         return std::make_shared<PacketPipe>([]()
