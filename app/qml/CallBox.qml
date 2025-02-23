@@ -3,7 +3,9 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Controls.Material
 import ChatClient.Network
+import ChatClient.Core
 import QuickFuture
+import QtCore
 
 Rectangle {
     id: root
@@ -95,7 +97,7 @@ Rectangle {
                 if (root.callHandler.hasVideo) {
                     root.callHandler.closeVideo()
                 } else {
-                    CameraPipeline.currentDevice = CameraPipeline.availableDevices[0]
+                    CameraPipeline.currentDevice = ApplicationSettings.videoDevice
                     root.callHandler.openVideo(CameraPipeline)
                 }
             }

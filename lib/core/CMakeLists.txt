@@ -4,12 +4,12 @@ find_package(nlohmann_json CONFIG REQUIRED)
 set(LIB_NAME Core)
 set(LIB_SOURCES
 	"res.qrc"
+	"applicationsettings.h"
+	"applicationsettings.cpp"
 	"startupwindow.h"
 	"startupwindow.cpp"
-	"applicationsettings.h" 
 	"startupwindow.h" 
 	"startupwindow.cpp" 
-	"applicationsettings.cpp"
 	"cache.h"
 	"scopeguard.h"
 	"data.h"

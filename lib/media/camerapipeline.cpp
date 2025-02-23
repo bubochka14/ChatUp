@@ -40,7 +40,7 @@ QFuture<SourceConfig> CameraPipeline::open()
 	auto newCam = std::make_unique<Media::Video::Camera>(_dev.toStdString());
 	auto source = newCam->open();
 	if (!source.has_value())
-		QtFuture::makeExceptionalFuture(std::make_exception_ptr(""));
+		return QtFuture::makeExceptionalFuture<SourceConfig>(std::make_exception_ptr(""));
 	_cam = std::move(newCam);
 	_decoder.reset(new Media::Video::Decoder(source.value()));
 	_decoder->start(_cam->output());

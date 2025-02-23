@@ -12,6 +12,8 @@ Camera::Camera(std::string dev)
 }
 std::vector<std::string> Camera::availableDevices()
 {
+    Media::Init();
+
     std::vector<std::string> out;
 
     const AVInputFormat* ifmt = av_find_input_format(Media::getPlatformDeviceName());
