@@ -13,7 +13,7 @@ std::shared_ptr<Media::PacketPipe> Microphone::output()
 {
 	return out;
 }
-std::optional<Source> Microphone::open()
+std::optional<SourceConfig> Microphone::open()
 {
     if (isOpened())
         return std::nullopt;
@@ -46,13 +46,12 @@ std::optional<Source> Microphone::open()
     }
     active.store(true, std::memory_order_seq_cst);
     micThread = std::thread(&Microphone::threadFunc, this);
-    Audio::Source out;
+    Audio::SourceConfig out;
     av_dump_format(ctx.get(), 0, "", 0);
     auto cp = ctx->streams[audioStream]->codecpar;
     out.codecID = cp->codec_id;
   //  out.channelCount = cp->channels;
     out.format = (AVSampleFormat)cp->format;
-    out.par = cp;
     return out;
 }
 bool Microphone::isOpened()

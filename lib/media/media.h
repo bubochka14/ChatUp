@@ -97,12 +97,11 @@ namespace Media
 
     namespace Audio
     {
-        struct Source
+        struct SourceConfig
         {
             int channelCount;
             AVSampleFormat format;
             AVCodecID codecID;
-            AVCodecParameters* par;
         };
         static QAudioFormat::SampleFormat toQtFormat(AVSampleFormat format)
         {
@@ -150,7 +149,7 @@ namespace Media
             Q_OBJECT;
         public:
             virtual std::shared_ptr<FramePipe> frameOutput() = 0;
-            virtual QFuture<void> open() = 0;
+            virtual QFuture<SourceConfig> open() = 0;
             virtual void close() = 0;
             virtual bool isOpen() = 0;
         };

@@ -85,7 +85,7 @@ namespace Media {
 		class CC_MEDIA_EXPORT Decoder : public AbstractDecoder
 		{
 		public:
-			Decoder(const Source& src);
+			Decoder(const SourceConfig& src);
 		};
 	}
 }

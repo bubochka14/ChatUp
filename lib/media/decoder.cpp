@@ -160,28 +160,31 @@ Video::Decoder::Decoder(const Video::SourceConfig& src)
 	}
 	initialize(std::move(cCtx), cdc);
 }
-Audio::Decoder::Decoder(const Audio::Source& src)
+Audio::Decoder::Decoder(const Audio::SourceConfig& src)
 {
-	//cdc = avcodec_find_decoder(src.codecID);
-	//if (!cdc)
-	//{
-	//	qCCritical(LC_DECODER) << "Cannot find decoder with id" << src.codecID;
-	//	cCtx = nullptr;
-	//	return;
-	//}
-	//cCtx = createCodecContext(cdc);
-	//if (cCtx == nullptr)
-	//{
-	//	qCWarning(LC_DECODER) << "Cannot create codec context";
-	//	return;
-	//}
-	//AVCodecParameters* codecPar = avcodec_parameters_alloc();
-	//////cCtx->request_sample_fmt = av_get_alt_sample_fmt(cCtx->sample_fmt, 0);
-	////cCtx->ch_layout. = av_get_default_channel_layout(src.channelCount);
-	////cCtx-> = src.channelCount;
-	////cCtx->sample_fmt = src.format;
-
-	//avcodec_parameters_to_context(cCtx.get(), src.par);
+	const AVCodec* cdc = avcodec_find_decoder(src.codecID);
+	if (!cdc)
+	{
+		qCCritical(LC_DECODER) << "Cannot find audio decoder with id" << src.codecID;
+		return;
+	}
+	std::shared_ptr<AVCodecContext> cCtx = createCodecContext(cdc);
+	if (!cCtx)
+	{
+		qCWarning(LC_DECODER) << "Cannot create audio codec context";
+		return;
+	}
+	AVCodecParameters* codecPar = avcodec_parameters_alloc();
+	codecPar->codec_id = src.codecID;
+	codecPar->format = src.format;
+	avcodec_parameters_to_context(cCtx.get(), codecPar);
+	int ret = avcodec_open2(cCtx.get(), cdc, nullptr);
+	if (ret < 0)
+	{
+		qCWarning(LC_DECODER) << "Cannot open codec:" << Media::av_err2string(ret);
+		return;
+	}
+	initialize(std::move(cCtx), cdc);
 
 }
 Video::H264Decoder::H264Decoder()
