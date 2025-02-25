@@ -26,8 +26,14 @@ ColoredFrame {
                 ComboBox {
                     id: audioInputComboBox
                     width: 200
-                    model: LocalStreamSource.availableAudioDevices
+                    model: MicrophonePipeline.availableDevices
+                    onActivated: ApplicationSettings.audioDevice = currentText
                     implicitContentWidthPolicy: ComboBox.WidestText
+                    Component.onCompleted: {
+                        let idx =find(ApplicationSettings.audioDevice)
+                        if(idx!=-1)
+                            currentIndex = idx
+                    }
                 }
             }
         }
