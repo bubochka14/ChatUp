@@ -69,6 +69,7 @@ namespace Media
     {
         return std::shared_ptr<AVCodecContext>(avcodec_alloc_context3(c), [](AVCodecContext* p) {avcodec_free_context(&p); });
     }
+    //for video
     static std::shared_ptr<FramePipe> createFramePipe(int width, int height, AVPixelFormat fmt, size_t al = 32)
     {
         return std::make_shared<FramePipe>([height, width, fmt,al]() {
@@ -82,26 +83,26 @@ namespace Media
             av_frame_free(&p);
             });
     }
-    static std::shared_ptr<PacketPipe> createPacketPipe()
+    //for audio, does not allocate frame buffer
+    static std::shared_ptr<FramePipe> createFramePipe(AVChannelLayout layout, AVSampleFormat fmt, int sampleRate)
     {
-        return std::make_shared<PacketPipe>([]()
-            {
-                return av_packet_alloc();
-            },
-            [](AVPacket* p)
-            {
-                av_packet_free(&p);
-            }
-        );
+        return std::make_shared<FramePipe>([layout, fmt,sampleRate]() {
+            auto frame = av_frame_alloc();
+            frame->format = fmt;
+            frame->ch_layout = layout;
+            frame->sample_rate = sampleRate;
+            return frame;
+        }, [](AVFrame* p) {
+            av_frame_free(&p);
+        });
     }
-
+    CC_MEDIA_EXPORT std::shared_ptr<PacketPipe> createPacketPipe();
+    CC_MEDIA_EXPORT bool fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size);
     namespace Audio
     {
         struct SourceConfig
         {
-            int channelCount;
-            AVSampleFormat format;
-            AVCodecID codecID;
+            AVCodecParameters* par;//replace later
         };
         static QAudioFormat::SampleFormat toQtFormat(AVSampleFormat format)
         {

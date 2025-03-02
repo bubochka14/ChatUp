@@ -69,6 +69,7 @@ QFuture<void> QmlChatWindow::initialize()
 		GroupControllerWrapper::singletonInstance = _manager->groupController();
 		MessageControllerWrapper::singletonInstance = _manager->messageController();
 		CameraPipelineWrapper::singletonInstance = new TestCameraPipeline();
+		MicrophonePipelineWrapper::singletonInstance = new MicrophonePipeline();
 		}).then(this, [this]() {
 			_progress += 0.5;
 			qCDebug(LC_QML_CHAT_WINDOW) << "Current user:" << CurrentUserWrapper::singletonInstance->id() << "received";

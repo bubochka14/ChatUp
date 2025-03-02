@@ -10,7 +10,7 @@
 #include "controllers/controllermanager.h"
 #include "streamsource.h"
 #include <Qtimer>
-#include "camerapipeline.h"
+#include "pipelines.h"
 #include <qloggingcategory.h>
 #include "standarderror.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_QML_CHAT_WINDOW);
@@ -159,6 +159,33 @@ public:
 	inline static CameraPipeline* singletonInstance = nullptr;
 
 	static CameraPipeline* create(QQmlEngine*, QJSEngine* engine)
+	{
+		if (!singletonInstance)
+			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
+		if (s_engine)
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
+		else
+			s_engine = engine;
+		QJSEngine::setObjectOwnership(singletonInstance,
+			QJSEngine::CppOwnership);
+		return singletonInstance;
+	}
+private:
+	inline static QJSEngine* s_engine = nullptr;
+};
+struct MicrophonePipelineWrapper
+{
+	Q_GADGET;
+	QML_FOREIGN(MicrophonePipeline);
+	QML_SINGLETON;
+	QML_NAMED_ELEMENT(MicrophonePipeline);
+public:
+	inline static MicrophonePipeline* singletonInstance = nullptr;
+
+	static MicrophonePipeline* create(QQmlEngine*, QJSEngine* engine)
 	{
 		if (!singletonInstance)
 			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";

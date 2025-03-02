@@ -10,9 +10,16 @@
 #include "rtcservice.h"
 #include "rtppacketizer.h"
 #include "encoder.h"
+#include <qaudiooutput.h>
+#include <qaudiodevice.h>
+#include <qaudiosink.h>
+#include <qmediadevices.h>
 #include "media.h"
+#include "audiooutput.h"
+#include <qtimer>
 //#include "audiooutput.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
+
 namespace Call {
 	class Controller;
 	class Handler;
@@ -70,6 +77,7 @@ namespace Call {
 	{
 		Media::Video::StreamSource* videoSource = nullptr;
 		std::unique_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
+		Media::Audio::StreamSource* audioSource = nullptr;
 		//Media::StreamSource* audio = nullptr;
 		//Media::Audio::Source audioSource;
 	};
@@ -100,6 +108,7 @@ namespace Call {
 		void release(Handler* h);
 
 	private:
+		QtEventLoopEmplacer* _guiEmplacer;
 		QHash<int, Handler*> _handlers;
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;

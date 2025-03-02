@@ -39,13 +39,13 @@ namespace Media {
 		std::shared_ptr<FramePipe> output();
 		virtual ~AbstractDecoder();
 	protected:
-		void initialize(std::shared_ptr<AVCodecContext>, const AVCodec*);
+		void initialize(std::shared_ptr<AVCodecContext>, const AVCodec*, std::shared_ptr<FramePipe>);
 	private:
 		std::atomic<bool> active = {false};
 		std::optional<int> inputListenIndex;
 		TaskQueue quene;
-		std::shared_ptr<FramePipe> out;
-		std::shared_ptr<PacketPipe> input;
+		std::shared_ptr<FramePipe> _out;
+		std::shared_ptr<PacketPipe> _input;
 		std::shared_ptr<AVCodecContext> _ctx;
 		const AVCodec* _codec;
 
@@ -86,6 +86,29 @@ namespace Media {
 		{
 		public:
 			Decoder(const SourceConfig& src);
+		};
+		class CC_MEDIA_EXPORT OpusDecoder : public AbstractDecoder
+		{
+		public:
+			OpusDecoder();
+		};
+		class CC_MEDIA_EXPORT OpusDemuxer
+		{
+		public:
+			OpusDemuxer();
+			void start(std::shared_ptr<Media::RawPipe>);
+			std::shared_ptr<Media::PacketPipe> output();
+			struct ReadingOpaque
+			{
+				const uint8_t* data;
+				size_t size = 0;
+				size_t totalWritten = 0;
+			};
+		private:
+			AVFormatContext* _ctx;
+			std::shared_ptr<Media::PacketPipe> _out;
+			ReadingOpaque _readingOpaque;
+
 		};
 	}
 }

@@ -37,12 +37,11 @@ QFuture<void> NetworkCoordinator::initialize()
 	Api::Login req;
 	req.fromCredentials(_credentials);
 	req.exec(shared_from_this())
-		.then([this, promise = std::move(promise)](User::Data&& res)
-			{
-				promise->finish();
-				_user = res.id;
-				_condvar.notify_one();
-			});							
+		.then([this, promise = std::move(promise)](User::Data&& res){
+			promise->finish();
+			_user = res.id;
+			_condvar.notify_one();
+		});							
 	return future;
 }
 void NetworkCoordinator::setCredentials(Credentials other)

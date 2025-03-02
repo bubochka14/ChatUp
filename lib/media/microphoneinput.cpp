@@ -47,11 +47,9 @@ std::optional<SourceConfig> Microphone::open()
     active.store(true, std::memory_order_seq_cst);
     micThread = std::thread(&Microphone::threadFunc, this);
     Audio::SourceConfig out;
+    out.par = avcodec_parameters_alloc();//leak
     av_dump_format(ctx.get(), 0, "", 0);
-    auto cp = ctx->streams[audioStream]->codecpar;
-    out.codecID = cp->codec_id;
-  //  out.channelCount = cp->channels;
-    out.format = (AVSampleFormat)cp->format;
+    avcodec_parameters_copy(out.par, ctx->streams[audioStream]->codecpar);
     return out;
 }
 bool Microphone::isOpened()
@@ -105,15 +103,20 @@ void Microphone::threadFunc()
 {
     while (active.load(std::memory_order_relaxed))
     {
-        auto packet = out->holdForWriting();
-        av_packet_unref(packet.ptr.get());
-        if (av_read_frame(ctx.get(), packet.ptr.get()) < 0)
+        auto packet = out->tryHoldForWriting();
+        if (!packet.has_value())
         {
-            out->unmapWriting(packet.subpipe, false);
+            qCWarning(LC_MICROPHONE) << "Output pipe overflow";
+            return;
+        }
+        av_packet_unref(packet->ptr.get());
+        if (av_read_frame(ctx.get(), packet->ptr.get()) < 0)
+        {
+            out->unmapWriting(packet->subpipe, false);
             qCWarning(LC_MICROPHONE) << ("mic error");
             return;
         }
-        out->unmapWriting(packet.subpipe, true);
+        out->unmapWriting(packet->subpipe, true);
 
     }
 }

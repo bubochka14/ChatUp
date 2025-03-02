@@ -41,6 +41,8 @@ set(LIB_SOURCES
     "controllers/groupcontroller.h"
     "controllers/groupcontroller.cpp"
     "controllers/messagecontroller.h"
+    "controllers/readingscontroller.h"
+    "controllers/readingscontroller.cpp"
     "controllers/messagecontroller.cpp"
     "controllers/usercontroller.h"
     "controllers/usercontroller.cpp"

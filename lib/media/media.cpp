@@ -13,6 +13,18 @@ QVideoFrameFormat Video::QtVideoBuffer::format() const
         : QVideoFrameFormat({ 0,0 }, QVideoFrameFormat::Format_Invalid);
 
 }
+std::shared_ptr<PacketPipe> Media::createPacketPipe()
+{
+    return std::make_shared<PacketPipe>([]()
+        {
+            return av_packet_alloc();
+        },
+        [](AVPacket* p)
+        {
+            av_packet_free(&p);
+        }
+    );
+}
 QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode mapMode)
 {
     MapData out;
@@ -27,6 +39,17 @@ QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode map
     }
     return out;
 
+}
+bool Media::fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size)
+{
+    uint8_t* newData = (uint8_t*)av_malloc(size);
+    memcpy(newData, data, size);
+    if (av_packet_from_data(pack.get(), newData, size)<0)
+    {
+        qWarning() << "Cannot fill packet";
+        return false;
+    }
+    return true;
 }
 QVideoFrameFormat::PixelFormat Media::Video::toQtPixel(AVPixelFormat avPixelFormat)
 {

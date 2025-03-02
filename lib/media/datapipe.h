@@ -114,6 +114,8 @@ namespace Media
 	private:
 		PipeData getFree()
 		{
+			std::lock_guard<std::mutex>guard(reader_mutex);
+
 			for (size_t i = 0; i < subpipes.size(); i++)
 			{
 				if (subpipes[i].isFree)

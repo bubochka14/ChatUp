@@ -13,6 +13,8 @@ set(LIB_SOURCES
 	"microphoneinput.h"
 	"streamsource.h"
 	"streamsource.cpp"
+	"audiooutput.h"
+	"audiooutput.cpp"
 	"microphoneinput.cpp"
 	"camerainput.h"
 	"camerainput.cpp"
@@ -24,7 +26,7 @@ set(LIB_SOURCES
 	"rtppacketizer.cpp"
 	)
 add_library(${LIB_NAME} SHARED ${LIB_SOURCES})
-add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
+add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME}) 
 target_compile_definitions(${LIB_NAME} PRIVATE 	
 	CC_MEDIA_SHARED
 )
@@ -50,4 +52,5 @@ target_link_libraries(${LIB_NAME}  PRIVATE
 	Qt6::Multimedia Qt6::MultimediaWidgets
 	${FFMPEG_LIBRARIES}
 	avdevice
+	swresample
 )
