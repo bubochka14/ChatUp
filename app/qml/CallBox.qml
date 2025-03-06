@@ -5,7 +5,6 @@ import QtQuick.Controls.Material
 import ChatClient.Network
 import ChatClient.Core
 import QuickFuture
-import QtCore
 
 Rectangle {
     id: root
@@ -70,10 +69,10 @@ Rectangle {
     }
     Row {
         spacing: 5
-        anchors{
+        anchors {
             bottom: view.bottom
             bottomMargin: 5
-            horizontalCenter:parent.horizontalCenter
+            horizontalCenter: parent.horizontalCenter
         }
         IconButton {
             id: interactionBtn
@@ -112,7 +111,8 @@ Rectangle {
                 if (root.callHandler.hasAudio) {
                     root.callHandler.closeAudio()
                 } else {
-                    root.callHandler.openAudio(null)
+                    MicrophonePipeline.currentDevice = ApplicationSettings.audioDevice
+                    root.callHandler.openAudio(MicrophonePipeline)
                 }
             }
         }

@@ -55,7 +55,7 @@ RowLayout {
                 Material.elevation: 50
                 Material.background: currentUser ? "#3193ec" : "#19182a"
                 width: Math.max(messageBody.contentWidth + 24,
-                                messageTime.contentWidth)
+                                messageTime.contentWidth, nameField.contentWidth+24)
                 height: bodyColumn.height + 16
                 Column {
                     id: bodyColumn

@@ -74,39 +74,33 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 		qCWarning(LC_DECODER) << "Not initialized";
 		return false;
 	}
-	input->onDataChanged([this, wInput = std::weak_ptr(input)](std::shared_ptr<AVPacket> pack, size_t index) {
-		quene.enqueue([this,wInput, wPack = std::weak_ptr(pack),index]() {
-			auto input = wInput.lock();
-			auto pack = wPack.lock();
+	input->onDataChanged([this, wInput = std::weak_ptr(input),input](std::shared_ptr<AVPacket> pack, size_t index) {
+		quene.enqueue([this,input,pack,index]() {
+
 			if (!input || !pack)
 				return;
 			int resp = avcodec_send_packet(_ctx.get(), pack.get());
 			input->unmapReading(index);
 			if (resp < 0)
-				qCDebug(LC_DECODER) << "cannot send packet " << av_err2str(resp);
+				qCDebug(LC_DECODER) << avcodec_get_name(_codec->id) << "cannot send packet" << av_err2str(resp);
 			while (resp >= 0)
 			{
-				auto outFrame = _out->tryHoldForWriting();
-				if (!outFrame.has_value())
-				{
-					qCWarning(LC_DECODER) << "Output pipe overflow";
-					return;
-				}
-				resp = avcodec_receive_frame(_ctx.get(), outFrame->ptr.get());
+				auto outFrame = _out->holdForWriting();
+				resp = avcodec_receive_frame(_ctx.get(), outFrame.ptr.get());
 				if (resp < 0)
 				{
-					_out->unmapWriting(outFrame->subpipe, false);
+					_out->unmapWriting(outFrame.subpipe, false);
 					if (resp != AVERROR(EAGAIN) && resp != AVERROR_EOF)
 						qCWarning(LC_DECODER) << "Error while sending a packet to the decoder:" << Media::av_err2string(resp);
 					break;
 				}
 				else
 				{
-					_out->unmapWriting(outFrame->subpipe,true);
+					_out->unmapWriting(outFrame.subpipe, true);
 				}
 			}
 			});
-		});
+			});
 	return true;
 
 }
@@ -195,8 +189,8 @@ Audio::OpusDecoder::OpusDecoder()
 		qCWarning(LC_DECODER) << "Cannot create audio codec context";
 		return;
 	}
-	//AVCodecParameters* codecPar = avcodec_parameters_alloc();
-	//avcodec_parameters_to_context(cCtx.get(), src.par);
+	AVCodecParameters* codecPar = avcodec_parameters_alloc();
+	codecPar->sample_rate = 48000;
 	int ret = avcodec_open2(cCtx.get(), cdc, nullptr);
 	if (ret < 0)
 	{

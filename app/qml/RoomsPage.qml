@@ -15,7 +15,7 @@ RowLayout {
     property alias selectedRoomID : chatBox.roomID
     Component.onCompleted:
     {
-        manager.groupController.load(2);
+        manager.groupController.load();
     }
 
     RoomList {
@@ -60,6 +60,7 @@ RowLayout {
         ColoredFrame {
             id: roomHeader
             property alias title: titleLabel.text
+            leftInset:-1
             visible: roomSelected
             implicitHeight: 50
             Layout.fillWidth: true
@@ -101,6 +102,7 @@ RowLayout {
             ChatBox {
                 id: chatBox
                 focus: true
+                leftInset:-1
                 initalMessage: qsTr("Select ChatRoom to start messaging")
                 manager: root.manager
                 Layout.fillHeight: true

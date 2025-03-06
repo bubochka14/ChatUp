@@ -61,6 +61,7 @@ void Microphone::close()
 }
 std::vector<std::string> Microphone::availableDevices()
 {
+    Media::Init();
     std::vector<std::string> out;
 
     const AVInputFormat* ifmt = av_find_input_format(Media::getPlatformDeviceName());

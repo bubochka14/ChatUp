@@ -14,7 +14,6 @@ ColoredFrame {
     function clear() {
         inputBox.text = ""
     }
-
     RowLayout {
         id: layout
         anchors.right: parent.right

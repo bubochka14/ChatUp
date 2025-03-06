@@ -71,9 +71,3 @@ QFuture<std::vector<Message::Data>> GetHistory::exec(std::shared_ptr<NetworkCoor
 		return out;
 		});
 }
-QFuture<void> MarkRead::exec(std::shared_ptr<NetworkCoordinator> h)
-{
-	return h->serverMethod(methodName,{ { "roomID",roomID },{"count",count}})
-		.then([](json&& res) {
-		});
-}

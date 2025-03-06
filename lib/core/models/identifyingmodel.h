@@ -80,7 +80,7 @@ public:
 			return false;
 		}
 		beginInsertRows(QModelIndex(), row, row+distance);
-		_data.insert(_data.begin(), begin, end);
+		_data.insert(_data.begin()+row, begin, end);
 		for (size_t i = row; i <= row + distance; i++)
 		{
 			_index.insert({read( _data[i],i,IDRole()).toInt(), i });

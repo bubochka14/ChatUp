@@ -17,32 +17,32 @@ bool Model::removeSpecialMessageStatus(int row)
 	emit dataChanged(index(row), index(row), QList<int>() << StatusRole);
 	return true;
 }
-uint32_t Model::userReadMessagesCount() const
+int Model::userReadings() const
 {
-	return _userReadMessagesCount;
+	return _userReadings;
 }
-uint32_t Model::foreignReadMessagesCount() const
+int Model::foreignReadings() const
 {
-	return _foreignReadMessagesCount;
+	return _foreignReadings;
 }
-void Model::setForeignReadMessagesCount(uint32_t other)
+void Model::setForeignReadings(int other)
 {
-	if (_foreignReadMessagesCount == other)
+	if (_foreignReadings == other)
 		return;
-	uint32_t lastCount = _foreignReadMessagesCount;
-	_foreignReadMessagesCount = other;
+	uint32_t lastCount = _foreignReadings;
+	_foreignReadings = other;
 	int indexOffset = data(index(0), MessageIndexRole).toInt() - (rowCount() - 1);
-	emit foreignReadMessagesCountChanged();
+	emit foreignReadingsChanged();
 	auto topIndex = index(lastCount - indexOffset);
-	auto bottomIndex = index(_foreignReadMessagesCount - indexOffset - 1);
+	auto bottomIndex = index(_foreignReadings - indexOffset - 1);
 	emit dataChanged(index(0), index(rowCount() - 1));
 }
-void Model::setUserReadMessagesCount(uint32_t other)
+void Model::setUserReadings(int other)
 {
-	if (_userReadMessagesCount == other)
+	if (_userReadings == other)
 		return;
-	_userReadMessagesCount = other;
-	emit userReadMessagesCountChanged();
+	_userReadings = other;
+	emit userReadingsChanged();
 }
 static const QHash<int, QByteArray> roles = {
 	{ Model::UserIdRole,"userID" },
@@ -55,8 +55,8 @@ static const QHash<int, QByteArray> roles = {
 Model::Model(/*int currentUserID,*/ QObject* parent)
 	:IdentifyingModel(roles, parent)
 	//, _currentUserID(currentUserID)
-	, _userReadMessagesCount(0)
-	, _foreignReadMessagesCount(0)
+	,_userReadings(0)
+	,_foreignReadings(0)
 {
 }
 QVariant Model::read(const Message::Data& data, int row, int role) const
@@ -80,7 +80,7 @@ QVariant Model::read(const Message::Data& data, int row, int role) const
 		if (_specialStatuses.contains(row))
 			return _specialStatuses[row];
 		//if (data.userID == _currentUserID)
-			return data.messageIndex > foreignReadMessagesCount() ? Sent : Read;
+			return data.messageIndex > _foreignReadings ? Sent : Read;
 		//else
 		//	return data.messageIndex > userReadMessagesCount() ? Sent : Read;
 	}

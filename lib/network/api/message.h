@@ -54,5 +54,14 @@ namespace Message::Api
 	private:
 		static constexpr char methodName[] = "deleteMessage";
 	};
-	
+	struct MarkRead
+	{
+		MarkRead() = default;
+		size_t count = 0;
+		int roomID = 0;
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
+	private:
+		static constexpr char methodName[] = "setReadMessagesCount";
+
+	};
 }

@@ -66,14 +66,4 @@ namespace Group::Api
 		static constexpr char methodName[] = "getRoomHistory";
 
 	};
-	struct MarkRead 
-	{
-		MarkRead() = default;
-		size_t count=0;
-		int roomID=0;
-		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
-	private:
-		static constexpr char methodName[] = "setReadMessagesCount";
-
-	};
 }

@@ -25,22 +25,22 @@ endforeach()
 list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
 set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")
 set(APP_SOURCES
-        main.cpp
         app.cpp
         abstractwindowfactory.h
         abstractwindowfactory.cpp
         qmlchatwindow.cpp
         qmlchatwindow.h
-        qmlstartupwindow.h
-        qmlstartupwindow.cpp
-        qmlwindowfactory.cpp
+       qmlstartupwindow.h
+       qmlstartupwindow.cpp
+       qmlwindowfactory.cpp
+       main.cpp
         qmlwindowfactory.h
         abstractchatwindow.cpp
-        abstractchatwindow.h
         app.h
-        qmlobjectconverter.h
-#       qml/qml.qrc
-#       resources/resources.qrc
+      qmlobjectconverter.h
+
+       qml/qml.qrc
+       resources/resources.qrc
         )
 qt_add_executable (app ${APP_SOURCES}
 )
@@ -85,8 +85,8 @@ target_compile_definitions(app
 )
 target_link_libraries(app PRIVATE
         ChatClient::Core
-        ChatClient::Network
-        ChatClient::Media
+       ChatClient::Network
+       ChatClient::Media
         LibDataChannel::LibDataChannel
 
         Qt6::Core

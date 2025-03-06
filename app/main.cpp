@@ -27,10 +27,9 @@ int main(int argc, char ** argv)
     QCommandLineOption portOption(QStringList() << "p" << "port",
         QCoreApplication::translate("main", "Property to specify host port, default value is 9000"),QString(),"8000");
     parser.addOption(portOption);
-    QDirIterator it(":", QDirIterator::Subdirectories);
     QCommandLineOption addrOption(QStringList() << "h" << "host",
-        QCoreApplication::translate("main", "Property to specify host address, default value is 127.0.0.1"),
-        QString(), "127.0.0.1");
+        QCoreApplication::translate("main", "Property to specify host address, default value is 5.35.124.43"),
+        QString(), "localhost");
     parser.addOption(addrOption);
     parser.process(gApp);
 

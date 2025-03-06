@@ -60,7 +60,8 @@ void App::handleLogin(const QString& login, const QString& pass)
 
 int App::run()
 {
-
+	qCDebug(LC_ChatClient) << "Running app";
+	Core::Init();
 	startup = _windowFactory->createStartupWindow();
 	chat = _windowFactory->createChatWindow(_controllerManager);
 	if (!startup || !chat)

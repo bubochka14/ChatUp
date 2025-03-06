@@ -24,7 +24,7 @@ QFuture<void> Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> inpu
 	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
 	if (!_videoEncoder)
 		_videoEncoder = std::make_shared<Media::Video::H264Encoder>();
-	rtc::Description::Video media("video", rtc::Description::Direction::SendRecv);
+	rtc::Description::Video media("video", rtc::Description::Direction::SendOnly);
 	media.addH264Codec(96); // Must match the payload type of the external h264 RTP stream
 	media.addSSRC(userID, "video-send");
 	std::shared_ptr<PeerConnection> pc = ctx->pc;
@@ -123,6 +123,7 @@ Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration c
 	:_config(std::move(config))
     ,_coordinator(coord)
 {
+	_config.forceMediaTransport = true;
 	rtc::InitLogger(rtc::LogLevel::Warning);
 	ev = new QtEventLoopEmplacer;
 	Api::Description::handle(_coordinator, [this](Data::Description msg) {
@@ -137,7 +138,27 @@ Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration c
 			createPeerContext(msg.id);
 			ctx = getPeerContext(msg.id);
 		}
-		ctx->pc->setRemoteDescription(rtc::Description(msg.description, msg.type));
+		auto desc = rtc::Description(msg.description, msg.type);
+		ctx->pc->setRemoteDescription(desc);
+		for (size_t i = 0; i < desc.mediaCount(); i++)
+		{
+			auto var = desc.media(i);
+			if (!std::holds_alternative<Description::Media*>(var))
+				continue;
+			auto media = std::get<Description::Media*>(var);
+			if (media->mid() == "video" && ctx->videoDecoder)
+			{
+				if (media->direction() == rtc::Description::Direction::Inactive ||
+					media->direction() == rtc::Description::Direction::RecvOnly)
+				{
+					if (_closeVideoCb.has_value())
+						_closeVideoCb.value()(msg.id);
+					ctx->videoDecoder.reset();
+					ctx->videoPackets.reset();
+				}
+
+			}
+		}
 
 	});
 	rtc::Api::Candidate::handle(_coordinator, [this](rtc::Data::Candidate candidate){
@@ -222,7 +243,6 @@ void Service::createPeerContext(int id)
 					qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 					return;
 				}
-				qDebug() << "holding" << pipeData->subpipe;
 				Media::fillPacket(pipeData->ptr, (uint8_t*)data.data(), data.size());
 				pipeData->ptr->pts = info.timestamp;
 				pipeData->ptr->dts = info.timestamp;
@@ -245,7 +265,6 @@ void Service::createPeerContext(int id)
 			ctx->audioPackets = Media::createPacketPipe();
 			ctx->audioDecoder->start(ctx->audioPackets);
 			track->onFrame([this, id](rtc::binary data, rtc::FrameInfo info) {
-				qDebug() << "frame" << info.timestamp;
 				std::shared_ptr<PeerContext> ctx = getPeerContext(id);
 				auto pipeData = ctx->audioPackets->tryHoldForWriting();
 				if (!pipeData.has_value())
@@ -254,10 +273,11 @@ void Service::createPeerContext(int id)
 					return;
 				}
 				Media::fillPacket(pipeData->ptr, (uint8_t*)data.data(), data.size());
+				pipeData->ptr->pts = info.timestamp;
+				pipeData->ptr->dts = info.timestamp;
 				ctx->audioPackets->unmapWriting(pipeData->subpipe, true);
 				});
 			track->onMessage([this, id](rtc::message_variant data) {
-				qDebug() << "Audio mess ";
 				/*std::shared_ptr<PeerContext> ctx = getPeerContext(id);
 				auto pipeData = ctx->videoRaw->holdForWriting();
 				pipeData.ptr->raw = (uint8_t*)data.data();
@@ -331,18 +351,18 @@ void Service::closeLocalVideo(int userID)
 	if (!_peerContexts.contains(userID))
 		return;
 	auto& context = _peerContexts[userID];
-	context->pc->setLocalDescription();
 	if (context->videoTrack->direction() == rtc::Description::Direction::SendRecv)
 	{
 		rtc::Description::Media dsc = context->videoTrack->description();
 		dsc.setDirection(Description::Direction::RecvOnly);
 		context->videoTrack = context->pc->addTrack(std::move(dsc));
+		context->pc->setLocalDescription();
 	}
 	if (context->videoTrack->direction() == rtc::Description::Direction::SendOnly)
 	{
 		rtc::Description::Media dsc = context->videoTrack->description();
 		dsc.setDirection(Description::Direction::Inactive);
-		context->videoTrack->close();
+		context->videoTrack = context->pc->addTrack(std::move(dsc));
 		context->pc->setLocalDescription();
 
 	}

@@ -7,13 +7,15 @@ import ChatClient.Core
 import QuickFuture
 import ObjectConverter
 
-Frame {
+Control {
     id: root
     required property ControllerManager manager
     required property var roomID
+    property alias topLoaded : view.topLoaded
     required property MessageModel messageModel
     required property ChatBox chatBox
     signal showProfile(var id)
+    signal loadingMessagesNeeded()
     padding: 0
     bottomPadding: 0
     topPadding: 0
@@ -32,7 +34,7 @@ Frame {
         }
         Item {
             MessagesView {
-
+                id:view
                 model: messageModel
                 manager: root.manager
                 anchors {
@@ -40,7 +42,7 @@ Frame {
                     leftMargin: 8
                     rightMargin: 8
                 }
-
+                onLoadingMessagesNeeded: {root.loadingMessagesNeeded()}
                 onUserProfileClicked: id => root.showProfile(id)
                 onUnreadWasRead: index => manager.messageController.markAsRead(
                                      root.roomID, index)

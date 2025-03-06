@@ -10,6 +10,7 @@ Rectangle {
     color: "black"
     property var boxHeight
     property var boxWidth
+    property int maxInRow: 4
     property alias model: view.model
     required property CallHandler callHandler
 
@@ -19,7 +20,7 @@ Rectangle {
         property var baseWidth: 300
         property var baseHeight: 200
         anchors.centerIn: parent
-        cellWidth: baseWidth
+        cellWidth: root.boxWidth/ Math.min(model.rowCount,maxInRow)
         cellHeight: baseHeight
         width: Math.floor(root.boxWidth/cellWidth) * cellWidth
         height: Math.floor(root.boxHeight/cellHeight)* cellHeight

@@ -6,6 +6,7 @@ static const QHash<int, QByteArray> roles = {
 	{Model::NameRole,"name"},
 	{Model::HashRole,"hash"},
 	{Model::TagRole,"tag"},
+	{Model::MessageCountRole,"messageCount"},
 };
 Model::Model(QObject* parent)
 	:IdentifyingModel(roles, parent)
@@ -24,6 +25,8 @@ QVariant Model::read(const Group::ExtendedData& data, int row, int role) const
 		return data.toHash();
 	case TagRole:
 		return data.tag;
+	case MessageCountRole:
+		return data.messageCount;
 	default:
 		break;
 	}
@@ -53,6 +56,12 @@ bool Model::edit(Group::ExtendedData& data, const QVariant& value, int row, int 
 		if (value.canConvert<QVariantHash>())
 		{
 			data.fromHash(value.toHash());
+			return true;
+		}break;
+	case MessageCountRole:
+		if (value.canConvert<int>())
+		{
+			data.messageCount = value.toInt();
 			return true;
 		}break;
 		return false;

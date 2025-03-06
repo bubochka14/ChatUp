@@ -79,8 +79,8 @@ QFuture<void> CallerController::load(int roomID,int row, int from, int to)
 	req.endIndex = to;
 	return req.exec(_manager).then([this,roomID,row](std::vector<Message::Data>&& res) {
 		auto model = _history[roomID];
-		model->insertRange(row, std::make_move_iterator(res.begin()),
-			std::make_move_iterator(res.end()));
+		model->insertRange(row, std::make_move_iterator(res.rbegin()),
+			std::make_move_iterator(res.rend()));
 		});
 
 }
@@ -91,5 +91,12 @@ QFuture<void> CallerController::remove(int roomid, int messId)
 }
 QFuture<void> CallerController::markAsRead(int roomID, size_t count)
 {
-	return QtFuture::makeReadyVoidFuture();
+	auto msgModel = model(roomID);
+	if (msgModel->userReadings() >= count)
+		return QtFuture::makeReadyVoidFuture();
+	msgModel->setUserReadings(count);
+	Api::MarkRead req;
+	req.count = count;
+	req.roomID = roomID;
+	return req.exec(_manager).then([]() {});
 }

@@ -29,7 +29,6 @@ void Group::from_json(const json& j, ExtendedData& p)
 			auto mc = j["messageCount"];
 			if (!mc.is_null())
 				mc.get_to(p.messageCount);
-			p.messageCount = 0;
 		}
 		else
 			p.messageCount = 0;

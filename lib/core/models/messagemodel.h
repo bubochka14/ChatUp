@@ -13,16 +13,8 @@ namespace Message {
 		Q_OBJECT;
 		QML_NAMED_ELEMENT(MessageModel);
 		QML_UNCREATABLE("");
-		Q_PROPERTY(uint32_t userReadMessagesCount
-			READ userReadMessagesCount
-			WRITE setUserReadMessagesCount
-			NOTIFY userReadMessagesCountChanged
-		);
-		Q_PROPERTY(uint32_t foreignReadMessagesCount
-			READ foreignReadMessagesCount
-			WRITE setForeignReadMessagesCount
-			NOTIFY foreignReadMessagesCountChanged
-		)
+		Q_PROPERTY(int userReadings READ userReadings WRITE setUserReadings NOTIFY userReadingsChanged);
+		Q_PROPERTY(uint32_t foreignReadings READ foreignReadings WRITE setForeignReadings NOTIFY foreignReadingsChanged)
 	public:
 		enum MessageStatus { Loading, Sent, Read, Error };
 		Q_ENUM(MessageStatus);
@@ -36,23 +28,23 @@ namespace Message {
 			MessageIndexRole,
 			HashRole
 		}; Q_ENUM(RoleNames);
-		explicit Model(/*int currentUserID, */QObject* parent = nullptr);
+		explicit Model(QObject* parent = nullptr);
 		bool addSpecialMessageStatus(int row, MessageStatus other);
 		bool removeSpecialMessageStatus(int row);
-		uint32_t userReadMessagesCount() const;
-		uint32_t foreignReadMessagesCount() const;
-		void setForeignReadMessagesCount(uint32_t other);
-		void setUserReadMessagesCount(uint32_t other);
+		int userReadings() const;
+		int foreignReadings() const;
+		void setForeignReadings(int other);
+		void setUserReadings(int other);
 	signals:
-		void userReadMessagesCountChanged();
-		void foreignReadMessagesCountChanged();
+		void userReadingsChanged();
+		void foreignReadingsChanged();
 	protected:
 		bool edit(Message::Data&, const QVariant&, int row, int role) override;
 		QVariant read(const Message::Data&, int row, int role) const override;
 	private:
 		QMap<int, MessageStatus> _specialStatuses;
 		int _currentUserID;
-		uint32_t _userReadMessagesCount;
-		uint32_t _foreignReadMessagesCount;
+		int _userReadings;
+		int _foreignReadings;
 	};
 }
