@@ -2,55 +2,6 @@
 Q_LOGGING_CATEGORY(LC_DECODER, "Decoder");
 Q_LOGGING_CATEGORY(LC_H264DEMUXER, "H264Demuxer");
 using namespace Media;
-
-void DataBuffer::pushData(Binary bin)
-{
-	data.emplace_back(std::move(bin));
-
-}
-int DataBuffer::popData(uint8_t*ptr, int size)
-{
-	int bytesPopped = 0;
-	while (bytesPopped <size)
-	{
-		if (data.empty())
-			break;
-		if(size-bytesPopped>= data.front().size()- byteOffset)
-		{
-			memcpy(ptr, data.front().data()+ byteOffset, data.front().size()- byteOffset);
-			bytesPopped += data.front().size() - byteOffset;
-			data.pop_front();
-			byteOffset = 0;
-		}
-		else
-		{
-			memcpy(ptr + bytesPopped, data.front().data() + byteOffset, size - bytesPopped);
-			byteOffset += size - bytesPopped;
-			bytesPopped = size;
-		}
-	}
-	return bytesPopped;
-
-}
-bool DataBuffer::empty() 
-{
-	return data.empty();
-}
-
-static int avio_read(void* opaque, uint8_t*buf, int size)
-{
-	auto deq = (DataBuffer*)opaque;
-	if (deq->empty())
-	{
-		return AVERROR_EOF;
-	}
-	return deq->popData(buf,size);
-}
-std::shared_ptr<FramePipe> AbstractDecoder::output()
-{
-	return _out;
-}
-
 AbstractDecoder::AbstractDecoder()
 	:_out(nullptr)
 	,_codec(nullptr)
@@ -66,7 +17,10 @@ void AbstractDecoder::initialize(std::shared_ptr<AVCodecContext> ctx, const AVCo
 	_ctx = ctx;
 	_out = out;
 }
-
+std::shared_ptr<FramePipe> AbstractDecoder::output()
+{
+	return _out;
+}
 bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 {
 	if (!_codec || !_ctx || !_out)
@@ -74,13 +28,15 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 		qCWarning(LC_DECODER) << "Not initialized";
 		return false;
 	}
-	input->onDataChanged([this, wInput = std::weak_ptr(input),input](std::shared_ptr<AVPacket> pack, size_t index) {
-		quene.enqueue([this,input,pack,index]() {
+	_input = input;
+	inputListenIndex = input->onDataChanged([this](std::shared_ptr<AVPacket> pack, size_t index) {
+		quene.enqueue([this,wpack = std::weak_ptr(pack),index]() {
 
-			if (!input || !pack)
+			auto pack = wpack.lock();
+			if (!pack)
 				return;
 			int resp = avcodec_send_packet(_ctx.get(), pack.get());
-			input->unmapReading(index);
+			_input->unmapReading(index);
 			if (resp < 0)
 				qCDebug(LC_DECODER) << avcodec_get_name(_codec->id) << "cannot send packet" << av_err2str(resp);
 			while (resp >= 0)
@@ -107,7 +63,7 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 void AbstractDecoder::stop()
 {
 	
-	if (inputListenIndex.has_value())
+	if (inputListenIndex.has_value()&& _input)
 	{
 		_input->removeListener(inputListenIndex.value());
 		_input.reset();
@@ -137,16 +93,15 @@ Video::Decoder::Decoder(const Video::SourceConfig& src)
 	codecPar->width	 = src.width;
 	codecPar->height = src.height;
 	codecPar->format = src.format;
-
 	avcodec_parameters_to_context(cCtx.get(), codecPar);
+	avcodec_parameters_free(&codecPar);
 	int ret = avcodec_open2(cCtx.get(), cdc, nullptr);
 	if (ret < 0)
 	{
 		qCWarning(LC_DECODER) << "Cannot open codec:" << Media::av_err2string(ret);
 		return;
 	}
-	auto framePipe = createFramePipe(cCtx->width,cCtx->height,cCtx->pix_fmt); 
-	initialize(std::move(cCtx), cdc, framePipe);
+	initialize(std::move(cCtx), cdc, createFramePipe(cCtx->width, cCtx->height, cCtx->pix_fmt));
 }
 Audio::Decoder::Decoder(const Audio::SourceConfig& src)
 {
@@ -170,9 +125,9 @@ Audio::Decoder::Decoder(const Audio::SourceConfig& src)
 		qCWarning(LC_DECODER) << "Cannot open codec:" << Media::av_err2string(ret);
 		return;
 	}
-	auto framePipe = createFramePipe(cCtx->ch_layout,cCtx->sample_fmt,cCtx->sample_rate);
+	avcodec_parameters_free(&codecPar);
 
-	initialize(std::move(cCtx), cdc,framePipe);
+	initialize(std::move(cCtx), cdc, createFramePipe(cCtx->ch_layout, cCtx->sample_fmt, cCtx->sample_rate));
 
 }
 Audio::OpusDecoder::OpusDecoder()
@@ -189,17 +144,13 @@ Audio::OpusDecoder::OpusDecoder()
 		qCWarning(LC_DECODER) << "Cannot create audio codec context";
 		return;
 	}
-	AVCodecParameters* codecPar = avcodec_parameters_alloc();
-	codecPar->sample_rate = 48000;
 	int ret = avcodec_open2(cCtx.get(), cdc, nullptr);
 	if (ret < 0)
 	{
 		qCWarning(LC_DECODER) << "Cannot open codec:" << Media::av_err2string(ret);
 		return;
 	}
-	auto framePipe = createFramePipe(cCtx->ch_layout, cCtx->sample_fmt, cCtx->sample_rate);
-
-	initialize(std::move(cCtx), cdc, framePipe);
+	initialize(std::move(cCtx), cdc, createFramePipe(cCtx->ch_layout, cCtx->sample_fmt, cCtx->sample_rate));
 
 }
 Video::H264Decoder::H264Decoder()
@@ -222,9 +173,7 @@ Video::H264Decoder::H264Decoder()
 		qCWarning(LC_DECODER) << "Cannot open H264 codec:" << Media::av_err2string(ret);
 		return;
 	}
-	auto framePipe = createFramePipe(cCtx->width, cCtx->height, cCtx->pix_fmt);
-
-	initialize(std::move(cCtx), cdc, framePipe);
+	initialize(std::move(cCtx), cdc, createFramePipe(cCtx->width, cCtx->height, cCtx->pix_fmt));
 }
 static int h264_read(void* opaque, uint8_t* buf, int size) noexcept
 {

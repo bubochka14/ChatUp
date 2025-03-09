@@ -33,72 +33,95 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	Media::Audio::Output* out = new Media::Audio::Output();
 
 	_rtc->onRemoteVideoOpen([this](int userID,std::shared_ptr<Media::FramePipe> fp) {
-		if (!_activeCallRoomID.has_value())
-			qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote video, current user not inside the call";
-		Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
-		Participate::Model* pt = callHandler->participants();
-		if (!pt->idToIndex(userID).isValid())
+		//DumpStreamSource* str = new DumpStreamSource;
+		//str->pipe = fp;
 		{
-			qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote video, peer"
-				<< userID<< "not inside the call";
-			return;
-		}
-		if (!_userContexts.contains(userID))
-			_userContexts[userID] = StreamContext();
-		DumpStreamSource* str = new DumpStreamSource;
-		str->pipe = fp;
-		_userContexts[userID].videoSource = str;
-		pt->setData(pt->idToIndex(userID), true, Participate::Model::HasVideo);
-		});
-	_rtc->onRemoteVideoClosed([this](int userID) {
-		Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
-		Participate::Model* pt = callHandler->participants();
-		auto index = pt->idToIndex(userID);
-		if (!index.isValid())
-			return;
-		pt->setData(index, false, Participate::Model::HasVideo);
-		if (_userContexts.contains(userID))
-		{
-			auto& context = _userContexts[userID];
-			context.videoSource = nullptr;
-		}
-		});
-	_rtc->onRemoteAudioOpen([this,out](int userID, std::shared_ptr<Media::FramePipe> fp) {
-		_guiEmplacer->emplaceTask([this, out, userID, fp]() {
-			if (!_activeCallRoomID.has_value())
-				qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote audio, current user not inside the call";
-			Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
-			Participate::Model* pt = callHandler->participants();
-			if (!pt->idToIndex(userID).isValid())
-			{
-				qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote video, peer"
-					<< userID << "not inside the call";
-				return;
-			}
+			std::lock_guard g(_contextsMutex);
 			if (!_userContexts.contains(userID))
 				_userContexts[userID] = StreamContext();
-			out->start(fp);
+			auto connector = _userContexts[userID].videoSinkConnector;
+			if(!connector)
+			{
+				connector = std::make_shared<Media::Video::SinkConnector>();
+				_userContexts[userID].videoSinkConnector = connector;
+			}
+			connector->connect(fp);
+		}
+		});
+	_rtc->onRemoteVideoClosed([this](int userID) {
+		//Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
+		//Participate::Model* pt = callHandler->participants();
+		//auto index = pt->idToIndex(userID);
+		//if (!index.isValid())
+		//	return;
+		//pt->setData(index, false, Participate::Model::HasVideo);
+		//if (_userContexts.contains(userID))
+		//{
+		//	auto& context = _userContexts[userID];
+		//	context.videoSource = nullptr;
+		//}
+		});
+	_rtc->onRemoteAudioOpen([this,out](int userID, std::shared_ptr<Media::FramePipe> fp) {
+		//_guiEmplacer->emplaceTask([this, out, userID, fp]() {
+		//	if (!_activeCallRoomID.has_value())
+		//		qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote audio, current user not inside the call";
+		//	Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
+		//	Participate::Model* pt = callHandler->participants();
+		//	if (!pt->idToIndex(userID).isValid())
+		//	{
+		//		qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote video, peer"
+		//			<< userID << "not inside the call";
+		//		return;
+		//	}
+		//	if (!_userContexts.contains(userID))
+		//		_userContexts[userID] = StreamContext();
+		//	out->start(fp);
 
-			pt->setData(pt->idToIndex(userID), true, Participate::Model::HasAudio);
-			});
+		//	pt->setData(pt->idToIndex(userID), true, Participate::Model::HasAudio);
+		//	});
 		});
 	Api::Join::handle(m, [this](Participate::Data&& part) {
 		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
 			auto h = handler(part.roomID);
+			std::lock_guard g(_handlersMutex);
 			if (h->participants()->idToIndex(part.userID).isValid())
 				return;
 			h->participants()->insertData(0, std::move(part));
 		});
 	});
+	Api::UpdateCallMedia::handle(m, [this](Api::UpdateCallMedia::MediaUpdate upd){
+
+		Call::Handler* callHandler = handler(upd.roomID);
+		std::lock_guard g(_handlersMutex);
+
+		Participate::Model* pt = callHandler->participants();
+		auto index = pt->idToIndex(upd.userID);
+		if (!index.isValid())
+		{
+			qCWarning(LC_CALL_CONTROLLER) << "Unknown userID received";
+			return;
+		}
+		pt->setData(index, upd.video, Participate::Model::HasVideo);
+		pt->setData(index, upd.audio, Participate::Model::HasAudio);
+	/*	if (_userContexts.contains(userID))
+		{
+			auto& context = _userContexts[userID];
+			context.videoSource = nullptr;
+		}*/
+
+	});
 	Api::Disconnect::handle(m, [this](Participate::Data&& part) {
 		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
+			std::lock_guard g(_handlersMutex);
 			if (_handlers.contains(part.roomID))
 			{
-				Handler* handler = _handlers[part.roomID];
+				auto handler = _handlers[part.roomID];
 				QModelIndex index = handler->participants()->idToIndex(part.userID);
 				if (index.isValid())
 				{
 					handler->participants()->removeRow(index.row());
+					std::lock_guard g(_contextsMutex);
+					_userContexts.erase(part.userID);
 				}
 				else
 					qCWarning(LC_CALL_CONTROLLER) << "Unknown userID in disconnectCall: "<< part.userID;
@@ -147,18 +170,27 @@ QFuture<void> Handler::openVideo(Media::Video::StreamSource* source)
 //}
 void Controller::connectVideoSink(Handler* h, int userID, QVideoSink* s)
 {
-	if (!_userContexts.contains(userID))
+	using namespace Media::Video;
+	std::shared_ptr<SinkConnector> connector;
 	{
-		qCWarning(LC_CALL_CONTROLLER) << "Cannot connect to video sink, user" << userID << "haven`t media context";
-		return;
+		std::lock_guard g(_contextsMutex);
+		if (!_userContexts.contains(userID))
+			_userContexts[userID] = StreamContext();
+		connector = _userContexts[userID].videoSinkConnector;
+		if(!connector)
+		{
+			connector = std::make_shared<SinkConnector>();
+			_userContexts[userID].videoSinkConnector = connector;
+		}
+		connector->connect(s);
+		if(userID != _manager->currentUser())
+			connector->connect(_rtc->getRemoteVideo(userID));
+		//StreamSource* src = _userContexts[userID].videoSource;
+		//if (src)
+		//{
+		//	connector->connect(src->frameOutput());
+		//}
 	}
-	if (!_userContexts[userID].videoSource)
-	{
-		qCWarning(LC_CALL_CONTROLLER) << "Cannot connect to video sink, user" << userID << "haven`t open video stream";
-		return;
-	}
-	_userContexts[userID].videoSinkConnector.reset(new Media::Video::SinkConnector(
-		_userContexts[userID].videoSource->frameOutput(),s));
 }
 
 void Handler::connectVideoSink(int userID, QVideoSink* sink)
@@ -167,15 +199,25 @@ void Handler::connectVideoSink(int userID, QVideoSink* sink)
 }
 QFuture<void> Controller::disconnect(Handler* h)
 {
-	if(h->state() != Handler::InsideTheCall)
-		return QtFuture::makeExceptionalFuture(std::make_exception_ptr(""));
 	Call::Api::Disconnect req;
-	req.roomID = h->roomID();
+
+	{
+		std::lock_guard g(_handlersMutex);
+		if (h->state() != Handler::InsideTheCall)
+			return QtFuture::makeExceptionalFuture(std::make_exception_ptr(""));
+		req.roomID = h->roomID();
+	}
 	return req.exec(_manager).then([this, h]() {
-		h->setState(Handler::Disconnected);
-		auto model = h->participants();
-		model->removeRow(model->idToIndex(_manager->currentUser()).row());
-		_userContexts.clear();
+		{
+			std::lock_guard g(_handlersMutex);
+			h->setState(Handler::Disconnected);
+			auto model = h->participants();
+			model->removeRow(model->idToIndex(_manager->currentUser()).row());
+		}
+		//{
+		//	std::lock_guard g(_contextsMutex);
+		//	_userContexts.clear();
+		//}
 	});
 }
 
@@ -192,22 +234,28 @@ Participate::Model* Handler::participants()
 }
 void Controller::closeAudio(Handler* h)
 {
+	std::lock_guard g(_handlersMutex);
 	auto model = h->participants();
 	model->setData(model->idToIndex(_manager->currentUser()), false, Participate::Model::HasAudio);
 	h->hasAudioChanged();
 }
 QFuture<void> Controller::join(Handler* h)
 {
-	if (h->state() == Handler::InsideTheCall)
-		QtFuture::makeExceptionalFuture(std::make_exception_ptr("Already inside the call"));
 	Call::Api::Join req;
-	req.roomID = h->roomID();
+	{
+		std::lock_guard g(_handlersMutex);
+		if (h->state() == Handler::InsideTheCall)
+			QtFuture::makeExceptionalFuture(std::make_exception_ptr("Already inside the call"));
+		req.roomID = h->roomID();
+	}
 	return req.exec(_manager).then([this,h]() {
+		Participate::Data current;
+		int userID;
+
+		std::lock_guard g(_handlersMutex);
 		h->setState(Handler::InsideTheCall);
 		_activeCallRoomID = h->roomID();
-		Participate::Data current;
 		Participate::Model*model = h->participants();
-		int userID;
 		for (size_t i = 0; i < model->rowCount(); i++)
 		{
 			userID = model->data(model->index(i),Participate::Model::IDRole()).toInt();
@@ -223,14 +271,16 @@ QFuture<void> Controller::join(Handler* h)
 					});
 				});*/
 		}
-		current.hasAudio = h->hasAudio();
-		current.hasVideo = h->hasVideo();
-		current.userID = _manager->currentUser();
+		current.hasAudio = false;
+		current.hasVideo = false;
+		current.userID   = _manager->currentUser();
 		h->participants()->insertData(0, std::move(current));
 		});
 }
 void Controller::release(Handler* h)
 {
+	std::lock_guard g(_handlersMutex);
+
 	if (_handlers.contains(h->roomID()))
 	{
 		_handlers.remove(h->roomID());
@@ -240,6 +290,8 @@ void Controller::release(Handler* h)
 }
 Handler* Controller::handler(int roomID)
 {
+	std::lock_guard g(_handlersMutex);
+
 	if (_handlers.contains(roomID))
 	{
 		return _handlers[roomID];
@@ -271,6 +323,8 @@ void Handler::setHasVideo(bool st)
 }
 void Controller::setAudio(bool st, Handler* h)
 {
+	std::lock_guard g(_handlersMutex);
+
 	Participate::Model* model = h->participants();
 	QModelIndex indexOfCurrent = model->idToIndex(_manager->currentUser());
 	if (!indexOfCurrent.isValid())
@@ -282,17 +336,23 @@ void Controller::setAudio(bool st, Handler* h)
 }
 void Controller::setVideo(bool st, Handler* h)
 {
-	Participate::Model* model = h->participants();
-	QModelIndex indexOfCurrent = model->idToIndex(_manager->currentUser());
-	if (!indexOfCurrent.isValid())
-		return;
-	if (model->data(indexOfCurrent, Participate::Model::HasVideo) == st)
-		return;
-	model->setData(indexOfCurrent, st, Participate::Model::HasVideo);
+	{
+		std::lock_guard g(_handlersMutex);
+
+		Participate::Model* model = h->participants();
+		QModelIndex indexOfCurrent = model->idToIndex(_manager->currentUser());
+		if (!indexOfCurrent.isValid())
+			return;
+		if (model->data(indexOfCurrent, Participate::Model::HasVideo) == st)
+			return;
+		model->setData(indexOfCurrent, st, Participate::Model::HasVideo);
+	}
 	emit h->hasVideoChanged();
 }
 bool Controller::hasAudio(Handler* h)
 {
+	std::lock_guard g(_handlersMutex);
+
 	Participate::Model* model = h->participants();
 	QModelIndex indexOfCurrent = model->idToIndex(_manager->currentUser());
 	if (!indexOfCurrent.isValid())
@@ -301,6 +361,8 @@ bool Controller::hasAudio(Handler* h)
 }
 bool Controller::hasVideo(Handler* h)
 {
+	std::lock_guard g(_handlersMutex);
+
 	Participate::Model* model = h->participants();
 	QModelIndex indexOfCurrent = model->idToIndex(_manager->currentUser());
 	if (!indexOfCurrent.isValid())
@@ -325,22 +387,34 @@ QFuture<void> Controller::openVideo(Handler* h, Media::Video::StreamSource* st)
 	return st->open().then([this, st, h](Media::Video::SourceConfig&& config)
 		{
 			int currentUser = _manager->currentUser();
-			if (!_userContexts.contains(currentUser))
-				_userContexts[currentUser] = StreamContext();
-
-			_userContexts[_manager->currentUser()].videoSource = st;
-			Participate::Model* model = h->participants();
-			for (size_t i = 0; i < model->rowCount(); i++)
 			{
-				int paricipantID = model->data(model->index(i),
-					Participate::Model::IDRole()).toInt();
-				if (paricipantID == currentUser)
-					continue;
-				_rtc->openLocalVideo(paricipantID, st->frameOutput());
-
-			};
-			model->setData(model->idToIndex(currentUser), true, Participate::Model::HasVideo);
+				std::lock_guard g(_contextsMutex);
+				if (!_userContexts.contains(currentUser))
+					_userContexts[currentUser] = StreamContext();
+				_userContexts[_manager->currentUser()].videoSource = st;
+			}		
+			Api::UpdateCallMedia req;
+			Participate::Model* model;
+			req.video = true;
+			{
+				std::lock_guard g(_handlersMutex);
+				model = h->participants();
+				model->setData(model->idToIndex(currentUser), true, Participate::Model::HasVideo);
+			}
 			h->hasVideoChanged();
+
+			req.exec(_manager).then([this,model, currentUser,st]() {
+				std::lock_guard g(_contextsMutex);
+				for (size_t i = 0; i < model->rowCount(); i++)
+				{
+					int paricipantID = model->data(model->index(i),
+						Participate::Model::IDRole()).toInt();
+					if (paricipantID == currentUser)
+						continue;
+					_rtc->openLocalVideo(paricipantID, st->frameOutput());
+
+				};
+				});
 
 		});
 
@@ -350,10 +424,14 @@ QFuture<void> Controller::openAudio(Handler* h, Media::Audio::StreamSource* st)
 	return st->open().then([this, st, h](Media::Audio::SourceConfig&& config)
 		{
 			int currentUser = _manager->currentUser();
-			if (!_userContexts.contains(currentUser))
-				_userContexts[currentUser] = StreamContext();
+			{
+				std::lock_guard g(_contextsMutex);
 
-			_userContexts[_manager->currentUser()].audioSource = st;
+				if (!_userContexts.contains(currentUser))
+					_userContexts[currentUser] = StreamContext();
+				_userContexts[_manager->currentUser()].audioSource = st;
+			}
+			std::lock_guard g(_contextsMutex);
 			Participate::Model* model = h->participants();
 			for (size_t i = 0; i < model->rowCount(); i++)
 			{
@@ -369,23 +447,30 @@ QFuture<void> Controller::openAudio(Handler* h, Media::Audio::StreamSource* st)
 }
 void Controller::closeVideo(Handler* h)
 {
-	if (!_userContexts.contains(_manager->currentUser()))
 	{
-		qCWarning(LC_CALL_CONTROLLER) << "Attempt to close a video stream while it is not open";
-		return;
+		std::lock_guard g(_contextsMutex);
+		if (_userContexts.contains(_manager->currentUser()))
+		{
+			_userContexts[_manager->currentUser()].videoSource->close();
+			_userContexts[_manager->currentUser()].videoSource = nullptr;
+		}
 	}
-	_userContexts[_manager->currentUser()].videoSource->close();
-	auto model = h->participants();
-	model->setData(model->idToIndex(_manager->currentUser()), false, Participate::Model::HasVideo);
-	h->hasVideoChanged();
-	int currentUser = _manager->currentUser();
-	for (size_t i = 0; i < model->rowCount(); i++)
+	setVideo(false, h);
+	Api::UpdateCallMedia req;
+	req.video = false;
+	req.exec(_manager);
 	{
-		int paricipantID = model->data(model->index(i),
-			Participate::Model::IDRole()).toInt();
-		if (paricipantID == currentUser)
-			continue;
-		_rtc->closeLocalVideo(paricipantID);
+		std::lock_guard g(_contextsMutex);
+		auto model = h->participants();
+		int currentUser = _manager->currentUser();
+		for (size_t i = 0; i < model->rowCount(); i++)
+		{
+			int paricipantID = model->data(model->index(i),
+				Participate::Model::IDRole()).toInt();
+			if (paricipantID == currentUser)
+				continue;
+			_rtc->closeLocalVideo(paricipantID);
 
-	};
+		};
+	}
 }

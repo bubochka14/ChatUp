@@ -24,6 +24,7 @@ namespace Media::Video {
 		std::shared_ptr<Media::PacketPipe> output();
 		bool start(std::shared_ptr<Media::FramePipe> input);
 		std::shared_ptr<AVCodecContext> codecContext();
+		void close();
 		virtual ~AbstractEncoder() = default;
 	protected:
 		explicit AbstractEncoder();
@@ -36,6 +37,8 @@ namespace Media::Video {
 		std::shared_ptr<Media::PacketPipe> _out;
 		std::shared_ptr<AVCodecContext> _cCtx;
 		const AVCodec* _cdc;
+		std::shared_ptr<FramePipe> _input;
+		std::optional<int> _listenerIndex;
 	};
 	class CC_MEDIA_EXPORT H264Encoder final : public AbstractEncoder
 	{
@@ -74,6 +77,8 @@ namespace Media::Audio {
 		std::shared_ptr<AVCodecContext> _cCtx;
 		std::shared_ptr<SwrContext> _swr;
 		std::shared_ptr<AVAudioFifo> _fifo;
+		std::shared_ptr<FramePipe> _input;
+		std::optional<int> _listenerIndex;
 		const AVCodec* _cdc;
 	};
 	class CC_MEDIA_EXPORT AACEncoder final : public AbstractEncoder

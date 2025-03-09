@@ -33,50 +33,54 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input)
 	codecPar->height = input->storedData(0)->height;
 	codecPar->format = input->storedData(0)->format;
 	avcodec_parameters_to_context(_cCtx.get(), codecPar);
-
+	avcodec_parameters_free(&codecPar);
 	int ret = avcodec_open2(_cCtx.get(), _cdc, NULL);
 	if (ret < 0) {
 		qCCritical(LC_ENCODER) << "Cannot start encoder: " <<Media::av_err2string(ret);
 		return false;
 	}
-    input->onDataChanged([this,wctx =std::weak_ptr(_cCtx), input](std::weak_ptr<AVFrame> weak,size_t index) {
-        if (auto ptr = weak.lock())
-        {
-			auto ctx = wctx.lock();
-			if (!ctx)
+	_input = input;
+    _listenerIndex = input->onDataChanged([this](std::shared_ptr<AVFrame> frame,size_t index) {
+        int response = avcodec_send_frame(_cCtx.get(), _input->storedData(index).get());
+		_input->unmapReading(index);
+		if (response < 0)
+			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
+        while (response >= 0) {
+			auto outPacket = _out->tryHoldForWriting();
+			if (!outPacket.has_value())
+			{
+				qCWarning(LC_ENCODER) << "Output pipe overflow";
 				return;
-            int response = avcodec_send_frame(ctx.get(), input->storedData(index).get());
-			input->unmapReading(index);
-			if (response < 0)
-				qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
-            while (response >= 0) {
-				auto outPacket = _out->tryHoldForWriting();
-				if (!outPacket.has_value())
-				{
-					qCWarning(LC_ENCODER) << "Output pipe overflow";
-					return;
-				}
-                response = avcodec_receive_packet(ctx.get(), outPacket->ptr.get());
-                if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-					_out->unmapWriting(index,false);
-					break;
-                }
-                else if(response <0){
-                    printf("Error while receiving packet from encoder: %d", response);
-					_out->unmapWriting(index, false);
-                    break;
-                }
-				outPacket->ptr->stream_index = 0;
-				outPacket->ptr->pts = ++_pts;
-				outPacket->ptr->dts = ++_dts;
-				outPacket->ptr->time_base.num = 1;
-				outPacket->ptr->time_base.den = 30;
-				_out->unmapWriting(index, true);
-
+			}
+            response = avcodec_receive_packet(_cCtx.get(), outPacket->ptr.get());
+            if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
+				_out->unmapWriting(index,false);
+				break;
             }
+            else if(response <0){
+                printf("Error while receiving packet from encoder: %d", response);
+				_out->unmapWriting(index, false);
+                break;
+            }
+			outPacket->ptr->stream_index = 0;
+			outPacket->ptr->pts = ++_pts;
+			outPacket->ptr->dts = ++_dts;
+			outPacket->ptr->time_base.num = 1;
+			outPacket->ptr->time_base.den = 30;
+			_out->unmapWriting(index, true);
         }
         });
     return true;
+}
+void Video::AbstractEncoder::close()
+{
+	if (_cCtx)
+		avcodec_close(_cCtx.get());
+	if (_input && _listenerIndex.has_value())
+	{
+		_input->removeListener(_listenerIndex.value());
+		_listenerIndex = std::nullopt;
+	}
 }
 Audio::AbstractEncoder::AbstractEncoder()
 	:_out(Media::createPacketPipe())

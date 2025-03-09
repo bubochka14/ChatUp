@@ -76,7 +76,7 @@ namespace Call {
 	struct StreamContext
 	{
 		Media::Video::StreamSource* videoSource = nullptr;
-		std::unique_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
+		std::shared_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
 		Media::Audio::StreamSource* audioSource = nullptr;
 		//Media::StreamSource* audio = nullptr;
 		//Media::Audio::Source audioSource;
@@ -113,6 +113,9 @@ namespace Call {
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;
 		std::unordered_map<int, StreamContext> _userContexts;
+		std::mutex _contextsMutex;
+		std::mutex _handlersMutex;
 		std::optional<int> _activeCallRoomID;
+
 	};
 }

@@ -12,6 +12,7 @@
 #include "media.h"
 #include "rtppacketizer.h"
 #include "decoder.h"
+#include "scopeguard.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_RTC_SERVICE);
 namespace rtc
 {
@@ -53,6 +54,7 @@ namespace rtc
 		QFuture<void> openLocalVideo(int userID,std::shared_ptr<Media::FramePipe> input);
 
 		std::optional<rtc::Track> openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input);
+		std::shared_ptr<Media::FramePipe> getRemoteVideo(int userID);
 		void onRemoteVideoClosed(std::function<void(int userID)> cb);
 		void onRemoteVideoOpen(std::function<void(int,std::shared_ptr<Media::FramePipe>)> cb);
 		void onRemoteAudioOpen(std::function<void(int,std::shared_ptr<Media::FramePipe>)> cb);

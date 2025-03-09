@@ -97,7 +97,11 @@ namespace Media
         });
     }
     CC_MEDIA_EXPORT std::shared_ptr<PacketPipe> createPacketPipe();
-    CC_MEDIA_EXPORT bool fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size);
+    CC_MEDIA_EXPORT bool fillPacket(
+        std::shared_ptr<AVPacket> pack,
+        uint8_t* data,
+        size_t dataSize
+    );
     namespace Audio
     {
         struct SourceConfig
@@ -247,12 +251,17 @@ namespace Media
         };
         struct CC_MEDIA_EXPORT SinkConnector
         {
-            SinkConnector(std::shared_ptr<FramePipe> pipe, QVideoSink* sink);
+            SinkConnector();
+            void drain(); 
+            void close(); 
+            void connect(std::shared_ptr<FramePipe> fr);
+            void connect(QVideoSink* s);
             ~SinkConnector();
         private:
+            void establish();
             struct FrameData
             {
-                QtVideoBuffer* buf;
+                QtVideoBuffer* buf = nullptr;
                 size_t pipeIndex = -1;
                 std::optional<QVideoFrame> qframe;
             };

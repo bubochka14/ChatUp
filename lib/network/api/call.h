@@ -3,6 +3,8 @@
 #include "data.h"
 #include "networkmanager.h"
 #include <qfuture>
+#include <qloggingcategory.h>
+Q_DECLARE_LOGGING_CATEGORY(LC_CALL_API);
 namespace Call::Api
 {
 
@@ -28,4 +30,23 @@ namespace Call::Api
 
 
 	};
+	struct UpdateCallMedia
+	{
+		struct MediaUpdate
+		{
+			bool video;
+			bool audio;
+			int userID;
+			int roomID;
+		};
+		UpdateCallMedia() = default;
+		std::optional<bool> audio;
+		std::optional<bool> video;
+		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
+		//Cb args: room id and user id
+		static void handle(std::shared_ptr<NetworkCoordinator> h, std::function<void(MediaUpdate&&)> cb);
+	private:
+		static constexpr char callName[] = "updateCallMedia";
+	};
+
 }

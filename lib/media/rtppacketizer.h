@@ -19,10 +19,14 @@ namespace Media{
 	public:
 		RtpPacketizer(PacketizationConfig);
 		std::shared_ptr<RawPipe> output();
-		virtual bool start(std::shared_ptr<PacketPipe> input);
+		bool start(std::shared_ptr<PacketPipe> input);
+		void stop();
+		~RtpPacketizer();
 	private:
 		AVFormatContext* _packetizationCxt;
 		std::shared_ptr<RawPipe> _output;
+		std::shared_ptr<PacketPipe> _input;
 		PacketizationConfig _config;
+		std::optional<int> listenerIndex;
 	};
 }

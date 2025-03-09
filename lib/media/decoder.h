@@ -16,19 +16,6 @@ extern "C"
 Q_DECLARE_LOGGING_CATEGORY(LC_DECODER)
 Q_DECLARE_LOGGING_CATEGORY(LC_H264DEMUXER)
 namespace Media {
-	class CC_MEDIA_EXPORT DataBuffer
-	{
-	public:
-		using Binary = std::vector<std::byte>;
-		DataBuffer():byteOffset(0) {}
-		bool empty();
-		void pushData(Binary bin);
-		int popData(uint8_t* prt, int size);
-	public:
-		std::deque <Binary> data;
-		std::mutex mutex;
-		size_t byteOffset;
-	};
 	class CC_MEDIA_EXPORT AbstractDecoder
 	{
 	public:

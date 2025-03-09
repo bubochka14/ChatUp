@@ -22,32 +22,39 @@ std::chrono::system_clock::rep time_since_epoch() {
 QFuture<void> Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input)
 {
 	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
-	if (!_videoEncoder)
-		_videoEncoder = std::make_shared<Media::Video::H264Encoder>();
-	rtc::Description::Video media("video", rtc::Description::Direction::SendOnly);
-	media.addH264Codec(96); // Must match the payload type of the external h264 RTP stream
-	media.addSSRC(userID, "video-send");
-	std::shared_ptr<PeerConnection> pc = ctx->pc;
-	ctx->videoTrack = pc->addTrack(media);
+	_videoEncoder = std::make_shared<Media::Video::H264Encoder>();
 	_videoEncoder->start(input);
 	PacketizationConfig pConfig;
 	pConfig.ecnCtx = _videoEncoder->codecContext();
 	_videoPacketizer = std::make_shared<Media::RtpPacketizer>(pConfig);
 	_videoPacketizer->start(_videoEncoder->output());
-	ctx->videoTrack->onOpen([wInput = std::weak_ptr(input), this, wtrack = std::weak_ptr(ctx->videoTrack)]() {
-		auto input = wInput.lock();
-		if (!input)
+	auto packetizerRawHandler = [this, wCtx = std::weak_ptr(ctx)](std::shared_ptr<Media::Raw> raw, size_t index) {
+		auto ctx = wCtx.lock();
+		if (!ctx)
 			return;
-		_videoPacketizer->output()->onDataChanged([this, wtrack](std::shared_ptr<Media::Raw> raw, size_t index) {
-			auto track = wtrack.lock();
-			if (!track)
-				return;
-			track->send((std::byte*)raw->raw, raw->size);
-			_videoPacketizer->output()->unmapReading(index);
+		try {
+			ctx->videoTrack->send((std::byte*)raw->raw, raw->size);
+		}
+		catch (std::exception& e)
+		{
+			qCWarning(LC_RTC_SERVICE) << "Cannot send video packet" << e.what();
+		}
+		_videoPacketizer->output()->unmapReading(index);
+		};
+	if (!ctx->videoTrack)
+	{
+		rtc::Description::Video media("video", rtc::Description::Direction::SendRecv);
+		media.addH264Codec(96); // Must match the payload type of the external h264 RTP stream
+		media.addSSRC(userID, "video-stream");
+		std::shared_ptr<PeerConnection> pc = ctx->pc;
+		ctx->videoTrack = pc->addTrack(media);
+		ctx->videoTrack->onOpen([this,h = std::move(packetizerRawHandler)]() {
+			_videoPacketizer->output()->onDataChanged(std::move(h));
 			});
+		pc->setLocalDescription();
+	}else
+		_videoPacketizer->output()->onDataChanged(std::move(packetizerRawHandler));
 
-	});
-	pc->setLocalDescription();
 
 return QtFuture::makeReadyVoidFuture();
 }
@@ -140,25 +147,25 @@ Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration c
 		}
 		auto desc = rtc::Description(msg.description, msg.type);
 		ctx->pc->setRemoteDescription(desc);
-		for (size_t i = 0; i < desc.mediaCount(); i++)
-		{
-			auto var = desc.media(i);
-			if (!std::holds_alternative<Description::Media*>(var))
-				continue;
-			auto media = std::get<Description::Media*>(var);
-			if (media->mid() == "video" && ctx->videoDecoder)
-			{
-				if (media->direction() == rtc::Description::Direction::Inactive ||
-					media->direction() == rtc::Description::Direction::RecvOnly)
-				{
-					if (_closeVideoCb.has_value())
-						_closeVideoCb.value()(msg.id);
-					ctx->videoDecoder.reset();
-					ctx->videoPackets.reset();
-				}
+		//for (size_t i = 0; i < desc.mediaCount(); i++)
+		//{
+		//	auto var = desc.media(i);
+		//	if (!std::holds_alternative<Description::Media*>(var))
+		//		continue;
+		//	auto media = std::get<Description::Media*>(var);
+		//	if (media->mid() == "video" && ctx->videoDecoder)
+		//	{
+		//		if (media->direction() == rtc::Description::Direction::Inactive ||
+		//			media->direction() == rtc::Description::Direction::RecvOnly)
+		//		{
+		//			if (_closeVideoCb.has_value())
+		//				_closeVideoCb.value()(msg.id);
+		//			ctx->videoDecoder.reset();
+		//			ctx->videoPackets.reset();
+		//		}
 
-			}
-		}
+		//	}
+		//}
 
 	});
 	rtc::Api::Candidate::handle(_coordinator, [this](rtc::Data::Candidate candidate){
@@ -218,11 +225,10 @@ void Service::createPeerContext(int id)
 		if (track->mid() == "video")
 		{
 		
-			auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(42, "channelName", 96, rtc::H264RtpPacketizer::defaultClockRate);
+			auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(42, "video-stream", 96, rtc::H264RtpPacketizer::defaultClockRate);
 			auto videoReceivingSession = std::make_shared<rtc::H264RtpDepacketizer>(rtc::H264RtpDepacketizer::Separator::LongStartSequence);
 			auto sess = std::make_shared<RtcpReceivingSession>();
 			videoReceivingSession->addToChain(sess);
-			AVCodecParameters* pars = nullptr;
 			videoReceivingSession->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtpConfig));
 			videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
 			track->setMediaHandler(videoReceivingSession);
@@ -230,11 +236,10 @@ void Service::createPeerContext(int id)
 				});
 			std::shared_ptr<PeerContext> ctx = getPeerContext(id);
 			ctx->videoTrack = track;
-			ctx->videoDecoder.reset(new Video::H264Decoder());
-			ctx->videoPackets = Media::createPacketPipe();
-			ctx->videoDecoder->start(ctx->videoPackets);
-			if (_videoCb.has_value())
-				_videoCb.value()(id,ctx->videoDecoder->output());
+			if (!ctx->videoPackets)
+				ctx->videoPackets = Media::createPacketPipe();
+			//if (_videoCb.has_value())
+			//	_videoCb.value()(id,ctx->videoDecoder->output());
 			track->onFrame([this, id](rtc::binary data, rtc::FrameInfo info) {
 				std::shared_ptr<PeerContext> ctx = getPeerContext(id);
 				auto pipeData = ctx->videoPackets->tryHoldForWriting();
@@ -290,6 +295,16 @@ void Service::createPeerContext(int id)
 			}
 		}
 	});
+}
+std::shared_ptr<Media::FramePipe> Service::getRemoteVideo(int userID)
+{
+	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	if(!ctx->videoPackets)
+		ctx->videoPackets = Media::createPacketPipe();
+	if (!ctx->videoDecoder)
+		ctx->videoDecoder.reset(new Video::H264Decoder());
+	ctx->videoDecoder->start(ctx->videoPackets);
+	return ctx->videoDecoder->output();
 }
 std::shared_ptr<Service::PeerContext> Service::getPeerContext(int id)
 {
@@ -348,24 +363,28 @@ QDebug operator<<(QDebug debug, const rtc::PeerConnection::State& s)
 }
 void Service::closeLocalVideo(int userID)
 {
-	if (!_peerContexts.contains(userID))
-		return;
-	auto& context = _peerContexts[userID];
-	if (context->videoTrack->direction() == rtc::Description::Direction::SendRecv)
-	{
-		rtc::Description::Media dsc = context->videoTrack->description();
-		dsc.setDirection(Description::Direction::RecvOnly);
-		context->videoTrack = context->pc->addTrack(std::move(dsc));
-		context->pc->setLocalDescription();
-	}
-	if (context->videoTrack->direction() == rtc::Description::Direction::SendOnly)
-	{
-		rtc::Description::Media dsc = context->videoTrack->description();
-		dsc.setDirection(Description::Direction::Inactive);
-		context->videoTrack = context->pc->addTrack(std::move(dsc));
-		context->pc->setLocalDescription();
+	_videoEncoder.reset();
+	_videoPacketizer.reset();
+	//if (!_peerContexts.contains(userID))
+	//	return;
+	//auto& context = _peerContexts[userID];
+	//if (context->videoTrack->direction() == rtc::Description::Direction::SendRecv)
+	//{
+	//	_videoEncoder.reset();
+	//	_videoPacketizer.reset();
+	//	rtc::Description::Media dsc = context->videoTrack->description();
+	//	dsc.setDirection(Description::Direction::RecvOnly);
+	//	context->videoTrack = context->pc->addTrack(std::move(dsc));
+	//	context->pc->setLocalDescription();
+	//}
+	//if (context->videoTrack->direction() == rtc::Description::Direction::SendOnly)
+	//{
+	//	rtc::Description::Media dsc = context->videoTrack->description();
+	//	dsc.setDirection(Description::Direction::Inactive);
+	//	context->videoTrack = context->pc->addTrack(std::move(dsc));
+	//	context->pc->setLocalDescription();
 
-	}
+	//}
 }
 void Service::onRemoteAudioOpen(std::function<void(int, std::shared_ptr<Media::FramePipe>)> cb)
 {
