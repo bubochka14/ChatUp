@@ -17,13 +17,23 @@ extern "C"
 namespace Media::Audio {
 	class CC_MEDIA_EXPORT Output : public QAudioOutput
 	{
-		QtEventLoopEmplacer* emp;
+		Q_OBJECT;
+		Q_PROPERTY(QStringList availableDevices READ availableDevices NOTIFY availableDevicesChanged);
+		Q_PROPERTY(QAudioSink* sink READ sink NOTIFY sinkChanged);
 	public:
 		Output();
-		bool start(std::shared_ptr<Media::FramePipe>pipe);
-
+		Q_INVOKABLE bool start(const QString& dev, std::shared_ptr<Media::FramePipe>pipe);
+		QStringList availableDevices();
+		QAudioSink* sink();
+	signals:
+		void availableDevicesChanged();
+		void sinkChanged();
 	private:
-		QIODevice* dev;
-		QAudioDevice device;
+		void setSink(QAudioSink* sink);
+		std::optional<QAudioDevice> findDevice(const QString& str);
+		QIODevice* _io;
+		QAudioDevice _device;
+		QtEventLoopEmplacer* _emp;
+		QAudioSink* _sink;
 	};
 }

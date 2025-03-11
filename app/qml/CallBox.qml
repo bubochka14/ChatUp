@@ -30,6 +30,8 @@ Rectangle {
             name: "disconnected"
             PropertyChanges {
                 root.visible: false
+                mediaBtn.visible: false
+                voiceBtn.visible: false
             }
         },
         State {
@@ -37,6 +39,9 @@ Rectangle {
             PropertyChanges {
                 root.visible: true
                 interactionBtn.source: Qt.resolvedUrl("pics/startcall")
+                mediaBtn.visible: false
+                voiceBtn.visible: false
+
             }
         },
         State {
@@ -44,6 +49,9 @@ Rectangle {
             PropertyChanges {
                 root.visible: true
                 interactionBtn.source: Qt.resolvedUrl("pics/endcall")
+                mediaBtn.visible: true
+                voiceBtn.visible: true
+
             }
         }
     ]
@@ -62,8 +70,6 @@ Rectangle {
     }
     CallParticipantView {
         id: view
-        boxHeight: root.height
-        boxWidth: root.width
         anchors.fill: parent
         callHandler: root.callHandler
     }
@@ -87,6 +93,7 @@ Rectangle {
             }
         }
         IconButton {
+            id:mediaBtn
             height: 45
             width: 45
             source: root.callHandler.hasVideo ? Qt.resolvedUrl(
@@ -102,6 +109,7 @@ Rectangle {
             }
         }
         IconButton {
+            id:voiceBtn
             height: 45
             width: 45
             source: root.callHandler.hasAudio ? Qt.resolvedUrl(

@@ -61,3 +61,19 @@ void ApplicationSettings::setAudioDevice(const QString& other)
 	if (other != last)
 		emit audioDeviceChanged();
 }
+
+QString ApplicationSettings::outputAudioDevice() const
+{
+	return value("outputAudioDevice", defaultOutputAudioDevice()).toString();
+}
+QString ApplicationSettings::defaultOutputAudioDevice() const
+{
+	return QString("unknown");
+}
+void ApplicationSettings::setOutputAudioDevice(const QString& other)
+{
+	QString last = outputAudioDevice();
+	setValue("outputAudioDevice", other);
+	if (other != last)
+		emit outputAudioDeviceChanged();
+}

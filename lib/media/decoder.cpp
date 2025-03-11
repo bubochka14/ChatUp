@@ -30,13 +30,13 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 	}
 	_input = input;
 	inputListenIndex = input->onDataChanged([this](std::shared_ptr<AVPacket> pack, size_t index) {
-		quene.enqueue([this,wpack = std::weak_ptr(pack),index]() {
+		//quene.enqueue([this,wpack = std::weak_ptr(pack),index]() {
 
-			auto pack = wpack.lock();
-			if (!pack)
-				return;
+			//auto pack = wpack.lock();
+			//if (!pack)
+			//	return;
+		qDebug() << pack->pts;
 			int resp = avcodec_send_packet(_ctx.get(), pack.get());
-			_input->unmapReading(index);
 			if (resp < 0)
 				qCDebug(LC_DECODER) << avcodec_get_name(_codec->id) << "cannot send packet" << av_err2str(resp);
 			while (resp >= 0)
@@ -55,7 +55,9 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 					_out->unmapWriting(outFrame.subpipe, true);
 				}
 			}
-			});
+			_input->unmapReading(index);
+
+			//});
 			});
 	return true;
 

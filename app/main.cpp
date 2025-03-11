@@ -29,7 +29,7 @@ int main(int argc, char ** argv)
     parser.addOption(portOption);
     QCommandLineOption addrOption(QStringList() << "h" << "host",
         QCoreApplication::translate("main", "Property to specify host address, default value is 5.35.124.43"),
-        QString(), "localhost");
+        QString(), "5.35.124.43");
     parser.addOption(addrOption);
     parser.process(gApp);
 

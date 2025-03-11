@@ -25,23 +25,24 @@ endforeach()
 list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
 set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")
 set(APP_SOURCES
-        app.cpp
-        abstractwindowfactory.h
-        abstractwindowfactory.cpp
-        qmlchatwindow.cpp
-        qmlchatwindow.h
-       qmlstartupwindow.h
-       qmlstartupwindow.cpp
-       qmlwindowfactory.cpp
-       main.cpp
-        qmlwindowfactory.h
-        abstractchatwindow.cpp
-        app.h
-      qmlobjectconverter.h
-
-       qml/qml.qrc
-       resources/resources.qrc
-        )
+    app.cpp
+    qmlaudiooutput.h
+    qmlaudiooutput.cpp
+    abstractwindowfactory.h
+    abstractwindowfactory.cpp
+    qmlchatwindow.cpp
+    qmlchatwindow.h
+    qmlstartupwindow.h
+    qmlstartupwindow.cpp
+    qmlwindowfactory.cpp
+    main.cpp
+    qmlwindowfactory.h
+    abstractchatwindow.cpp
+    app.h
+    qmlobjectconverter.h
+    qml/qml.qrc
+    resources/resources.qrc
+    )
 qt_add_executable (app ${APP_SOURCES}
 )
 qt_add_qml_module(app 
@@ -84,19 +85,19 @@ target_compile_definitions(app
         QM_DIR="${APP_QM_DIR}"
 )
 target_link_libraries(app PRIVATE
-        ChatClient::Core
-       ChatClient::Network
-       ChatClient::Media
-        LibDataChannel::LibDataChannel
+    ChatClient::Core
+    ChatClient::Network
+    ChatClient::Media
+    LibDataChannel::LibDataChannel
 
-        Qt6::Core
-        Qt6::QuickControls2
-        Qt6::Qml
-        Qt6::Quick
-        Qt6::Multimedia
-        quickfuture
-        QWindowKit::Quick
-        QWindowKit::Core
+    Qt6::Core
+    Qt6::QuickControls2
+    Qt6::Qml
+    Qt6::Quick
+    Qt6::Multimedia
+    quickfuture
+    QWindowKit::Quick
+    QWindowKit::Core
 )
 
 #qt_add_lupdate(components TS_FILES "${APP_SOURCC_DIR}/translations/comp_ru.ts" "${APP_SOURCC_DIR}/translations/comp_en.ts")

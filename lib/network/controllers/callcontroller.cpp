@@ -31,55 +31,6 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	//config.disableAutoNegotiation = true;
 	_rtc = std::make_shared<rtc::Service>(_manager, std::move(config));
 	Media::Audio::Output* out = new Media::Audio::Output();
-
-	_rtc->onRemoteVideoOpen([this](int userID,std::shared_ptr<Media::FramePipe> fp) {
-		//DumpStreamSource* str = new DumpStreamSource;
-		//str->pipe = fp;
-		{
-			std::lock_guard g(_contextsMutex);
-			if (!_userContexts.contains(userID))
-				_userContexts[userID] = StreamContext();
-			auto connector = _userContexts[userID].videoSinkConnector;
-			if(!connector)
-			{
-				connector = std::make_shared<Media::Video::SinkConnector>();
-				_userContexts[userID].videoSinkConnector = connector;
-			}
-			connector->connect(fp);
-		}
-		});
-	_rtc->onRemoteVideoClosed([this](int userID) {
-		//Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
-		//Participate::Model* pt = callHandler->participants();
-		//auto index = pt->idToIndex(userID);
-		//if (!index.isValid())
-		//	return;
-		//pt->setData(index, false, Participate::Model::HasVideo);
-		//if (_userContexts.contains(userID))
-		//{
-		//	auto& context = _userContexts[userID];
-		//	context.videoSource = nullptr;
-		//}
-		});
-	_rtc->onRemoteAudioOpen([this,out](int userID, std::shared_ptr<Media::FramePipe> fp) {
-		//_guiEmplacer->emplaceTask([this, out, userID, fp]() {
-		//	if (!_activeCallRoomID.has_value())
-		//		qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote audio, current user not inside the call";
-		//	Call::Handler* callHandler = _handlers[_activeCallRoomID.value()];
-		//	Participate::Model* pt = callHandler->participants();
-		//	if (!pt->idToIndex(userID).isValid())
-		//	{
-		//		qCWarning(LC_CALL_CONTROLLER) << "Cannot open remote video, peer"
-		//			<< userID << "not inside the call";
-		//		return;
-		//	}
-		//	if (!_userContexts.contains(userID))
-		//		_userContexts[userID] = StreamContext();
-		//	out->start(fp);
-
-		//	pt->setData(pt->idToIndex(userID), true, Participate::Model::HasAudio);
-		//	});
-		});
 	Api::Join::handle(m, [this](Participate::Data&& part) {
 		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
 			auto h = handler(part.roomID);
@@ -101,6 +52,8 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 			qCWarning(LC_CALL_CONTROLLER) << "Unknown userID received";
 			return;
 		}
+		if (pt->data(index, Participate::Model::HasVideo).toBool() == true && upd.video == false)
+			_rtc->flushInput(upd.userID);
 		pt->setData(index, upd.video, Participate::Model::HasVideo);
 		pt->setData(index, upd.audio, Participate::Model::HasAudio);
 	/*	if (_userContexts.contains(userID))
@@ -185,11 +138,11 @@ void Controller::connectVideoSink(Handler* h, int userID, QVideoSink* s)
 		connector->connect(s);
 		if(userID != _manager->currentUser())
 			connector->connect(_rtc->getRemoteVideo(userID));
-		//StreamSource* src = _userContexts[userID].videoSource;
-		//if (src)
-		//{
-		//	connector->connect(src->frameOutput());
-		//}
+		else
+		{
+			StreamSource* src = _userContexts[userID].videoSource;
+			connector->connect(src->frameOutput());
+		}
 	}
 }
 

@@ -20,6 +20,7 @@ RtpPacketizer::RtpPacketizer(PacketizationConfig config)
 	:_output(std::make_shared<RawPipe>())
 	,_config(std::move(config))
 	,_input(nullptr)
+	,_packetizationCxt(nullptr)
 {
 	if(!_config.ecnCtx) {
 		qCCritical(LC_RTP_PACKETIZER) << "Config does not contain encoder context";
@@ -71,6 +72,7 @@ bool RtpPacketizer::start(std::shared_ptr<PacketPipe> input)
 		qCCritical(LC_RTP_PACKETIZER) << "Error occurred when starting packetizer" << Media::av_err2string(ret);
 		return false;
 	}
+	_input = input;
 	listenerIndex = input->onDataChanged([this, winput = std::weak_ptr(input)](std::shared_ptr<AVPacket> pack, int index) {
 		auto input = winput.lock();
 		if (!pack || !input)

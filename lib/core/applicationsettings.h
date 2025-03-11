@@ -11,6 +11,8 @@ class CC_CORE_EXPORT ApplicationSettings : public QSettings
 	Q_PROPERTY(QString language READ language WRITE setLanguage NOTIFY languageChanged);
 	Q_PROPERTY(QString videoDevice READ videoDevice WRITE setVideoDevice NOTIFY videoDeviceChanged);
 	Q_PROPERTY(QString audioDevice READ audioDevice WRITE setAudioDevice NOTIFY audioDeviceChanged);
+	Q_PROPERTY(QString outputAudioDevice READ outputAudioDevice
+		WRITE setOutputAudioDevice NOTIFY outputAudioDeviceChanged);
 public:
 	//static void initialize(const QString& appName, const QString& orgName);
 	static ApplicationSettings* instance();
@@ -27,10 +29,15 @@ public:
 	QString defaultAudioDevice() const;
 	void setAudioDevice(const QString& other);
 
+	QString outputAudioDevice() const;
+	QString defaultOutputAudioDevice() const;
+	void setOutputAudioDevice(const QString& other);
+
 signals:
 	void languageChanged();
 	void videoDeviceChanged();
 	void audioDeviceChanged();
+	void outputAudioDeviceChanged();
 protected:
 	ApplicationSettings();
 private:

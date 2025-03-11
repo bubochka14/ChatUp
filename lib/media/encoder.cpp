@@ -25,8 +25,6 @@ void Video::AbstractEncoder::initialize(std::shared_ptr<AVCodecContext> cctx, co
 
 bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input)
 {
-	_pts = 0;
-	_dts = 0;
 	AVCodecParameters* codecPar = avcodec_parameters_alloc();
 	avcodec_parameters_from_context(codecPar, _cCtx.get());
 	codecPar->width = input->storedData(0)->width;
@@ -40,12 +38,12 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input)
 		return false;
 	}
 	_input = input;
-    _listenerIndex = input->onDataChanged([this](std::shared_ptr<AVFrame> frame,size_t index) {
-        int response = avcodec_send_frame(_cCtx.get(), _input->storedData(index).get());
+	_listenerIndex = input->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index) {
+		int response = avcodec_send_frame(_cCtx.get(), frame.get());
 		_input->unmapReading(index);
 		if (response < 0)
 			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
-        while (response >= 0) {
+		while (response >= 0 /*|| response == AVERROR(EAGAIN)*/) {
 			auto outPacket = _out->tryHoldForWriting();
 			if (!outPacket.has_value())
 			{
@@ -54,12 +52,12 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input)
 			}
             response = avcodec_receive_packet(_cCtx.get(), outPacket->ptr.get());
             if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-				_out->unmapWriting(index,false);
+				_out->unmapWriting(outPacket->subpipe,false);
 				break;
             }
             else if(response <0){
                 printf("Error while receiving packet from encoder: %d", response);
-				_out->unmapWriting(index, false);
+				_out->unmapWriting(outPacket->subpipe, false);
                 break;
             }
 			outPacket->ptr->stream_index = 0;
@@ -67,7 +65,7 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input)
 			outPacket->ptr->dts = ++_dts;
 			outPacket->ptr->time_base.num = 1;
 			outPacket->ptr->time_base.den = 30;
-			_out->unmapWriting(index, true);
+			_out->unmapWriting(outPacket->subpipe, true);
         }
         });
     return true;
@@ -170,8 +168,8 @@ static int init_output_frame(AVFrame** frame,
 }
 bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input)
 {
-	_pts = 0;
-	_dts = 0;
+	//_pts = 0;
+	//_dts = 0;
 	//viewing frame properties, not data
 	std::shared_ptr<AVFrame> frame = input->storedData(0);
 	int requiredSampleRate = frame->sample_rate;
@@ -338,18 +336,17 @@ Video::H264Encoder::H264Encoder()
 		qCCritical(LC_ENCODER) << "Cannot create h264 codec context";
 		return;
 	}
-	ctx->max_b_frames = 0;            // не отправлять B фреймы
-	ctx->refs = 1;                    // количество кадров "ссылок"
+//	ctx->refs = 1;                    // количество кадров "ссылок"
 	ctx->level = 13;               // уровень качества
 
 	av_opt_set(ctx->priv_data, "profile", "high422", 0);
 	av_opt_set(ctx->priv_data, "preset", "fast", 0);           // скорость кодирования. обратна пропорциональна качеству
 	av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
 	ctx->time_base = av_make_q(1, 30);
-	ctx->gop_size = 10;
-	ctx->bit_rate = 5 * 1000 * 1000;
-	ctx->rc_buffer_size = 4 * 1000 * 1000;
-	ctx->rc_max_rate = 5 * 1000 * 1000;
+	//ctx->gop_size = 10;
+	ctx->bit_rate = 3 * 1000 * 1000;
+	//ctx->rc_buffer_size = 4 * 1000 * 1000;
+	ctx->rc_max_rate = 4 * 1000 * 1000;
 	initialize(ctx, cdc);
 }
 Audio::AACEncoder::AACEncoder()

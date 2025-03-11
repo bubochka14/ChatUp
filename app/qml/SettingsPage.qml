@@ -17,21 +17,41 @@ ColoredFrame {
         GroupBox {
             title: qsTr("Audio")
             Layout.fillWidth: true
-            Column {
-                spacing: 5
-                Label {
-                    text: qsTr("Input Device")
-                }
-                ComboBox {
-                    id: audioInputComboBox
-                    width: 200
-                    model: MicrophonePipeline.availableDevices
-                    onActivated: ApplicationSettings.audioDevice = currentText
-                    implicitContentWidthPolicy: ComboBox.WidestText
-                    Component.onCompleted: {
-                        let idx =find(ApplicationSettings.audioDevice)
-                        if(idx!=-1)
-                            currentIndex = idx
+            Row {
+                Column {
+                    spacing: 5
+                    Label {
+                        text: qsTr("Input Device")
+                    }
+                    ComboBox {
+                        id: audioInputComboBox
+                        width: 200
+                        model: MicrophonePipeline.availableDevices
+                        onActivated: ApplicationSettings.audioDevice = currentText
+                        implicitContentWidthPolicy: ComboBox.WidestText
+                        Component.onCompleted: {
+                            let idx = find(ApplicationSettings.audioDevice)
+                            if (idx != -1)
+                                currentIndex = idx
+                        }
+                    }
+                    Column {
+                        Label {
+                            text: qsTr("Output Device")
+                        }
+                        ComboBox {
+                            id: audioOutputComboBox
+                            width: 200
+                            model: MyAudioOutput.availableDevices
+                            onActivated: ApplicationSettings.outputAudioDevice = currentText
+                            implicitContentWidthPolicy: ComboBox.WidestText
+                            Component.onCompleted: {
+                                let idx = find(
+                                        ApplicationSettings.outputAudioDevice)
+                                if (idx != -1)
+                                    currentIndex = idx
+                            }
+                        }
                     }
                 }
             }
@@ -51,8 +71,8 @@ ColoredFrame {
                     onActivated: ApplicationSettings.videoDevice = currentText
                     implicitContentWidthPolicy: ComboBox.WidestText
                     Component.onCompleted: {
-                        let idx =find(ApplicationSettings.videoDevice)
-                        if(idx!=-1)
+                        let idx = find(ApplicationSettings.videoDevice)
+                        if (idx != -1)
                             currentIndex = idx
                     }
                 }
