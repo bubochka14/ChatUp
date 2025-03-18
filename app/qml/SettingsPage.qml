@@ -33,6 +33,8 @@ ColoredFrame {
                             let idx = find(ApplicationSettings.audioDevice)
                             if (idx != -1)
                                 currentIndex = idx
+                            else if(count>0)
+                                ApplicationSettings.audioDevice  = currentText
                         }
                     }
                     Column {
@@ -50,6 +52,8 @@ ColoredFrame {
                                         ApplicationSettings.outputAudioDevice)
                                 if (idx != -1)
                                     currentIndex = idx
+                                else if(count>0)
+                                    ApplicationSettings.outputAudioDevice  = currentText
                             }
                         }
                     }
@@ -74,6 +78,9 @@ ColoredFrame {
                         let idx = find(ApplicationSettings.videoDevice)
                         if (idx != -1)
                             currentIndex = idx
+                        else if(count>0)
+                            ApplicationSettings.videoDevice  = currentText
+
                     }
                 }
             }

@@ -12,9 +12,32 @@ extern "C"
 #include <libswresample/swresample.h>
 #include <libavcodec/avcodec.h>
 #include "libavutil/audio_fifo.h"
-
 }
+#include <qloggingcategory.h>
+#include <qiodevice.h>
+#include <deque>
+Q_DECLARE_LOGGING_CATEGORY(LC_AUDIO_OUTPUT)
 namespace Media::Audio {
+	class CC_MEDIA_EXPORT PipeAudioBuffer : public QIODevice
+	{
+	public:
+		PipeAudioBuffer(std::shared_ptr<FramePipe> p);
+	public:
+		qint64 readLineData(char* data, qint64 maxSize) override
+			;
+		qint64 bytesAvailable() const override
+			;
+		qint64 readData(char* data, qint64 maxSize) override;
+
+		/* Only readable, not writable */
+		qint64 writeData(const char*, qint64) override;
+
+		std::shared_ptr<FramePipe> pipe;
+		mutable std::mutex mutex;
+		size_t lastOffset = 0;
+		uint64_t samples = 0;
+		std::deque<std::pair<std::shared_ptr<AVFrame>, size_t>> frameDeque;
+	};
 	class CC_MEDIA_EXPORT Output : public QAudioOutput
 	{
 		Q_OBJECT;

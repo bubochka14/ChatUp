@@ -11,6 +11,7 @@ extern "C" {
 #include <memory>
 #include <qabstractvideobuffer.h>
 #include <qvideosink.h>
+#include <qaudiosink.h>
 #include <QFuture>
 #include <qdebug>
 namespace Media
@@ -52,8 +53,8 @@ namespace Media
         size_t size = 0;
     };
 
-    using PacketPipe = DataPipe<4, AVPacket>;
-    using FramePipe = DataPipe<32, AVFrame>;
+    using PacketPipe = DataPipe<64, AVPacket>;
+    using FramePipe = DataPipe<128, AVFrame>;
     using BytePipe = DataPipe<2, std::vector<std::byte>>;
     using RawPipe = DataPipe<2, Raw>;
 
@@ -108,6 +109,20 @@ namespace Media
         {
             AVCodecParameters* par;//replace later
         };
+        //class CC_MEDIA_EXPORT SinkConnector
+        //{
+        //    SinkConnector();
+        //    void drain();
+        //    void close();
+        //    void connect(std::shared_ptr<FramePipe> fr);
+        //    void connect(QAudioSink* s);
+        //    ~SinkConnector();
+        //private:
+        //    void establish();
+        //    int listenerIndex;
+        //    QUIo
+        //    std::shared_ptr<Media::FramePipe> input;
+        //};
         static QAudioFormat::SampleFormat toQtFormat(AVSampleFormat format)
         {
             switch (format) {

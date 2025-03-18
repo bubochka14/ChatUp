@@ -34,6 +34,7 @@ private:
     std::unique_ptr<Media::Video::Camera>  _cam;
     std::atomic<bool> _isOpen;
     std::mutex mutex;
+    std::optional<Media::Video::SourceConfig> config;
     QString _dev;
 };
 class CC_MEDIA_EXPORT TestCameraPipeline : public CameraPipeline

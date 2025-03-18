@@ -1,5 +1,7 @@
 #include "audiooutput.h"
 using namespace Media::Audio;
+Q_LOGGING_CATEGORY(LC_AUDIO_OUTPUT, "AudioOutput");
+
 Output::Output()
 	:_emp(new QtEventLoopEmplacer)
 	,_sink(nullptr)
@@ -36,32 +38,36 @@ QAudioSink* Output::sink()
 }
 bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 {
-	QAudioFormat format;
 	auto device = findDevice(devName);
 	if (!device.has_value())
 		return false;
-	_device = std::move(*device);
-	format.setSampleRate(24000);
-	format.setChannelCount(2);
-	format.setSampleFormat(Media::Audio::toQtFormat((AVSampleFormat)8));
-	if (!_device.isFormatSupported(format)) {
-		qWarning() << "Raw audio format not supported by backend, cannot play audio.";
-		return false;
-	}
-	if(_sink)
-		_sink = new QAudioSink(_device, format);
-	connect(_sink, &QAudioSink::stateChanged, this, [=](QAudio::State st) {
-		qDebug() << "audio state " << st;
-
-
-		});
-	_sink->start();
+	_device = device.value();
 	pipe->onDataChanged([this, wPipe = std::weak_ptr(pipe)](std::shared_ptr<AVFrame> frame, size_t index) {
 		_emp->emplaceTask([=]() {
+			auto pipe = wPipe.lock();
+			if (!pipe)
+				return;
+			if (!_sink)
+			{
+				QAudioFormat format;
+				//Qt и FFMPEG по разному считают семпл рейт
+				format.setSampleRate(frame->sample_rate/frame->ch_layout.nb_channels);
+				format.setChannelCount(frame->ch_layout.nb_channels);
+				format.setSampleFormat(Media::Audio::toQtFormat((AVSampleFormat)frame->format));
+				if (!_device.isFormatSupported(format)) {
+					qCWarning(LC_AUDIO_OUTPUT) << "Raw audio format not supported by backend, cannot play audio.";
+					pipe->unmapReading(index);
+
+					return;
+				}
+				_sink = new QAudioSink(_device, format);
+				connect(_sink, &QAudioSink::stateChanged, this, [=](QAudio::State st) {
+					qCDebug(LC_AUDIO_OUTPUT) << "New audio state " << st;
+					});
+			}
 			if (_sink->state() != QAudio::ActiveState)
 				_io= _sink->start();
 			_io->write((char*)*frame->extended_data, frame->linesize[0]);
-			if (auto pipe = wPipe.lock())
 				pipe->unmapReading(index);
 			});
 		});

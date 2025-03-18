@@ -5,7 +5,8 @@
 #include <memory>
 #include <media.h>
 #include <qloggingcategory.h>
-
+#include "taskqueue.h"
+#include <QtConcurrent/qtconcurrentrun.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_RTP_PACKETIZER)
 namespace Media{
 	struct PacketizationConfig
@@ -26,6 +27,7 @@ namespace Media{
 		AVFormatContext* _packetizationCxt;
 		std::shared_ptr<RawPipe> _output;
 		std::shared_ptr<PacketPipe> _input;
+		TaskQueue _queue;
 		PacketizationConfig _config;
 		std::optional<int> listenerIndex;
 	};

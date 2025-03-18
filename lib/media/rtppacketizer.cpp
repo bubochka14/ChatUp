@@ -22,6 +22,7 @@ RtpPacketizer::RtpPacketizer(PacketizationConfig config)
 	,_input(nullptr)
 	,_packetizationCxt(nullptr)
 {
+
 	if(!_config.ecnCtx) {
 		qCCritical(LC_RTP_PACKETIZER) << "Config does not contain encoder context";
 		return;
@@ -74,13 +75,18 @@ bool RtpPacketizer::start(std::shared_ptr<PacketPipe> input)
 	}
 	_input = input;
 	listenerIndex = input->onDataChanged([this, winput = std::weak_ptr(input)](std::shared_ptr<AVPacket> pack, int index) {
-		auto input = winput.lock();
-		if (!pack || !input)
-			return;		
-		int ret = av_interleaved_write_frame(_packetizationCxt, pack.get());
-		if (ret < 0)
-			qCWarning(LC_RTP_PACKETIZER) << "Cannot write packet:" << Media::av_err2string(ret);
-		input->unmapReading(index);
+	//	qDebug() << pack->pts;
+		/*QtConcurrent::run([this,pack,index, winput] {*/
+			auto input = winput.lock();
+			if (!pack || !input)
+				return;
+			int ret = av_interleaved_write_frame(_packetizationCxt, pack.get());
+			if (ret < 0)
+				qCWarning(LC_RTP_PACKETIZER) << "Cannot write packet:" << Media::av_err2string(ret);
+			input->unmapReading(index);
+			//qCDebug(LC_RTP_PACKETIZER) << "Finish reading" << index;
+
+			//});
 		});
 	return true;
 }

@@ -11,55 +11,25 @@
 #include "encoder.h"
 #include "media.h"
 #include "rtppacketizer.h"
+#include <random>
+
 #include "decoder.h"
 #include "scopeguard.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_RTC_SERVICE);
 namespace rtc
 {
-	class Service;
-	class PacketizationPipeline
-	{
-		void open(std::shared_ptr<Media::FramePipe> framePipe);
-
-	};
-	//struct CC_NETWORK_EXPORT PeerConnectionHandle
-	//{
-	//	PeerConnectionHandle(std::shared_ptr<PeerConnection> pc, int userID);
-	//	QFuture<void> openLocalVideo(std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig conf);
-	//	std::optional<rtc::Track> openLocalAudio(std::shared_ptr<Media::PacketPipe> input);
-	//	void onRemoteVideo(std::function<void(VideoCallBack)>);
-	//	void onRemoteVideoClosed(std::function<void()> cb);
-	//	void onRemoteVideoOpen(VideoCallBack cb);
-	//	int userID();
-	//protected:
-	//	std::shared_ptr<PeerConnection> pc;
-	//	std::shared_ptr<rtc::Track> audioTrack;
-	//	std::shared_ptr<rtc::Track> videoTrack;
-	//	std::optional<VideoCallBack> _videoCb;
-	//	std::optional<void()> _closeVideoCb;
-	//	std::shared_ptr<Media::Video::H264Encoder> _videoEncoder;
-	//	std::shared_ptr<Media::RtpPacketizer> _videoPacketizer;
-	//	std::shared_ptr<Media::AbstractDecoder> _videoDecoder;
-	//	std::shared_ptr<Media::RawPipe> _videoRaw;
-	//	std::shared_ptr<Media::Video::H264Demuxer> _videoDemuxer;
-	//	int _userID;
-	//	friend class Service;
-
-	//};
 	class CC_NETWORK_EXPORT Service
 	{
 	public:
 		explicit Service(std::shared_ptr<NetworkCoordinator>, rtc::Configuration config);
-		//QFuture<void> establishPeerConnection(int userID);
-		QFuture<void> openLocalVideo(int userID,std::shared_ptr<Media::FramePipe> input);
-
-		std::optional<rtc::Track> openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input);
+		QFuture<void> openLocalVideo(int userID,std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config);
+		QFuture<void> openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config);
 		std::shared_ptr<Media::FramePipe> getRemoteVideo(int userID);
-		void onRemoteVideoClosed(std::function<void(int userID)> cb);
-		void onRemoteVideoOpen(std::function<void(int,std::shared_ptr<Media::FramePipe>)> cb);
-		void onRemoteAudioOpen(std::function<void(int,std::shared_ptr<Media::FramePipe>)> cb);
+		std::shared_ptr<Media::FramePipe> getRemoteAudio(int userID);
 		void closeLocalVideo(int userID);
-		void flushInput(int userID);
+		void flushRemoteVideo(int userID);
+		void flushRemoteAudio(int userID);
+		void closeAllConnections();
 		//void onPeerConnection(std::function<void(std::shared_ptr<PeerConnectionHandle>)> cb);
 	protected:
 		struct PeerContext
@@ -72,7 +42,10 @@ namespace rtc
 			std::shared_ptr<Media::PacketPipe> videoPackets;
 			std::shared_ptr<rtc::PeerConnection> pc;
 			std::shared_ptr<rtc::RtcpSrReporter> rtcp;
+			std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
+			std::optional<int> videoPacketizerListener;
 			std::mutex mutex;
+			~PeerContext();
 		};
 		void createPeerContext(int id);
 
@@ -90,7 +63,8 @@ namespace rtc
 		std::shared_ptr<Media::Video::AbstractEncoder> _videoEncoder;
 		std::shared_ptr<Media::Audio::AbstractEncoder> _audioEncoder;
 		std::shared_ptr<Media::RtpPacketizer> _videoPacketizer;
-		std::shared_ptr<Media::RtpPacketizer> _audioPacketizer;
+		bool _isClosingConnections = false;
+		//std::shared_ptr<Media::RtpPacketizer> _audioPacketizer;
 
 
 	};

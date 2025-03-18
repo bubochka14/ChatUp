@@ -8,6 +8,7 @@
 #include "taskqueue.h"
 #include <condition_variable>
 #include <qloggingcategory.h>
+#include <QtConcurrent/qtconcurrentrun.h>
 extern "C"
 {
 #include <libswresample/swresample.h>
@@ -22,10 +23,12 @@ namespace Media::Video {
 	{
 	public:
 		std::shared_ptr<Media::PacketPipe> output();
-		bool start(std::shared_ptr<Media::FramePipe> input);
+		bool start(std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config);
 		std::shared_ptr<AVCodecContext> codecContext();
+		std::shared_ptr<Media::FramePipe> input();
 		void close();
-		virtual ~AbstractEncoder() = default;
+		bool isStarted();
+		virtual ~AbstractEncoder();
 	protected:
 		explicit AbstractEncoder();
 		void initialize(std::shared_ptr<AVCodecContext>, const AVCodec*);
@@ -33,7 +36,7 @@ namespace Media::Video {
 	private:
 		size_t _pts;
 		size_t _dts;
-		TaskQueue queue;
+		std::atomic<bool> _isStarted = { false };
 		std::shared_ptr<Media::PacketPipe> _out;
 		std::shared_ptr<AVCodecContext> _cCtx;
 		const AVCodec* _cdc;
@@ -51,9 +54,11 @@ namespace Media::Audio {
 	{
 	public:
 		std::shared_ptr<Media::PacketPipe> output();
-		bool start(std::shared_ptr<Media::FramePipe> input);
+		bool start(std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config);
 		std::shared_ptr<AVCodecContext> codecContext();
-		virtual ~AbstractEncoder() = default;
+		void close();
+		bool isStarted();
+		virtual ~AbstractEncoder();
 	protected:
 		explicit AbstractEncoder();
 		void initialize(std::shared_ptr<AVCodecContext>, const AVCodec*);
@@ -71,15 +76,15 @@ namespace Media::Audio {
 		using SamplePipe = Media::DataPipe<2,SamplesPack>;
 		size_t _pts;
 		size_t _dts;
-		TaskQueue queue;
+		std::atomic<bool> _isStarted = { false };
 		std::shared_ptr<FramePipe> _converted;
 		std::shared_ptr<Media::PacketPipe> _out;
 		std::shared_ptr<AVCodecContext> _cCtx;
 		std::shared_ptr<SwrContext> _swr;
-		std::shared_ptr<AVAudioFifo> _fifo;
 		std::shared_ptr<FramePipe> _input;
 		std::optional<int> _listenerIndex;
 		const AVCodec* _cdc;
+
 	};
 	class CC_MEDIA_EXPORT AACEncoder final : public AbstractEncoder
 	{

@@ -23,11 +23,25 @@ Rectangle {
         clip: true
 
         delegate: Item {
+            id: root
+            required property var hasAudio
+            required property var hasVideo
+            required property var userID
             height: GridView.view.cellHeight
             width: GridView.view.cellWidth
+            onHasAudioChanged: if (hasAudio)
+                                   callHandler.connectAudioOutput(root.userID,
+                                                                  MyAudioOutput)
+            Component.onCompleted: {
+                if (hasAudio)
+                    callHandler.connectAudioOutput(root.userID, MyAudioOutput)
+                if (hasVideo)
+                    callHandler.connectVideoSink(root.userID,
+                                                 videoOutput.videoSink)
+            }
             Rectangle {
                 id: delegate
-                anchors.centerIn:parent
+                anchors.centerIn: parent
                 height: parent.height - view.spacing
                 width: parent.width - view.spacing
 
@@ -61,7 +75,7 @@ Rectangle {
                         StateChangeScript {
                             name: "sinkConnectScript"
                             script: callHandler.connectVideoSink(
-                                        userID, videoOutput.videoSink)
+                                        root.userID, videoOutput.videoSink)
                         }
                     }
                 ]
@@ -73,7 +87,7 @@ Rectangle {
                 }
                 radius: 15
                 Component.onCompleted: {
-                    Future.onFinished(UserController.get(userID),
+                    Future.onFinished(UserController.get(root.userID),
                                       function (user) {
                                           delegate.user = user
                                       })
@@ -98,6 +112,7 @@ Rectangle {
                     id: videoOutput
                     anchors.fill: parent
                 }
+
                 Label {
                     id: nameLabel
                     font.pointSize: 8
@@ -147,10 +162,14 @@ Rectangle {
                     }
                 }
             }
-            let newWidth = Math.max(Math.min(boxWidth / m[0],
-                                    boxHeight / m[1] * root.aspectRatio),minimumCellWidth)
-            let newHeight = Math.max(Math.min(boxWidth / m[1],
-                                     boxHeight / m[0] / root.aspectRatio),minimumCellHeight)
+            let newWidth = Math.max(Math.min(
+                                        boxWidth / m[0],
+                                        boxHeight / m[1] * root.aspectRatio),
+                                    minimumCellWidth)
+            let newHeight = Math.max(Math.min(
+                                         boxWidth / m[1],
+                                         boxHeight / m[0] / root.aspectRatio),
+                                     minimumCellHeight)
             view.width = Math.min(newWidth * m[0], boxWidth)
             view.height = Math.min(newWidth * m[1], boxHeight)
 

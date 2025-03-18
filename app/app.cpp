@@ -22,7 +22,7 @@ void App::handleRegistration(const QString& login, const QString& pass)
 	startup->setStatus("Connecting");
 	_controllerManager->userController()->create(pass, login)
 		.then([this, login, pass]() {
-		_network->setCredentials({ pass.toStdString(),login.toStdString() });
+		_network->setCredentials({login.toStdString(),pass.toStdString() });
 		_network->initialize()
 			.then(this, [this]() {
 			chat->initialize().then(this, [this]()

@@ -12,6 +12,7 @@ extern "C"
 	#include <libavcodec/avcodec.h>
 }
 #include "media_include.h"
+#include "QtConcurrent/qtconcurrentrun.h"
 #include <qloggingcategory.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_DECODER)
 Q_DECLARE_LOGGING_CATEGORY(LC_H264DEMUXER)
@@ -35,7 +36,7 @@ namespace Media {
 		std::shared_ptr<PacketPipe> _input;
 		std::shared_ptr<AVCodecContext> _ctx;
 		const AVCodec* _codec;
-
+		std::shared_ptr<AVFrame> _drainFrame;
 	};
 	namespace Video {
 		class CC_MEDIA_EXPORT Decoder : public AbstractDecoder

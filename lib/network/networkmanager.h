@@ -6,8 +6,8 @@
 class NetworkCoordinator;
 struct CC_NETWORK_EXPORT Credentials
 {
-	std::string password;
 	std::string login;
+	std::string password;
 };
 namespace Api
 {
