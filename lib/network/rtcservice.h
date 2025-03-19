@@ -18,6 +18,17 @@
 Q_DECLARE_LOGGING_CATEGORY(LC_RTC_SERVICE);
 namespace rtc
 {
+	struct LocalVideoDescription
+	{
+		enum VideoCodec
+		{
+			H264,
+			H265
+		};
+		std::shared_ptr<Media::FramePipe> input;
+		Media::Video::SourceConfig config;
+		VideoCodec codec;
+	};
 	class CC_NETWORK_EXPORT Service
 	{
 	public:
@@ -44,6 +55,7 @@ namespace rtc
 			std::shared_ptr<rtc::RtcpSrReporter> rtcp;
 			std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
 			std::optional<int> videoPacketizerListener;
+			std::optional<int> audioEncoderListener;
 			std::mutex mutex;
 			~PeerContext();
 		};
@@ -52,17 +64,15 @@ namespace rtc
 		std::shared_ptr<PeerContext> getPeerContext(int id);
 		std::shared_ptr<PeerContext> getOrCreatePeerContext(int id);
 	private:
-		std::unordered_map<int, std::shared_ptr<QPromise<void>>> _pending;
 		std::unordered_map<int, std::shared_ptr<PeerContext>> _peerContexts;
 		std::mutex _peerMutex;
 		rtc::Configuration _config;
 		std::shared_ptr<NetworkCoordinator> _coordinator;
-		std::optional<std::function<void(int, std::shared_ptr<Media::FramePipe>)>> _videoCb;
-		std::optional<std::function<void(int, std::shared_ptr<Media::FramePipe>)>> _audioCb;
 		std::optional<std::function<void(int)>> _closeVideoCb;
 		std::shared_ptr<Media::Video::AbstractEncoder> _videoEncoder;
 		std::shared_ptr<Media::Audio::AbstractEncoder> _audioEncoder;
 		std::shared_ptr<Media::RtpPacketizer> _videoPacketizer;
+		std::optional<int> _packetizerListener;
 		bool _isClosingConnections = false;
 		//std::shared_ptr<Media::RtpPacketizer> _audioPacketizer;
 

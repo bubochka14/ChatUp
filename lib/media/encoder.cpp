@@ -230,7 +230,7 @@ bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 	_input = input;
 	_isStarted = true;
 	_listenerIndex= _input->onDataChanged([this, input,chunk](std::shared_ptr<AVFrame> frame, size_t index) {
-		QtConcurrent::run([this, input, chunk,frame,index]() {
+		//QtConcurrent::run([this, input, chunk,frame,index]() {
 			if (!_cCtx)
 				return;
 			int response = 0;
@@ -275,7 +275,7 @@ bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 				}
 			}
 			});
-	});
+	//});
 	return true;
 }
 bool Video::AbstractEncoder::isStarted()

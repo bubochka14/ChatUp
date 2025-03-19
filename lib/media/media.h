@@ -49,7 +49,7 @@ namespace Media
     }
     struct Raw
     {
-        const uint8_t* raw = nullptr;
+        uint8_t* raw = nullptr;
         size_t size = 0;
     };
 
@@ -107,6 +107,7 @@ namespace Media
     {
         struct SourceConfig
         {
+            std::string name;
             AVCodecParameters* par;//replace later
         };
         //class CC_MEDIA_EXPORT SinkConnector
@@ -240,6 +241,7 @@ namespace Media
         {
             int height = 0;
             int width = 0;
+            std::string name;
             AVRational aspectRatio;
             AVPixelFormat format = AV_PIX_FMT_NONE;
             AVCodecID codecID = AV_CODEC_ID_NONE;

@@ -84,6 +84,7 @@ std::optional<SourceConfig> Camera::open()
     out.height  = cp->height;
     out.width   = cp->width;
     out.format  = (AVPixelFormat)cp->format;
+    out.name = device;
     av_dump_format(ictx, 0, "", 0);
     return out;
 }

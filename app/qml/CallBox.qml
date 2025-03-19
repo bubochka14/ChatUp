@@ -51,7 +51,9 @@ Rectangle {
                 interactionBtn.source: Qt.resolvedUrl("pics/endcall")
                 mediaBtn.visible: true
                 voiceBtn.visible: true
-
+            }
+            StateChangeScript{
+                script:view.syncOutput()
             }
         }
     ]

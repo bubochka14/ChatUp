@@ -1,8 +1,10 @@
 #include "rtppacketizer.h"
 using namespace Media;
 Q_LOGGING_CATEGORY(LC_RTP_PACKETIZER, "RtpPacketizer");
-static int write_packaged(void* op,const uint8_t* buf, int size)
+static int write_packaged(void* op,const uint8_t* cbuf, int size)
 {
+	uint8_t* buf = const_cast<uint8_t*>(cbuf);
+
 	RtpPacketizer* pipeline = (RtpPacketizer*)op;
 	std::shared_ptr<Media::RawPipe> out = pipeline->output();
 	std::optional<Media::RawPipe::PipeData> raw = out->tryHoldForWriting();
@@ -15,6 +17,10 @@ static int write_packaged(void* op,const uint8_t* buf, int size)
 	else
 		qCWarning(LC_RTP_PACKETIZER) << "Output pipe overflow";
 	return 0;
+}
+bool RtpPacketizer::isStarted()
+{
+	return _isStarted;
 }
 RtpPacketizer::RtpPacketizer(PacketizationConfig config)
 	:_output(std::make_shared<RawPipe>())
@@ -74,6 +80,7 @@ bool RtpPacketizer::start(std::shared_ptr<PacketPipe> input)
 		return false;
 	}
 	_input = input;
+	_isStarted = true;
 	listenerIndex = input->onDataChanged([this, winput = std::weak_ptr(input)](std::shared_ptr<AVPacket> pack, int index) {
 	//	qDebug() << pack->pts;
 		/*QtConcurrent::run([this,pack,index, winput] {*/
@@ -94,6 +101,8 @@ void RtpPacketizer::stop()
 {
 	if (listenerIndex.has_value() && _input)
 		_input->removeListener(listenerIndex.value());
+	_isStarted = false;
+
 	//av_write_trailer(_packetizationCxt);
 }
 RtpPacketizer::~RtpPacketizer()

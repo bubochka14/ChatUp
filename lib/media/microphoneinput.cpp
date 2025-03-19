@@ -49,6 +49,7 @@ std::optional<SourceConfig> Microphone::open()
     out.par = avcodec_parameters_alloc();//leak
     av_dump_format(ctx, 0, "", 0);
     avcodec_parameters_copy(out.par, ctx->streams[audioStream]->codecpar);
+    out.name = device;
     return out;
 }
 bool Microphone::isOpened()

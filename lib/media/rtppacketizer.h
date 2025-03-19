@@ -22,6 +22,7 @@ namespace Media{
 		std::shared_ptr<RawPipe> output();
 		bool start(std::shared_ptr<PacketPipe> input);
 		void stop();
+		bool isStarted();
 		~RtpPacketizer();
 	private:
 		AVFormatContext* _packetizationCxt;
@@ -29,6 +30,7 @@ namespace Media{
 		std::shared_ptr<PacketPipe> _input;
 		TaskQueue _queue;
 		PacketizationConfig _config;
+		std::atomic<bool> _isStarted = { false };
 		std::optional<int> listenerIndex;
 	};
 }

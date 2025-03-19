@@ -17,13 +17,13 @@ Rectangle {
     GridView {
         id: view
         property var spacing: 15
+        property bool outputSyncNeeded: false
         anchors.centerIn: parent
         cellWidth: caclWidth(root.width - 25, root.height - 25, model.rowCount)
         cellHeight: cellWidth / root.aspectRatio
         clip: true
-
         delegate: Item {
-            id: root
+            id:root
             required property var hasAudio
             required property var hasVideo
             required property var userID
@@ -32,12 +32,16 @@ Rectangle {
             onHasAudioChanged: if (hasAudio)
                                    callHandler.connectAudioOutput(root.userID,
                                                                   MyAudioOutput)
+            // onHasVideoChanged: {
+            //     if (hasVideo) {
+            //         callHandler.connectVideoSink(root.userID,
+            //                                      videoOutput.videoSink)
+            //         delegate.state = "video"
+            //     } else
+            //         delegate.state = "icon"
+            // }
             Component.onCompleted: {
-                if (hasAudio)
-                    callHandler.connectAudioOutput(root.userID, MyAudioOutput)
-                if (hasVideo)
-                    callHandler.connectVideoSink(root.userID,
-                                                 videoOutput.videoSink)
+                syncOutput()
             }
             Rectangle {
                 id: delegate
@@ -75,7 +79,7 @@ Rectangle {
                         StateChangeScript {
                             name: "sinkConnectScript"
                             script: callHandler.connectVideoSink(
-                                        root.userID, videoOutput.videoSink)
+                                        userID, videoOutput.videoSink)
                         }
                     }
                 ]
@@ -140,6 +144,15 @@ Rectangle {
                     }
                 }
             }
+            //for delegate
+            function syncOutput() {
+                console.log("inside")
+                if (hasAudio)
+                    callHandler.connectAudioOutput(root.userID, MyAudioOutput)
+                if (hasVideo)
+                    callHandler.connectVideoSink(root.userID,
+                                                 videoOutput.videoSink)
+            }
         }
         function isPrime(num) {
             for (var i = 2, s = Math.sqrt(num); i <= s; i++) {
@@ -183,5 +196,13 @@ Rectangle {
         //     view.height = Math.min(parent.height/baseHeight, root.model.rowCount()) * idealHeight
 
         // }
+    }
+    //for view
+    function syncOutput() {
+        console.log("SYNC")
+        for (var i = 0; i < view.count; i++) {
+            console.log(view.itemAtIndex(i))
+            view.itemAtIndex(i).syncOutput()
+        }
     }
 }
