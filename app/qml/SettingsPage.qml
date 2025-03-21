@@ -37,26 +37,26 @@ ColoredFrame {
                                 ApplicationSettings.audioDevice  = currentText
                         }
                     }
-                    Column {
-                        Label {
-                            text: qsTr("Output Device")
-                        }
-                        ComboBox {
-                            id: audioOutputComboBox
-                            width: 200
-                            model: MyAudioOutput.availableDevices
-                            onActivated: ApplicationSettings.outputAudioDevice = currentText
-                            implicitContentWidthPolicy: ComboBox.WidestText
-                            Component.onCompleted: {
-                                let idx = find(
-                                        ApplicationSettings.outputAudioDevice)
-                                if (idx != -1)
-                                    currentIndex = idx
-                                else if(count>0)
-                                    ApplicationSettings.outputAudioDevice  = currentText
-                            }
-                        }
-                    }
+                    // Column {
+                    //     Label {
+                    //         text: qsTr("Output Device")
+                    //     }
+                    //     ComboBox {
+                    //         id: audioOutputComboBox
+                    //         width: 200
+                    //         model: MyAudioOutput.availableDevices
+                    //         onActivated: ApplicationSettings.outputAudioDevice = currentText
+                    //         implicitContentWidthPolicy: ComboBox.WidestText
+                    //         Component.onCompleted: {
+                    //             let idx = find(
+                    //                     ApplicationSettings.outputAudioDevice)
+                    //             if (idx != -1)
+                    //                 currentIndex = idx
+                    //             else if(count>0)
+                    //                 ApplicationSettings.outputAudioDevice  = currentText
+                    //         }
+                    //     }
+                    //}
                 }
             }
         }

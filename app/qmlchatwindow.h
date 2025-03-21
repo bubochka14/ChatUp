@@ -181,7 +181,6 @@ struct AudioOutputWrapper
 {
 	Q_GADGET;
 	QML_FOREIGN(Media::Audio::Output);
-	QML_SINGLETON;
 	QML_NAMED_ELEMENT(MyAudioOutput);
 public:
 	inline static Media::Audio::Output* singletonInstance = nullptr;

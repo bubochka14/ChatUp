@@ -29,9 +29,14 @@ Rectangle {
             required property var userID
             height: GridView.view.cellHeight
             width: GridView.view.cellWidth
+            MyAudioOutput
+            {
+                id:audioOutput
+            }
+
             onHasAudioChanged: if (hasAudio)
                                    callHandler.connectAudioOutput(root.userID,
-                                                                  MyAudioOutput)
+                                                                  audioOutput)
             // onHasVideoChanged: {
             //     if (hasVideo) {
             //         callHandler.connectVideoSink(root.userID,
