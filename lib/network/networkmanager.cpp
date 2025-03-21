@@ -24,6 +24,7 @@ NetworkCoordinator::NetworkCoordinator(std::string host, int port)
 		"ws://" + std::move(host) + ":" + std::to_string(port),
 		std::make_shared<rtc::WebSocket>()))
 	,_user(User::invalidID)
+	,_reconnectionCount(5)
 {
 	_active = true;
 	_networkThread = std::thread(&NetworkCoordinator::threadFunc, this);
@@ -31,18 +32,12 @@ NetworkCoordinator::NetworkCoordinator(std::string host, int port)
 }
 QFuture<void> NetworkCoordinator::initialize()
 {
-	auto promise = std::make_shared<QPromise<void>>();
-	promise->start();
-	auto future = promise->future();
 	Api::Login req;
 	req.fromCredentials(_credentials);
-	req.exec(shared_from_this())
-		.then([this, promise = std::move(promise)](User::Data&& res){
-			promise->finish();
+	return req.exec(shared_from_this()).then([this](User::Data&& res){
 			_user = res.id;
 			_condvar.notify_one();
 		});							
-	return future;
 }
 void NetworkCoordinator::setCredentials(Credentials other)
 {
@@ -63,7 +58,7 @@ QFuture<json> NetworkCoordinator::serverMethod(std::string method,
 				std::move(args),
 				std::move(promise),
 				priority
-				});
+			});
 		}
 		break;
 	case AuthorizedCall:
@@ -82,7 +77,10 @@ QFuture<json> NetworkCoordinator::serverMethod(std::string method,
 	_condvar.notify_one();
 	return future;
 }
-
+void NetworkCoordinator::setReconnectionCount(int other)
+{
+	_reconnectionCount = other;
+}
 void NetworkCoordinator::addClientHandler(std::string method, Callback&& h)
 {
 	_handler->addClientHandler(std::move(h), method);
@@ -110,13 +108,12 @@ void NetworkCoordinator::threadFunc()
 	{
 		{
 			std::unique_lock lock(_mutex);
-			_condvar.wait(lock, [this]() 
-				{
-					return (!_directCalls.empty()
-						|| !_authorizedCalls.empty())
-						&& _active;
+			_condvar.wait(lock, [this]() {
+				return (!_directCalls.empty()
+					|| !_authorizedCalls.empty())
+					&& _active;
 			});
-			while(!_handler->isConnected())
+			for(int i=0;i< _reconnectionCount &&!_handler->isConnected();i++)
 			{
 				try
 				{
@@ -127,12 +124,13 @@ void NetworkCoordinator::threadFunc()
 					std::this_thread::sleep_for(200ms);
 			}
 			info = takeMethod();
+			if (!_handler->isConnected())
+			{
+				info.prom->setException(std::make_exception_ptr(std::string("Server is not responding")));
+				info.prom.reset();
+				continue;
+			}
 		}
-		_handler->serverMethod(info.method,
-			std::move(info.args)).then(
-				[promise = std::move(info.prom)](json&& res) {
-					promise->emplaceResult(std::move(res));
-					promise->finish();
-				});
+		_handler->serverMethod(info.method, std::move(info.args), std::move(info.prom));
 	}
 }

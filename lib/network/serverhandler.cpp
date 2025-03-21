@@ -22,12 +22,21 @@ QFuture<void> ServerHandler::connect()
 	}
 	catch (std::exception ex)
 	{
-		qCWarning(LC_SERVER_HANDLER) << "Connection error: " << ex.what();
-		handleError(ex.what());
-		_connectionPromise->setException(std::make_exception_ptr(ex.what()));
+		handleConnectionError(ex.what());
 	}
 	return _connectionPromise->future();
 
+}
+void ServerHandler::handleConnectionError(std::string desc)
+{
+	if (!_connectionPromise)
+		return;
+	qCWarning(LC_SERVER_HANDLER) << "Connection error: " << desc;
+	MethodCallFailure out;
+	out.message = desc;
+	out.error = QNetworkReply::ConnectionRefusedError;
+	_connectionPromise->setException(std::make_exception_ptr(out));
+	_connectionPromise.reset();
 }
 void ServerHandler::handleTextMessage(std::string msg)
 {
@@ -38,25 +47,19 @@ void ServerHandler::handleTextMessage(std::string msg)
 		if (!_requests.contains(reply.repTo))
 			return;
 		if (reply.status == RPC::Error)
-		{
-			MethodCallFailure out;
-			out.message = std::move(reply.error.value_or(""));
-			out.error = QNetworkReply::InternalServerError;
-			_requests[reply.repTo]->setException(std::make_exception_ptr(out));
-		}
+			_requests[reply.repTo]->setException(std::make_exception_ptr(reply.error.value_or("")));
+
 		else if (reply.status == RPC::Success)
 		{
 			_requests[reply.repTo]->addResult(std::move(reply.reply));
 			_requests[reply.repTo]->finish();
 		}
 		else
-		{
-			MethodCallFailure out;
-			out.message = "Unknown methodCall status";
-			_requests[reply.repTo]->setException(std::make_exception_ptr(out));
-		}
+			_requests[reply.repTo]->setException(std::make_exception_ptr(std::string("Unknown error")));
+
 		_requests[reply.repTo].reset();
 		_requests.erase(reply.repTo);
+		
 	}
 	else if (parsed.value("type", "") == "methodCall")
 	{
@@ -82,14 +85,13 @@ ServerHandler::ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket> tr
 {
 	_transport->onError([this](std::string err) {
 		_taskQueue.enqueue([this, err = std::move(err)]() {
-			handleError(std::move(err));
+			handleConnectionError(std::move(err));
 			});
 		});
 	_transport->onMessage([this](auto msg) {
 		if (!std::holds_alternative<std::string>(msg))
 			return;
 		handleTextMessage((std::get<std::string>(msg)));
-
 		});
 	_transport->onOpen([this]() {
 		_taskQueue.enqueue([this]() {
@@ -105,41 +107,32 @@ ServerHandler::ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket> tr
 				qCCritical(LC_SERVER_HANDLER) << "Error: server open, but no connection request";
 			});
 		});
-	//_transport->connect2Server();
-	//_timeoutTimer.start(5000);
 }
-void ServerHandler::handleError(std::string err)
+void ServerHandler::handleError(std::string desc, std::shared_ptr<JsonPromise> prom)
 {
-	for (auto& req : _requests)
-	{
-		MethodCallFailure out;
-		out.message = err;
-		out.error = QNetworkReply::UnknownNetworkError;
-		req.second->setException(std::make_exception_ptr(out));
-	}
-	_connectionPromise->setException(std::make_exception_ptr("connectionError"));
-	_connectionPromise.reset();
-	_requests.clear();
+	MethodCallFailure out;
+	out.message = std::move(desc);
+	out.error = QNetworkReply::InternalServerError;
+	prom->setException(std::make_exception_ptr(out));
+	prom.reset();
 }
 
-QFuture<json> ServerHandler::serverMethod(std::string method, json args)
+void ServerHandler::serverMethod(std::string method, json args, std::shared_ptr<JsonPromise> output)
 {
-	auto promise = std::make_shared<QPromise<json>>();
-	promise->start();
-	QFuture<json> outFuture = promise->future();
+	output->start();
+	QFuture<json> outFuture = output->future();
 	RPC::MethodCall outMsg = RPC::MessageConstructor::methodCallMsg(
 		std::move(method), std::move(args)
 	);
 	int messageID = outMsg.id;
-	_requests.emplace(messageID, std::move(promise));
+	_requests.emplace(messageID, std::move(output));
 	try {
 		_transport->send(json(std::move(outMsg)).dump());
 	}
 	catch (std::exception ex)
 	{
-		handleError(ex.what());
+		handleError(ex.what(),output);
 	}
-	return outFuture;
 }
 void ServerHandler::addClientHandler(Callback&& h, std::string method)
 {

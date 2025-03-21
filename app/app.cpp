@@ -20,20 +20,20 @@ void App::handleRegistration(const QString& login, const QString& pass)
 	startup->clear();
 	startup->setState(StartupWindow::Loading);
 	startup->setStatus("Connecting");
-	_controllerManager->userController()->create(pass, login)
-		.then([this, login, pass]() {
+	_controllerManager->userController()->create(pass, login).then([this, login, pass]() {
 		_network->setCredentials({login.toStdString(),pass.toStdString() });
-		_network->initialize()
-			.then(this, [this]() {
-			chat->initialize().then(this, [this]()
-				{
-					startup->hide();
-					chat->show();
-					startup->clear();
-				});
-				});
-
+		_network->initialize().then(this, [this](){
+			chat->initialize().then(this, [this](){
+				startup->hide();
+				chat->show();
+				startup->clear();
 			});
+		});
+
+	}).onFailed(this,[this](std::string err) {
+		startup->clear();
+		startup->setErrorString(QString::fromStdString(std::move(err)));
+	});
 }
 void App::handleLogin(const QString& login, const QString& pass)
 {
@@ -48,9 +48,9 @@ void App::handleLogin(const QString& login, const QString& pass)
 			chat->show();
 			startup->clear();
 		});
-		}).onFailed(this, [this](const QString& error){
+		}).onFailed(this, [this](std::string error){
 			startup->clear();
-			startup->setErrorString(error);
+			startup->setErrorString(QString::fromStdString(std::move(error)));
 		}
 		).onFailed(this, [this]{
 			startup->clear();

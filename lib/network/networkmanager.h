@@ -30,6 +30,7 @@ public:
 	void addClientHandler(std::string method, Callback&& h);
 	void setCredentials(Credentials other);
 	int currentUser() const;
+	void setReconnectionCount(int other);
 	QFuture<void> initialize();
 
 	enum Priority
@@ -48,7 +49,7 @@ private:
 	{
 		std::string method;
 		json args;
-		std::unique_ptr<QPromise<json>> prom;
+		std::shared_ptr<QPromise<json>> prom;
 		int priority;
 	};
 	MethodInfo takeMethod();
@@ -61,5 +62,6 @@ private:
 	std::condition_variable _condvar;
 	std::mutex _mutex;
 	std::shared_ptr<ServerHandler> _handler;
+	int _reconnectionCount;
 	int _user;
 };
