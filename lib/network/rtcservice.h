@@ -38,6 +38,7 @@ namespace rtc
 		std::shared_ptr<Media::FramePipe> getRemoteVideo(int userID);
 		std::shared_ptr<Media::FramePipe> getRemoteAudio(int userID);
 		void closeLocalVideo(int userID);
+		void closeLocalAudio(int userID);
 		void flushRemoteVideo(int userID);
 		void flushRemoteAudio(int userID);
 		void closeAllConnections();

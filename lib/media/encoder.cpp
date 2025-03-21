@@ -7,6 +7,8 @@ Video::AbstractEncoder::AbstractEncoder()
 	,_pts(0)
 	,_cdc(nullptr)
 	,_cCtx(nullptr)
+	,_sws(nullptr)
+	,_rescaledFrame(nullptr)
 {
 }
 std::shared_ptr<Media::PacketPipe> Video::AbstractEncoder::output()
@@ -29,11 +31,16 @@ std::shared_ptr<Media::FramePipe> Video::AbstractEncoder::input()
 
 bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config)
 {
+	if (isStarted())
+		close();
+	AVPixelFormat requiredFormat = config.format;
+	if (!checkPixelFormat(requiredFormat))
+		requiredFormat = _cdc->pix_fmts[0];
 	AVCodecParameters* codecPar = avcodec_parameters_alloc();
 	avcodec_parameters_from_context(codecPar, _cCtx.get());
 	codecPar->width  = config.width;
 	codecPar->height = config.height;
-	codecPar->format = config.format;
+	codecPar->format = requiredFormat;
 	avcodec_parameters_to_context(_cCtx.get(), codecPar);
 	avcodec_parameters_free(&codecPar);
 	int ret = avcodec_open2(_cCtx.get(), _cdc, NULL);
@@ -42,13 +49,32 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 		return false;
 	}
 	_input = input;
+	if (requiredFormat != config.format)
+	{
+		_sws = std::shared_ptr<SwsContext>(sws_getContext(config.width, config.width, config.format,
+			config.width, config.height, requiredFormat,
+			SWS_BILINEAR, NULL, NULL, NULL), [](SwsContext* p) {sws_freeContext(p); });
+		_rescaledFrame = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* p) {av_frame_free(&p); });
+		_rescaledFrame->width = config.width;
+		_rescaledFrame->height = config.height;
+		_rescaledFrame->format = requiredFormat;
+		av_frame_get_buffer(_rescaledFrame.get(), 32);
+	}
 	_isStarted = true;
 	_listenerIndex = input->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index) {
 		//QtConcurrent::run([this, index,frame]() {
 		if (!_cCtx)
 			return;
-		int response = avcodec_send_frame(_cCtx.get(), frame.get());
-		//qCDebug(LC_ENCODER) << "Unmap reading" << index;
+		int response;
+		//if we should rescale frame
+		if (_sws)
+		{
+			sws_scale(_sws.get(), (const uint8_t* const*)frame->data,
+				frame->linesize, 0, frame->height, _rescaledFrame->data, _rescaledFrame->linesize);
+			response = avcodec_send_frame(_cCtx.get(), _rescaledFrame.get());
+		}
+		else
+			response = avcodec_send_frame(_cCtx.get(), frame.get());
 		_input->unmapReading(index);
 		if (response < 0)
 			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
@@ -164,6 +190,19 @@ Audio::AbstractEncoder::~AbstractEncoder()
 {
 	close();
 }
+std::shared_ptr<FramePipe> Audio::AbstractEncoder::input()
+{
+	return _input;
+}
+bool Video::AbstractEncoder::checkPixelFormat(AVPixelFormat check)
+{
+	for (auto fmt = _cdc->pix_fmts; *fmt!=-1;fmt++)
+	{
+		if ((AVPixelFormat)*fmt == check)
+			return true;
+	}
+	return false;
+}
 bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config)
 {
 	//_pts = 0;
@@ -203,7 +242,6 @@ bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 			return false;
 		}
 		_swr = std::shared_ptr<SwrContext>(swr, [](SwrContext* p) {swr_free(&p); });
-		//_swrBuffer = (float*)av_malloc(4096 * sizeof(float));
 	}
 	AVCodecParameters* codecPar = avcodec_parameters_alloc();
 	avcodec_parameters_from_context(codecPar, _cCtx.get());
@@ -300,17 +338,17 @@ Video::H264Encoder::H264Encoder()
 		qCCritical(LC_ENCODER) << "Cannot create h264 codec context";
 		return;
 	}
-	ctx->refs = 1;                    // количество кадров "ссылок"
-	ctx->level = 13;               // уровень качества
+	//ctx->refs = 1;                    // количество кадров "ссылок"
+	//ctx->level = 13;               // уровень качества
 
 	av_opt_set(ctx->priv_data, "profile", "high422", 0);
-	av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);           // скорость кодирования. обратна пропорциональна качеству
+	av_opt_set(ctx->priv_data, "preset", "superfast", 0);           // скорость кодирования. обратна пропорциональна качеству
 	av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
 	ctx->time_base = av_make_q(1, 30);
 	//ctx->gop_size = 10;
-	ctx->bit_rate = 3 * 1000 * 1000;
-	//ctx->rc_buffer_size = 4 * 1000 * 1000;
-	ctx->rc_max_rate = 4 * 1000 * 1000;
+	//ctx->bit_rate = 3 * 1000 * 1000;
+	////ctx->rc_buffer_size = 4 * 1000 * 1000;
+	//ctx->rc_max_rate = 4 * 1000 * 1000;
 	initialize(ctx, cdc);
 }
 Audio::AACEncoder::AACEncoder()

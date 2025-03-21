@@ -14,7 +14,7 @@ extern "C"
 #include <libswresample/swresample.h>
 #include <libavcodec/avcodec.h>
 #include "libavutil/audio_fifo.h"
-
+#include <libswscale/swscale.h>
 }
 Q_DECLARE_LOGGING_CATEGORY(LC_ENCODER);
 
@@ -34,6 +34,7 @@ namespace Media::Video {
 		void initialize(std::shared_ptr<AVCodecContext>, const AVCodec*);
 
 	private:
+		bool checkPixelFormat(AVPixelFormat check);
 		size_t _pts;
 		size_t _dts;
 		std::atomic<bool> _isStarted = { false };
@@ -41,6 +42,8 @@ namespace Media::Video {
 		std::shared_ptr<AVCodecContext> _cCtx;
 		const AVCodec* _cdc;
 		std::shared_ptr<FramePipe> _input;
+		std::shared_ptr<SwsContext> _sws;
+		std::shared_ptr<AVFrame> _rescaledFrame;
 		std::optional<int> _listenerIndex;
 	};
 	class CC_MEDIA_EXPORT H264Encoder final : public AbstractEncoder
@@ -56,6 +59,7 @@ namespace Media::Audio {
 		std::shared_ptr<Media::PacketPipe> output();
 		bool start(std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config);
 		std::shared_ptr<AVCodecContext> codecContext();
+		std::shared_ptr<FramePipe> input();
 		void close();
 		bool isStarted();
 		virtual ~AbstractEncoder();

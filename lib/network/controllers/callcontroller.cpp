@@ -231,7 +231,7 @@ void Controller::closeAudio(Handler* h)
 				Participate::Model::IDRole()).toInt();
 			if (paricipantID == currentUser)
 				continue;
-			_rtc->closeLocalVideo(paricipantID);
+			_rtc->closeLocalAudio(paricipantID);
 
 		};
 	}

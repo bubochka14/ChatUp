@@ -181,9 +181,8 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 	if(!_audioEncoder)
 	{
 		_audioEncoder = std::make_shared<Media::Audio::OpusEncoder>();
-		_audioEncoder->start(input, std::move(config));
 	}
-	else if (!_audioEncoder->isStarted())
+	if (_audioEncoder->input() != input)
 		_audioEncoder->start(input, std::move(config));
 
 	auto encHandler = [this, wCtx = std::weak_ptr(ctx), userID](std::shared_ptr<AVPacket> packet, size_t index) {
@@ -544,9 +543,18 @@ QDebug operator<<(QDebug debug, const rtc::PeerConnection::State& s)
 	}
 	return debug << str;
 }
+void Service::closeLocalAudio(int userID)
+{
+	std::lock_guard g(_peerMutex);
+	for (auto& i : _peerContexts)
+	{
+		std::lock_guard g(i.second->mutex);
+		if (i.second->audioEncoderListener.has_value())
+			_audioEncoder->output()->removeListener(i.second->audioEncoderListener.value());
+	}
+}
 void Service::closeLocalVideo(int userID)
 {
-	std::shared_ptr<PeerContext> ctx = getPeerContext(userID);
 	std::lock_guard g(_peerMutex);
 	for (auto& i : _peerContexts)
 	{
