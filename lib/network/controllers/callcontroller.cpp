@@ -286,11 +286,14 @@ Handler* Controller::handler(int roomID)
 	std::lock_guard g(_handlersMutex);
 
 	if (_handlers.contains(roomID))
-	{
 		return _handlers[roomID];
-	}
 	auto handler = new Handler(this, roomID);
 	_handlers[roomID] = handler;
+	Api::Get req;
+	req.roomID = roomID;
+	req.exec(_manager).then(this, [this,roomID, handler](std::vector<Participate::Data> res) {
+		handler->participants()->insertRange(0,std::make_move_iterator(res.begin()), std::make_move_iterator(res.end()));
+	});
 	return handler;
 }
 QFuture<void> Handler::join()

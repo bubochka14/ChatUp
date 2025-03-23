@@ -22,8 +22,10 @@
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
 
 namespace Call {
+
 	class Controller;
 	class Handler;
+
 	class CC_NETWORK_EXPORT Handler : public QObject
 	{
 		Q_OBJECT;

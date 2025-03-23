@@ -27,8 +27,14 @@ namespace Call::Api
 		static void handle(std::shared_ptr<NetworkCoordinator> h, std::function<void(Participate::Data&&)> cb);
 	private:
 		static constexpr char callName[] = "disconnectCall";
-
-
+	};
+	struct Get
+	{
+		Get() = default;
+		int roomID = Group::invalidID;
+		QFuture<std::vector<Participate::Data>> exec(std::shared_ptr<NetworkCoordinator> h);
+	private:
+		static constexpr char callName[] = "getCall";
 	};
 	struct UpdateCallMedia
 	{
