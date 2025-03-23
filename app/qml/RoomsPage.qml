@@ -12,10 +12,9 @@ RowLayout {
     spacing: 0
     required property ControllerManager manager
     property bool roomSelected: false
-    property alias selectedRoomID : chatBox.roomID
-    Component.onCompleted:
-    {
-        manager.groupController.load();
+    property alias selectedRoomID: chatBox.roomID
+    Component.onCompleted: {
+        manager.groupController.load()
     }
 
     RoomList {
@@ -60,7 +59,7 @@ RowLayout {
         ColoredFrame {
             id: roomHeader
             property alias title: titleLabel.text
-            leftInset:-1
+            leftInset: -1
             visible: roomSelected
             implicitHeight: 50
             Layout.fillWidth: true
@@ -78,7 +77,8 @@ RowLayout {
                     source: Qt.resolvedUrl("pics/call")
                     height: 20
                     width: 20
-                    onClicked: manager.callController.handler(root.selectedRoomID).join()
+                    onClicked: manager.callController.handler(
+                                   root.selectedRoomID).join()
                 }
                 MouseArea {
                     id: addUserBtn
@@ -86,7 +86,7 @@ RowLayout {
                     height: 30
                     width: 30
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: selectUserDialog.open()
+                    onClicked: drawer.open()
                     Image {
                         id: addUserIcon
                         anchors.centerIn: parent
@@ -99,36 +99,58 @@ RowLayout {
             }
         }
 
-            ChatBox {
-                id: chatBox
-                focus: true
-                leftInset:-1
-                initalMessage: qsTr("Select ChatRoom to start messaging")
-                manager: root.manager
-                Layout.fillHeight: true
-                Layout.fillWidth: true
-            }
+        ChatBox {
+            id: chatBox
+            focus: true
+            leftInset: -1
+            initalMessage: qsTr("Select ChatRoom to start messaging")
+            manager: root.manager
+            Layout.fillHeight: true
+            Layout.fillWidth: true
         }
+    }
 
     CreateRoomDialog {
         id: createRoomDialog
         anchors.centerIn: parent
         onAccepted: manager.groupController.create(roomName)
     }
+    Drawer {
+        id: drawer
+        property alias model: view.model
+        width: 300
+        padding:20
+        height: root.height
+        edge: Qt.RightEdge
+        y: 31 // sysbar + border
+        ColumnLayout {
+            anchors.fill: parent
+            Label{text:qsTr("Users:");font.pointSize:20}
+            Button{text:"Add user"; onClicked:selectUserDialog.open()}
+            UsersView {
+                id: view
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+        }
+    }
     SelectUserDialog {
         id: selectUserDialog
         anchors.centerIn: parent
         title: qsTr("Add memder:")
         onSeacrhPatternChanged: {
-            Future.onFinished(manager.userController.findUsers(
-                                  ObjectConverter.toHash({
-                                                             "name": seacrhPattern
-                                                         }), 5),
-                              function (users) {
-                                  selectUserDialog.usersModel = users
-                              })
+            let future = manager.userController.find(seacrhPattern, 5)
+            Future.onFinished(future, function (users) {
+                selectUserDialog.usersModel = users
+            })
         }
-        onUserSelected: id => manager.roomController.addUserToRoom(
-                            id, roomList.selectedRoom.id)
+        onUserSelected: id => GroupController.addUser(id,
+                                                      roomList.selectedRoom.id)
+    }
+    onSelectedRoomIDChanged: {
+        Future.onFinished(UserController.getGroupUsers(root.selectedRoomID),
+                          function (users) {
+                              drawer.model = users
+                          })
     }
 }

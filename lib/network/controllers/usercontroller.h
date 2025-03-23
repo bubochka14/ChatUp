@@ -5,9 +5,11 @@
 #include <qfuture.h>
 #include "usermodel.h"
 #include "api/user.h"
+#include "api/group.h"
 #include "networkmanager.h"
 #include "abstractcontroller.h"
 #include "userhandle.h"
+#include "unordered_map"
 namespace User{
 	class CC_NETWORK_EXPORT  Controller : public AbstractController
 	{
@@ -17,12 +19,12 @@ namespace User{
 		Q_PROPERTY(Handle* empty READ empty CONSTANT)
 	public:
 		explicit Controller(QObject* parent = nullptr);
-		Q_INVOKABLE virtual QFuture<Model*> find(const QVariantHash& pattern, int limit) = 0;
+		Q_INVOKABLE virtual QFuture<Model*> find(const QString& pattern, int limit) = 0;
 		Q_INVOKABLE virtual QFuture<Handle*> get(int userID) = 0;
 		Q_INVOKABLE virtual QFuture<Handle*> get() = 0;
 		Q_INVOKABLE virtual QFuture<void> update(const QVariantHash& data) = 0;
 		Q_INVOKABLE virtual QFuture<void> create(const QString& password,const QString& log) = 0;
-
+		Q_INVOKABLE virtual QFuture<Model*> getGroupUsers(int groupID) =0;
 		//Q_INVOKABLE virtual Handler* currentUser() = 0;
 		Q_INVOKABLE virtual QFuture<void> remove() = 0;
 		Handle* empty() const;
@@ -36,7 +38,8 @@ namespace User{
 	public:
 		explicit CallerController(std::shared_ptr<NetworkCoordinator> manager,
 			QObject* parent = nullptr);
-		QFuture<Model*> find(const QVariantHash& pattern, int limit) override;
+		QFuture<Model*> find(const QString& pattern, int limit) override;
+		QFuture<Model*> getGroupUsers(int groupID) override;
 		QFuture<Handle*> get(int userID) override;
 		QFuture<Handle*> get() override;
 		QFuture<void> create(const QString& password, const QString& log);
@@ -49,9 +52,11 @@ namespace User{
 
 	protected:
 		void connectToDispatcher();
+		bool parseSearchString(const QString& pattern, Api::Find& req);
 	private:
 		std::shared_ptr<NetworkCoordinator> _manager;
-		QHash<int, Handle*> _userHandlers;
+		std::unordered_map<int, Model*> _usersInRooms;
+		std::unordered_map<int, Handle*> _userHandlers;
 		QHash<int, QFuture<Handle*>> _pendingRequests;
 		Handle* _empty;
 	};

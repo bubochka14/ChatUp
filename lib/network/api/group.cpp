@@ -71,3 +71,25 @@ QFuture<std::vector<Message::Data>> GetHistory::exec(std::shared_ptr<NetworkCoor
 		return out;
 		});
 }
+void AddUser::handle(std::shared_ptr<NetworkCoordinator> net, std::function<void(Desc&&)> h)
+{
+	net->addClientHandler(methodName, [handler = std::move(h)](json&& res) {
+		Desc out;
+		out.roomID = res.value("roomID", Group::invalidID);
+		out.userID = res.value("userID", User::invalidID);
+		handler(std::move(out));
+		});
+}
+
+QFuture<std::vector<User::Data>> GetUsers::exec(std::shared_ptr<NetworkCoordinator> h)
+{
+	return h->serverMethod(methodName, { { "roomID",roomID } }).then([](json&& res) {
+		std::vector<User::Data> out(res.size());
+		int idx = 0;
+		for (auto& i : res)
+		{
+			out[idx++] = i;
+		}
+		return out;
+		});
+}
