@@ -10,6 +10,7 @@ App::App(std::shared_ptr<NetworkCoordinator> netFact,
 	std::shared_ptr<AbstractWindowFactory> windowFactory)
 	:_windowFactory(windowFactory)
 	,_network(netFact)
+	,chat(nullptr)
 {
 	_controllerManager = std::make_shared<CallerControllerManager>(_network);
 	setAppLanguage();
@@ -23,6 +24,10 @@ void App::handleRegistration(const QString& login, const QString& pass)
 	_controllerManager->userController()->create(pass, login).then([this, login, pass]() {
 		_network->setCredentials({login.toStdString(),pass.toStdString() });
 		_network->initialize().then(this, [this](){
+			if (!chat)
+				chat = createChatWindow();
+			if (!chat)
+				throw std::string("Cannot create chat window");
 			chat->initialize().then(this, [this](){
 				startup->hide();
 				chat->show();
@@ -42,7 +47,10 @@ void App::handleLogin(const QString& login, const QString& pass)
 	startup->setStatus("Connecting");
 	_network->setCredentials({ login.toStdString(),pass.toStdString() });
 	_network->initialize().then(this, [this]() {
-		chat = _windowFactory->createChatWindow(_controllerManager);
+		if(!chat)
+			chat = createChatWindow();
+		if (!chat)
+			throw std::string("Cannot create chat window");
 		chat->initialize().then(this, [this](){
 			startup->hide();
 			chat->show();
@@ -57,18 +65,24 @@ void App::handleLogin(const QString& login, const QString& pass)
 			startup->setErrorString("Unknown error");
 		});
 }
+AbstractChatWindow* App::createChatWindow()
+{
+	if (!_windowFactory || !_controllerManager)
+		return nullptr;
+	auto out = _windowFactory->createChatWindow(_controllerManager);
+	connect(out, &AbstractChatWindow::logout, this, [this]() {logout(""); });
+	return out;
 
+}
 int App::run()
 {
 	qCDebug(LC_ChatClient) << "Running app";
 	Core::Init();
 	startup = _windowFactory->createStartupWindow();
-	chat = _windowFactory->createChatWindow(_controllerManager);
-	if (!startup || !chat)
+	if (!startup)
 		return -1;
 	QObject::connect(startup, &StartupWindow::registerPassed, this, &App::handleRegistration);
 	QObject::connect(startup, &StartupWindow::loginPassed, this, &App::handleLogin);
-	//connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
 	startup->show();
 	return 1;
 }
@@ -118,7 +132,8 @@ void App::setAppLanguage(const QString& lan)
 void App::logout(const QString& reason)
 {
 	chat->hide();
-	delete chat;
+	chat->deleteLater();
+	chat = nullptr;
 /*	roomController->logout();
 	messageController->logout();
 	userController->logout()*/;

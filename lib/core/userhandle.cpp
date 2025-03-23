@@ -38,6 +38,13 @@ void Handle::setStatus(Status other)
 	_data.status = other;
 	emit statusChanged();
 }
+void Handle::copy(Handle* other)
+{
+	setName(other->name());
+	setTag(other->tag());
+	setID(other->id());
+	setStatus(other->status());
+}
 QString Handle::name() const
 {
 	return _data.name;

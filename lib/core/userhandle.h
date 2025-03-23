@@ -24,6 +24,7 @@ namespace User {
 		void setTag(const QString& other);
 		void setName(const QString& other);
 		void setStatus(Status other);
+		void copy(Handle* other);
 	signals:
 		void statusChanged();
 		void nameChanged();

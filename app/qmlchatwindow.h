@@ -26,8 +26,6 @@ public:
 
 	static Message::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -53,8 +51,6 @@ public:
 
 	static Group::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -80,8 +76,6 @@ public:
 
 	static Call::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -107,8 +101,6 @@ public:
 
 	static User::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -134,8 +126,6 @@ public:
 
 	static User::Handle* create(QQmlEngine* , QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -161,8 +151,6 @@ public:
 
 	static CameraPipeline* create(QQmlEngine*, QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -187,8 +175,6 @@ public:
 
 	static Media::Audio::Output* create(QQmlEngine*, QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -214,8 +200,6 @@ public:
 
 	static MicrophonePipeline* create(QQmlEngine*, QJSEngine* engine)
 	{
-		if (!singletonInstance)
-			qCFatal(LC_QML_CHAT_WINDOW) << "Singleton instance not specified";
 		if (s_engine)
 		{
 			if (engine == s_engine)
@@ -244,6 +228,7 @@ public:
 	QFuture<void> initialize() override;
 	bool hasError() const;
 	QString errorString() const; 
+	~QmlChatWindow();
 public slots:
 	void show() override;
 	void hide() override;
@@ -254,7 +239,6 @@ private:
 	QString _error;
 	std::shared_ptr<ControllerManager> _manager;
 	std::unique_ptr<QPromise<void>> _initPromise;
-	std::atomic<float> _progress;
 	QQmlIncubator _inc;
 	QTimer _creationChecker;
 	QQuickWindow* _window;

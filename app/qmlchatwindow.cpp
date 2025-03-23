@@ -12,7 +12,8 @@ QmlChatWindow::QmlChatWindow(QQmlEngine* eng, std::shared_ptr<ControllerManager>
 	_creationChecker.setInterval(1000);
 	_inc.setInitialProperties({
 			{"manager",QVariant::fromValue(_manager.get())},
-			{"visible",false} });
+			{"visible",false} 
+		});
 	connect(&_creationChecker, &QTimer::timeout, this, &QmlChatWindow::finalizeCreation);
 	connect(&_comp, &QQmlComponent::statusChanged, this, [this](QQmlComponent::Status st)
 		{
@@ -49,6 +50,7 @@ void QmlChatWindow::finalizeCreation() {
 		_hasError = true;
 	}
 	_creationChecker.stop();
+	connect(_window, SIGNAL(logout()), this, SIGNAL(logout()));
 	_initPromise->finish();
 	_initPromise.reset();
 }
@@ -59,29 +61,31 @@ QFuture<void> QmlChatWindow::initialize()
 		return _initPromise->future();
 	_initPromise = std::make_unique<QPromise<void>>();
 	_initPromise->setProgressRange(0, 1);
-	_progress = 0;
 	_initPromise->start();
 	//receiving current user
 	_manager->userController()->get().then([this](User::Handle* handle) {
-		CurrentUserWrapper::singletonInstance = handle;
+		//setup wrappers
+		if (!CurrentUserWrapper::singletonInstance)
+			CurrentUserWrapper::singletonInstance = handle;
+		else
+			CurrentUserWrapper::singletonInstance->copy(handle);
 		UserControllerWrapper::singletonInstance = _manager->userController();
 		CallControllerWrapper::singletonInstance = _manager->callController();
 		GroupControllerWrapper::singletonInstance = _manager->groupController();
 		MessageControllerWrapper::singletonInstance = _manager->messageController();
-		CameraPipelineWrapper::singletonInstance = new TestCameraPipeline();
-		MicrophonePipelineWrapper::singletonInstance = new MicrophonePipeline();
-		AudioOutputWrapper::singletonInstance = new Media::Audio::Output();
+		if(!CameraPipelineWrapper::singletonInstance)
+			CameraPipelineWrapper::singletonInstance = new TestCameraPipeline();
+		if(!MicrophonePipelineWrapper::singletonInstance)
+			MicrophonePipelineWrapper::singletonInstance = new MicrophonePipeline;
 		}).then(this, [this]() {
-			_progress += 0.5;
 			qCDebug(LC_QML_CHAT_WINDOW) << "Current user:" << CurrentUserWrapper::singletonInstance->id() << "received";
 			//loading component from app module
 			_comp.loadFromModule("app", "ChatWindow", QQmlComponent::Asynchronous);
-			})
-			.onFailed([this]() {
+			}).onFailed([this]() {
 				qCCritical(LC_QML_CHAT_WINDOW) << "Cannot receive current user info";
 				_initPromise->setException(std::make_exception_ptr(StandardError(0, "Cannot receive current user info")));
 				_initPromise.reset();
-				});
+			});
 		return _initPromise->future();
 }
 bool QmlChatWindow::hasError() const
@@ -101,4 +105,12 @@ void QmlChatWindow::hide()
 {
 	if (!hasError())
 		_window->hide();
+}
+QmlChatWindow::~QmlChatWindow()
+{
+	if (_window)
+	{
+		_window->deleteLater();
+		_window = nullptr;
+	}
 }

@@ -6,10 +6,10 @@ ControllerManager::ControllerManager(QObject* parent)
 }
 CallerControllerManager::CallerControllerManager(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	:ControllerManager(parent)
-	, message(new Message::CallerController(m))
-	, group(new Group::CallerController(m))
-	, call(new Call::Controller(m))
-	, user(new User::CallerController(m))
+	, message(new Message::CallerController(m,this))
+	, group(new Group::CallerController(m,this))
+	, call(new Call::Controller(m,this))
+	, user(new User::CallerController(m,this))
 {
 
 }
