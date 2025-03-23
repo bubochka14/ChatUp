@@ -30,6 +30,12 @@ public:
 		return read(_data[index.row()], index.row(), role);
 
 	}
+	void reset(C<T> data)
+	{
+		beginResetModel();
+		_data = std::move(data);
+		endResetModel();
+	}
 	QVariant data(int id, int role) const 
 	{
 		if (!_index.contains(id))
