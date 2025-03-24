@@ -66,17 +66,21 @@ QFuture<void> QmlChatWindow::initialize()
 	_manager->userController()->get().then([this](User::Handle* handle) {
 		//setup wrappers
 		if (!CurrentUserWrapper::singletonInstance)
-			CurrentUserWrapper::singletonInstance = handle;
+			CurrentUserWrapper::singletonInstance			= handle;
 		else
 			CurrentUserWrapper::singletonInstance->copy(handle);
-		UserControllerWrapper::singletonInstance = _manager->userController();
-		CallControllerWrapper::singletonInstance = _manager->callController();
-		GroupControllerWrapper::singletonInstance = _manager->groupController();
-		MessageControllerWrapper::singletonInstance = _manager->messageController();
+
+		UserControllerWrapper::singletonInstance			= _manager->userController();
+		CallControllerWrapper::singletonInstance			= _manager->callController();
+		GroupControllerWrapper::singletonInstance			= _manager->groupController();
+		MessageControllerWrapper::singletonInstance			= _manager->messageController();
+
 		if(!CameraPipelineWrapper::singletonInstance)
-			CameraPipelineWrapper::singletonInstance = new TestCameraPipeline();
+			CameraPipelineWrapper::singletonInstance		= new Media::Video::TestCameraPipeline();
+
 		if(!MicrophonePipelineWrapper::singletonInstance)
-			MicrophonePipelineWrapper::singletonInstance = new MicrophonePipeline;
+			MicrophonePipelineWrapper::singletonInstance	= new Media::Audio::MicrophonePipeline;
+
 		}).then(this, [this]() {
 			qCDebug(LC_QML_CHAT_WINDOW) << "Current user:" << CurrentUserWrapper::singletonInstance->id() << "received";
 			//loading component from app module
