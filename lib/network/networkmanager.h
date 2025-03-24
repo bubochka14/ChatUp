@@ -31,6 +31,7 @@ public:
 	void setCredentials(Credentials other);
 	int currentUser() const;
 	void setReconnectionCount(int other);
+	void onDisconnected(std::function<void()> cb);
 	QFuture<void> initialize();
 
 	enum Priority
@@ -62,6 +63,7 @@ private:
 	std::condition_variable _condvar;
 	std::mutex _mutex;
 	std::shared_ptr<ServerHandler> _handler;
+	std::optional<std::function<void()>> _disconnectedCb;
 	int _reconnectionCount;
 	int _user;
 };

@@ -10,6 +10,7 @@ App::App(std::shared_ptr<NetworkCoordinator> netFact,
 	std::shared_ptr<AbstractWindowFactory> windowFactory)
 	:_windowFactory(windowFactory)
 	,_network(netFact)
+	,_emp(new QtEventLoopEmplacer(this))
 	,chat(nullptr)
 {
 	_controllerManager = std::make_shared<CallerControllerManager>(_network);
@@ -83,6 +84,11 @@ int App::run()
 		return -1;
 	QObject::connect(startup, &StartupWindow::registerPassed, this, &App::handleRegistration);
 	QObject::connect(startup, &StartupWindow::loginPassed, this, &App::handleLogin);
+	_network->onDisconnected([this]() {
+		_emp->emplaceTask([this]() {
+			logout("Server disconnected");
+			});
+		});
 	startup->show();
 	return 1;
 }

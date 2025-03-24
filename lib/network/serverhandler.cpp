@@ -72,12 +72,17 @@ void ServerHandler::handleTextMessage(std::string msg)
 				i(std::move(call.args));
 			}
 		}
-  }
-  else
-  {
-      qCWarning(LC_SERVER_HANDLER) << "Unknown message type received";
-  }
+	}
+	else
+	{
+		qCWarning(LC_SERVER_HANDLER) << "Unknown message type received";
+	}
 }
+void ServerHandler::onClosed(std::function<void()> cb)
+{
+	_closedCb = std::move(cb);
+}
+
 ServerHandler::ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket> transport)
 	:_isConnected(false)
 	,_url(std::move(url))
@@ -87,6 +92,13 @@ ServerHandler::ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket> tr
 		_taskQueue.enqueue([this, err = std::move(err)]() {
 			handleConnectionError(std::move(err));
 			});
+		});
+	_transport->onClosed([this]() {
+		if (!_isConnected)
+			return;
+		_isConnected = false;
+		if (_closedCb.has_value())
+			_closedCb.value()();
 		});
 	_transport->onMessage([this](auto msg) {
 		if (!std::holds_alternative<std::string>(msg))

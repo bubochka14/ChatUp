@@ -26,6 +26,10 @@ NetworkCoordinator::NetworkCoordinator(std::string host, int port)
 	,_user(User::invalidID)
 	,_reconnectionCount(5)
 {
+	_handler->onClosed([this]() {
+		if (_disconnectedCb.has_value())
+			_disconnectedCb.value()();
+		});
 	_active = true;
 	_networkThread = std::thread(&NetworkCoordinator::threadFunc, this);
 
@@ -38,6 +42,10 @@ QFuture<void> NetworkCoordinator::initialize()
 			_user = res.id;
 			_condvar.notify_one();
 		});							
+}
+void NetworkCoordinator::onDisconnected(std::function<void()> cb)
+{
+	_disconnectedCb = std::move(cb);
 }
 void NetworkCoordinator::setCredentials(Credentials other)
 {

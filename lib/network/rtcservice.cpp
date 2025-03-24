@@ -239,26 +239,25 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 		ctx->audioTrack->onClosed([userID]() {
 			qCDebug(LC_RTC_SERVICE) << "Audio track width" << userID << "closed";
 			});
-		ctx->audioTrack->onFrame([this, userID](rtc::binary data, rtc::FrameInfo info) {
-			std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
-			std::lock_guard g(ctx->mutex);
-			if (!ctx->audioPackets)
-				ctx->audioPackets = Media::createPacketPipe();
-			if (!ctx->audioDecoder)
-			{
-				ctx->audioDecoder.reset(new Audio::OpusDecoder());
-				ctx->audioDecoder->start(ctx->audioPackets);
-			}
-			auto pipeData = ctx->audioPackets->tryHoldForWriting();
-			if (!pipeData.has_value())
-			{
-				qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
-				return;
-			}
-			Media::fillPacket(pipeData->ptr, (uint8_t*)data.data(), data.size());
-			pipeData->ptr->pts = info.timestamp;
-			pipeData->ptr->dts = info.timestamp;
-			ctx->audioPackets->unmapWriting(pipeData->subpipe, true);
+		ctx->audioTrack->onFrame([this, userID, wctx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
+			QtConcurrent::run([this, userID, wctx, data = std::move(data),info]() {
+				auto ctx = wctx.lock();
+				if (!ctx)
+					return;
+				std::lock_guard g(ctx->mutex);
+				if (!ctx->audioPackets)
+					ctx->audioPackets = Media::createPacketPipe();
+				if (!ctx->audioDecoder)
+				{
+					ctx->audioDecoder.reset(new Audio::OpusDecoder());
+					ctx->audioDecoder->start(ctx->audioPackets);
+				}
+				auto pipeData = ctx->audioPackets->holdForWriting();
+				Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
+				pipeData->pts = info.timestamp;
+				pipeData->dts = info.timestamp;
+				ctx->audioPackets->unmapWriting(pipeData.subpipe, true);
+				});
 			});
 		pc->setLocalDescription();
 
@@ -396,21 +395,21 @@ void Service::createPeerContext(int id)
 				qCDebug(LC_RTC_SERVICE) << "Video track width" << id << "closed";
 			});
 			track->onFrame([this, id, wCtx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
-				//QtConcurrent::run([wCtx, this, id, data = std::move(data)]() {
+				QtConcurrent::run([wCtx, this, id, data = std::move(data)]() {
 					auto ctx = wCtx.lock();
 					if (!ctx)
 						return;
-					auto pipeData = ctx->videoPackets->tryHoldForWriting();
-					if (!pipeData.has_value())
+					auto pipeData = ctx->videoPackets->holdForWriting();
+		/*			if (!pipeData.has_value())
 					{
 						qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 						return;
-					}
-					Media::fillPacket(pipeData->ptr, (uint8_t*)data.data(), data.size());
+					}*/
+					Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
 					/*			pipeData->ptr->pts = info.timestamp;
 								pipeData->ptr->dts = info.timestamp;*/
-					ctx->videoPackets->unmapWriting(pipeData->subpipe, true);
-					//});
+					ctx->videoPackets->unmapWriting(pipeData.subpipe, true);
+					});
 				});
 		}
 		if (track->mid() == "audio")
@@ -448,10 +447,11 @@ void Service::createPeerContext(int id)
 				qCDebug(LC_RTC_SERVICE) << "Audio track width" << id << "closed";
 				});
 			track->onFrame([wCtx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
-			//	QtConcurrent::run([wCtx, data = std::move(data),info]() {
+				QtConcurrent::run([wCtx, data = std::move(data),info]() {
 
 					if (auto ctx = wCtx.lock())
 					{
+						std::lock_guard(ctx->mutex);
 						auto pipeData = ctx->audioPackets->tryHoldForWriting();
 						if (!pipeData.has_value())
 						{
@@ -463,7 +463,7 @@ void Service::createPeerContext(int id)
 						pipeData->ptr->dts = info.timestamp;
 						ctx->audioPackets->unmapWriting(pipeData->subpipe, true);
 					}
-				//	});
+					});
 				});
 			track->onMessage([this, id](rtc::message_variant data) {
 				/*std::shared_ptr<PeerContext> ctx = getPeerContext(id);
