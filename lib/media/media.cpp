@@ -42,18 +42,15 @@ QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode map
 }
 bool Media::fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size)
 {
-    if (!pack->buf || pack->buf->size < size)
-    {
-        av_grow_packet(pack.get(), size);
-    }
-    memcpy(pack->buf->data, data, size);
-    if (av_packet_from_data(pack.get(), pack->buf->data, size) < 0)
+    uint8_t* newData = (uint8_t*)av_malloc(size);
+    memcpy(newData, data, size);
+    if (av_packet_from_data(pack.get(), newData, size) < 0)
     {
         qWarning() << "Cannot fill packet";
         return false;
     }
-    pack->size = size;
     return true;
+
 
 
 }

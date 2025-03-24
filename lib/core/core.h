@@ -9,7 +9,8 @@ class CC_CORE_EXPORT QtEventLoopEmplacer : public QObject
 	Q_OBJECT;
 public:
 	using Task = std::function<void()>;
-	QtEventLoopEmplacer()
+	QtEventLoopEmplacer(QObject* parent = nullptr)
+		:QObject(parent)
 	{
 		connect(this, &QtEventLoopEmplacer::emplaceTask, this, &QtEventLoopEmplacer::handleTask);
 

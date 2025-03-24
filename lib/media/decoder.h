@@ -36,6 +36,7 @@ namespace Media {
 		std::shared_ptr<PacketPipe> _input;
 		std::shared_ptr<AVCodecContext> _ctx;
 		const AVCodec* _codec;
+		std::mutex _decodeMutex;
 		std::shared_ptr<AVFrame> _drainFrame;
 	};
 	namespace Video {

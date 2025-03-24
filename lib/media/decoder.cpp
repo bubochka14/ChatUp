@@ -36,33 +36,34 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 	_input = input;
 
 	inputListenIndex = input->onDataChanged([this](std::shared_ptr<AVPacket> pack, size_t index) {
+		//QtConcurrent::run([pack,index,this](){
+		//std::lock_guard g(_decodeMutex);
 		//quene.enqueue([this,pack,index]() {
 			if (!pack)
+			{
+				_input->unmapReading(index);
 				return;
-			//qCDebug(LC_DECODER) << "Reading" << index;
-
+			}
 			int resp = avcodec_send_packet(_ctx.get(), pack.get());
-			//qCDebug(LC_DECODER) << "Unmap reading" << index;
-
 			_input->unmapReading(index);
 			if (resp < 0)
 				qCDebug(LC_DECODER) << avcodec_get_name(_codec->id) << "cannot send packet" << av_err2str(resp);
 			while (resp >= 0)
 			{
-				auto outFrame = _out->tryHoldForWriting();
-				if (!outFrame)
+				auto outFrame = _out->holdForWriting();
+	/*			if (!outFrame)
 				{
 					qCWarning(LC_DECODER) << avcodec_get_name(_codec->id) << "Output pipe overflow";
 					resp = avcodec_receive_frame(_ctx.get(), _drainFrame.get());
 
 					return;
-				}
+				}*/
 			//	qCDebug(LC_DECODER) << "Writing to" << outFrame.subpipe;
-				resp = avcodec_receive_frame(_ctx.get(), outFrame->ptr.get());
+				resp = avcodec_receive_frame(_ctx.get(), outFrame.ptr.get());
 				if (resp < 0)
 				{
 				//	qCDebug(LC_DECODER) << "Finish writing widthout notify" << outFrame.subpipe;
-					_out->unmapWriting(outFrame->subpipe, false);
+					_out->unmapWriting(outFrame.subpipe, false);
 					if (resp != AVERROR(EAGAIN) && resp != AVERROR_EOF)
 						qCWarning(LC_DECODER) << "Error while sending a packet to the decoder:" << Media::av_err2string(resp);
 					break;
@@ -70,7 +71,7 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 				else
 				{
 				//	qCDebug(LC_DECODER) << "Finish writing width notify" << outFrame.subpipe;
-					_out->unmapWriting(outFrame->subpipe, true);
+					_out->unmapWriting(outFrame.subpipe, true);
 				}
 			}
 		//	});

@@ -71,7 +71,7 @@ QFuture<void> Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> inpu
 		auto sess = std::make_shared<RtcpReceivingSession>();
 		videoReceivingSession->addToChain(sess);
 		videoReceivingSession->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtpConfig));
-		videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+		//videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
 		ctx->videoTrack->setMediaHandler(videoReceivingSession);
 
 		ctx->videoTrack->onOpen([wctx = std::weak_ptr(ctx), this,h = std::move(packetizerRawHandler)]() {
@@ -186,9 +186,10 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 		_audioEncoder->start(input, std::move(config));
 
 	auto encHandler = [this, wCtx = std::weak_ptr(ctx), userID](std::shared_ptr<AVPacket> packet, size_t index) {
-		QtConcurrent::run([this, wCtx, packet, index, userID]() {
+		//QtConcurrent::run([this, wCtx, packet, index, userID]() {
 			if (auto ctx = wCtx.lock())
 			{
+				std::lock_guard g(ctx->mutex);
 				try
 				{
 					ctx->audioTrack->send((std::byte*)packet->data, packet->size);
@@ -204,7 +205,7 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 
 			_audioEncoder->output()->unmapReading(index);
 
-			});
+			//});
 		};
 	if(!ctx->audioTrack)
 	{
@@ -222,13 +223,13 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 		ctx->rtcp = make_shared<RtcpSrReporter>(rtpConfig);
 		packetizer->addToChain(ctx->rtcp);
 		// add RTCP NACK handler
-		auto nack = make_shared<RtcpNackResponder>();
-		packetizer->addToChain(nack);
+/*		auto nack = make_shared<RtcpNackResponder>();
+		packetizer->addToChain(nack)*/;
 
 		auto audioReceivingSession = std::make_shared<rtc::OpusRtpDepacketizer>();
 		auto sess = std::make_shared<RtcpReceivingSession>();
 		audioReceivingSession->addToChain(sess);
-		audioReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+		//audioReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
 		ctx->audioTrack->chainMediaHandler(audioReceivingSession);
 		// set handler
 		ctx->audioTrack->chainMediaHandler(packetizer);
@@ -240,7 +241,7 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 			qCDebug(LC_RTC_SERVICE) << "Audio track width" << userID << "closed";
 			});
 		ctx->audioTrack->onFrame([this, userID, wctx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
-			QtConcurrent::run([this, userID, wctx, data = std::move(data),info]() {
+			//QtConcurrent::run([this, userID, wctx, data = std::move(data),info]() {
 				auto ctx = wctx.lock();
 				if (!ctx)
 					return;
@@ -257,7 +258,7 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 				pipeData->pts = info.timestamp;
 				pipeData->dts = info.timestamp;
 				ctx->audioPackets->unmapWriting(pipeData.subpipe, true);
-				});
+				//});
 			});
 		pc->setLocalDescription();
 
@@ -382,7 +383,7 @@ void Service::createPeerContext(int id)
 			auto sess = std::make_shared<RtcpReceivingSession>();
 			videoReceivingSession->addToChain(sess);
 			videoReceivingSession->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtpConfig));
-			videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+			//videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
 
 			track->setMediaHandler(videoReceivingSession);
 			sess->requestKeyframe([](message_ptr message) {
@@ -395,7 +396,7 @@ void Service::createPeerContext(int id)
 				qCDebug(LC_RTC_SERVICE) << "Video track width" << id << "closed";
 			});
 			track->onFrame([this, id, wCtx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
-				QtConcurrent::run([wCtx, this, id, data = std::move(data)]() {
+				//QtConcurrent::run([wCtx, this, id, data = std::move(data)]() {
 					auto ctx = wCtx.lock();
 					if (!ctx)
 						return;
@@ -410,7 +411,7 @@ void Service::createPeerContext(int id)
 								pipeData->ptr->dts = info.timestamp;*/
 					ctx->videoPackets->unmapWriting(pipeData.subpipe, true);
 					});
-				});
+				//});
 		}
 		if (track->mid() == "audio")
 		{
@@ -420,7 +421,7 @@ void Service::createPeerContext(int id)
 			auto audioReceivingSession = std::make_shared<rtc::OpusRtpDepacketizer>();
 			auto sess = std::make_shared<RtcpReceivingSession>();
 			audioReceivingSession->addToChain(sess);
-			audioReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+			//audioReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
 
 			// create RTP configuration
 			auto rtpConfig = make_shared<RtpPacketizationConfig>(2, "audio", 111, OpusRtpPacketizer::DefaultClockRate);
@@ -430,8 +431,8 @@ void Service::createPeerContext(int id)
 			ctx->rtcp = make_shared<RtcpSrReporter>(rtpConfig);
 			packetizer->addToChain(ctx->rtcp);
 			// add RTCP NACK handler
-			auto nack = make_shared<RtcpNackResponder>();
-			packetizer->addToChain(nack);
+			//auto nack = make_shared<RtcpNackResponder>();
+			//packetizer->addToChain(nack);
 			track->chainMediaHandler(audioReceivingSession);
 			track->chainMediaHandler(packetizer);
 			sess->requestKeyframe([](message_ptr message) {
@@ -447,7 +448,7 @@ void Service::createPeerContext(int id)
 				qCDebug(LC_RTC_SERVICE) << "Audio track width" << id << "closed";
 				});
 			track->onFrame([wCtx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
-				QtConcurrent::run([wCtx, data = std::move(data),info]() {
+				//QtConcurrent::run([wCtx, data = std::move(data),info]() {
 
 					if (auto ctx = wCtx.lock())
 					{
@@ -463,7 +464,7 @@ void Service::createPeerContext(int id)
 						pipeData->ptr->dts = info.timestamp;
 						ctx->audioPackets->unmapWriting(pipeData->subpipe, true);
 					}
-					});
+					//});
 				});
 			track->onMessage([this, id](rtc::message_variant data) {
 				/*std::shared_ptr<PeerContext> ctx = getPeerContext(id);

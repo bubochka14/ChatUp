@@ -68,8 +68,8 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 			if (_sink->state() != QAudio::ActiveState)
 				_io= _sink->start();
 			_io->write((char*)*frame->extended_data, frame->linesize[0]);
-				pipe->unmapReading(index);
-			});
+			pipe->unmapReading(index);
+		});
 		});
 
 	return true;

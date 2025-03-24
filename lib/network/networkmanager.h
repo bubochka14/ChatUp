@@ -29,7 +29,7 @@ public:
 	using Callback = std::function<void(json&&)>;
 	void addClientHandler(std::string method, Callback&& h);
 	void setCredentials(Credentials other);
-	int currentUser() const;
+	int  currentUser() const;
 	void setReconnectionCount(int other);
 	void onDisconnected(std::function<void()> cb);
 	QFuture<void> initialize();
@@ -44,6 +44,7 @@ public:
 		json args,
 		Priority priority = AuthorizedCall);
 	explicit NetworkCoordinator(std::string host, int port);
+	//~NetworkCoordinator();
 private:
 
 	struct MethodInfo

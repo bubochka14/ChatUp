@@ -31,8 +31,8 @@ std::shared_ptr<Media::FramePipe> Video::AbstractEncoder::input()
 
 bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config)
 {
-	if (isStarted())
-		close();
+	//if (isStarted())
+	//	close();
 	AVPixelFormat requiredFormat = config.format;
 	if (!checkPixelFormat(requiredFormat))
 		requiredFormat = _cdc->pix_fmts[0];

@@ -27,6 +27,7 @@ Rectangle {
             required property var hasAudio
             required property var hasVideo
             required property var userID
+            property var isMaximized: false
             height: GridView.view.cellHeight
             width: GridView.view.cellWidth
             MyAudioOutput
@@ -37,24 +38,17 @@ Rectangle {
             onHasAudioChanged: if (hasAudio)
                                    callHandler.connectAudioOutput(root.userID,
                                                                   audioOutput)
-            // onHasVideoChanged: {
-            //     if (hasVideo) {
-            //         callHandler.connectVideoSink(root.userID,
-            //                                      videoOutput.videoSink)
-            //         delegate.state = "video"
-            //     } else
-            //         delegate.state = "icon"
-            // }
+
             Component.onCompleted: {
                 syncOutput()
             }
-            Rectangle {
+            RoundedFrame {
                 id: delegate
                 anchors.centerIn: parent
                 height: parent.height - view.spacing
                 width: parent.width - view.spacing
 
-                // padding: 0
+                padding: 0
                 color: "#19182a"
                 property UserHandle user: UserController.empty
                 states: [
@@ -153,7 +147,7 @@ Rectangle {
             function syncOutput() {
                 console.log("inside")
                 if (hasAudio)
-                    callHandler.connectAudioOutput(root.userID, MyAudioOutput)
+                    callHandler.connectAudioOutput(root.userID, audioOutput)
                 if (hasVideo)
                     callHandler.connectVideoSink(root.userID,
                                                  videoOutput.videoSink)

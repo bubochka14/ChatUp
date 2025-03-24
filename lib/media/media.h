@@ -53,7 +53,7 @@ namespace Media
         size_t size = 0;
     };
 
-    using PacketPipe = DataPipe<64, AVPacket>;
+    using PacketPipe = DataPipe<128, AVPacket>;
     using FramePipe = DataPipe<128, AVFrame>;
     using BytePipe = DataPipe<2, std::vector<std::byte>>;
     using RawPipe = DataPipe<2, Raw>;
