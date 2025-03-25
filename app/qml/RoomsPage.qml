@@ -7,7 +7,7 @@ import ChatClient.Core
 import QuickFuture
 import ObjectConverter
 
-RowLayout {
+SplitView {
     id: root
     spacing: 0
     required property ControllerManager manager
@@ -19,9 +19,11 @@ RowLayout {
 
     RoomList {
         id: roomList
-        // Layout.minimumWidth: 120
-        Layout.fillHeight: true
-        Layout.preferredWidth: Math.max(220, parent.width / 4)
+        //SplitView.minimumWidth: 120
+        SplitView.maximumWidth: root.width / 2
+
+        SplitView.fillHeight: true
+        SplitView.preferredWidth: Math.max(220, parent.width / 4)
         Layout.maximumWidth: 420
         roomModel: manager.groupController.model
         onSelectedRoomChanged: {
@@ -54,7 +56,7 @@ RowLayout {
     ColumnLayout {
         id: chatColumn
         spacing: 0
-        Layout.fillWidth: true
+        SplitView.fillWidth: true
         // Layout.minimumWidth: 350
         ColoredFrame {
             id: roomHeader
@@ -119,14 +121,20 @@ RowLayout {
         id: drawer
         property alias model: view.model
         width: 300
-        padding:20
+        padding: 20
         height: root.height
         edge: Qt.RightEdge
         y: 31 // sysbar + border
         ColumnLayout {
             anchors.fill: parent
-            Label{text:qsTr("Users:");font.pointSize:20}
-            Button{text:"Add user"; onClicked:selectUserDialog.open()}
+            Label {
+                text: qsTr("Users:")
+                font.pointSize: 20
+            }
+            Button {
+                text: "Add user"
+                onClicked: selectUserDialog.open()
+            }
             UsersView {
                 id: view
                 Layout.fillWidth: true

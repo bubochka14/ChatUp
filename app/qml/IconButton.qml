@@ -10,5 +10,6 @@ Image {
         anchors.fill: parent
         onClicked: root.clicked()
         cursorShape: Qt.PointingHandCursor
+        preventStealing:true
     }
 }

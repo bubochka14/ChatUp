@@ -15,7 +15,7 @@ ColoredFrame {
         currentIndex: -1
         boundsBehavior: Flickable.StopAtBounds
         clip: true
-        spacing: 10
+        spacing: 0
         height: parent.height
         width: parent.width
         delegate: ColumnLayout {
