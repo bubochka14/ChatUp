@@ -31,7 +31,7 @@ namespace Group::Api
 	};
 	struct Get 
 	{
-
+		//todo
 	};
 	struct GetAll 
 	{
@@ -40,12 +40,18 @@ namespace Group::Api
 	private:
 		static constexpr char methodName[] = "getUserRooms";
 	};
-	struct AddUser 
+	struct AddUser
 	{
+		struct Desc
+		{
+			int roomID;
+			int userID;
+		};
 		AddUser() = default;
 		int roomID =0;
 		int userID =0;
 		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
+		static void handle(std::shared_ptr<NetworkCoordinator> net, std::function<void(Desc&&)> h);
 	private:
 		static constexpr char methodName[] = "addUserToRoom";
 	};
@@ -66,14 +72,12 @@ namespace Group::Api
 		static constexpr char methodName[] = "getRoomHistory";
 
 	};
-	struct MarkRead 
+	struct GetUsers
 	{
-		MarkRead() = default;
-		size_t count=0;
-		int roomID=0;
-		QFuture<void> exec(std::shared_ptr<NetworkCoordinator> h);
+		GetUsers() = default;
+		int roomID = 0;
+		QFuture<std::vector<User::Data>> exec(std::shared_ptr<NetworkCoordinator> h);
 	private:
-		static constexpr char methodName[] = "setReadMessagesCount";
-
+		static constexpr char methodName[] = "getRoomUsers";
 	};
 }

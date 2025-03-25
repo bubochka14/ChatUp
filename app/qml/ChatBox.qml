@@ -12,6 +12,7 @@ ColoredFrame {
     //for messages
     required property ControllerManager manager
     property var roomID
+    property int messageUploadCount: 50
     property var roomsCache: ({})
     property string initalMessage: "Select room to start Messaging"
     property var roomIndex
@@ -57,26 +58,39 @@ ColoredFrame {
     onRoomIDChanged: {
         if (roomsCache[roomID] === undefined) {
             state = "Loading"
-            var history = manager.messageController.model(roomID)
-            Future.onFinished(manager.messageController.load(roomID, 0, 0, 10),
-                              function () {
-                                  var component = Qt.createComponent(
-                                              "RoomView.qml")
-                                  var obj = roomViewComponent.createObject(
-                                              roomContainer, {
-                                                  "manager": manager,
-                                                  "messageModel": history,
-                                                  "roomID": root.roomID,
-                                                  "chatBox": root
-                                              })
-                                  obj.showProfile.connect(showUserProfile)
-                                  roomsCache[roomID] = {
-                                      "model": history,
-                                      "item": obj
-                                  }
-                                  root.roomIndex = roomContainer.children.length - 1
-                                  root.state = "Chat"
-                              })
+            var history = MessageController.model(roomID)
+            var msgCount = GroupController.model.data(
+                        GroupController.model.idToIndex(roomID),
+                        GroupModel.MessageCountRole)
+            console.log("co", msgCount)
+            Future.onFinished(MessageController.load(roomID, 0,
+                                                     Math.max(0,
+                                                              msgCount - messageUploadCount),
+                                                     msgCount), function () {
+                                                         var component = Qt.createComponent(
+                                                                     "RoomView.qml")
+                                                         var obj = roomViewComponent.createObject(
+                                                                     roomContainer,
+                                                                     {
+                                                                         "manager": manager,
+                                                                         "messageModel": history,
+                                                                         "roomID": root.roomID,
+                                                                         "chatBox": root,
+                                                                         "topLoaded": Math.max(0, msgCount - messageUploadCount)
+                                                                     })
+                                                         obj.showProfile.connect(
+                                                                     showUserProfile)
+                                                         obj.loadingMessagesNeeded.connect(
+                                                                     loadMessages)
+
+                                                         roomsCache[roomID] = {
+                                                             "model": history,
+                                                             "item": obj
+                                                         }
+                                                         root.roomIndex
+                                                                 = roomContainer.children.length - 1
+                                                         root.state = "Chat"
+                                                     })
         } else {
             root.roomIndex = roomContainer.getIndex(roomID)
             root.state = "Chat"
@@ -93,6 +107,18 @@ ColoredFrame {
         Future.onFinished(manager.userController.get(id), function (user) {
             foreignProfileViewer.showProfle(user)
         })
+    }
+    function loadMessages() {
+        var roomView = roomsCache[roomID].item
+        console.log("loding", Math.max(0, roomView.topLoaded - messageUploadCount),
+                    roomView.topLoaded, roomsCache[roomID].model.rowCount)
+        Future.onFinished(MessageController.load(
+                              roomID, roomsCache[roomID].model.rowCount,
+                              Math.max(0, roomView.topLoaded - messageUploadCount),
+                              roomView.topLoaded), function () {
+                                  roomView.topLoaded = Math.max(
+                                              0, roomView.topLoaded - messageUploadCount)
+                              })
     }
     padding: 0
     bottomPadding: 0

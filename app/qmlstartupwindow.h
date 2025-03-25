@@ -20,5 +20,6 @@ private slots:
 private:
 	bool _hasError;
 	QString _error;
+	QQmlComponent _comp;
 	QQuickWindow* _window;
 };

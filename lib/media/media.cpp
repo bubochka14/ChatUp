@@ -13,6 +13,18 @@ QVideoFrameFormat Video::QtVideoBuffer::format() const
         : QVideoFrameFormat({ 0,0 }, QVideoFrameFormat::Format_Invalid);
 
 }
+std::shared_ptr<PacketPipe> Media::createPacketPipe()
+{
+    return std::make_shared<PacketPipe>([]()
+        {
+            return av_packet_alloc();
+        },
+        [](AVPacket* p)
+        {
+            av_packet_free(&p);
+        }
+    );
+}
 QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode mapMode)
 {
     MapData out;
@@ -26,6 +38,22 @@ QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode map
         out.data[i] = frame->data[i];
     }
     return out;
+
+}
+bool Media::fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size)
+{
+    if (!pack->buf || pack->buf->size < size)
+    {
+        av_grow_packet(pack.get(), size);
+    }
+    memcpy(pack->buf->data, data, size);
+    if (av_packet_from_data(pack.get(), pack->buf->data, size) < 0)
+    {
+        qWarning() << "Cannot fill packet";
+        return false;
+    }
+    pack->size = size;
+    return true;
 
 }
 QVideoFrameFormat::PixelFormat Media::Video::toQtPixel(AVPixelFormat avPixelFormat)
@@ -92,24 +120,43 @@ QVideoFrameFormat::PixelFormat Media::Video::toQtPixel(AVPixelFormat avPixelForm
 }
 Video::SinkConnector::~SinkConnector()
 {
-    input->removeListener(listenerIndex);
-    //flush sink
-    current.qframe = QVideoFrame();
-    prev.qframe = QVideoFrame();
-    sink->setVideoFrame(QVideoFrame());
+    close();
 }
-Video::SinkConnector::SinkConnector(std::shared_ptr<FramePipe> pipe, QVideoSink* s)
+void Video::SinkConnector::drain()
 {
+    sink->setVideoFrame(QVideoFrame());
+    current = FrameData();
+    prev = FrameData();
     current.buf = new QtVideoBuffer();
     prev.buf = new QtVideoBuffer();
-    input = std::move(pipe);
-    sink = s;
+}
+void Video::SinkConnector::close()
+{
+    if (input && listenerIndex >= 0)
+    {
+        input->removeListener(listenerIndex);
+        input.reset();
+    }
+    drain();
+
+}
+void Video::SinkConnector::connect(std::shared_ptr<FramePipe> fr)
+{
+    if (input == fr)
+        return;
+    if (input && sink)
+        close();
+    input = std::move(fr);
+    if (input && sink)
+        establish();
+}
+void Video::SinkConnector::establish()
+{
     listenerIndex = input->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index)
         {
             current.buf->setFrame(frame);
-            current.pipeIndex = index; 
+            current.pipeIndex = index;
             if (!current.qframe.has_value())
-                //QVideoFrame takes ownership of QtVideoBuffer  
                 current.qframe = QVideoFrame(current.buf, current.buf->format());
             sink->setVideoFrame(current.qframe.value());
             if (prev.pipeIndex != -1)
@@ -120,3 +167,77 @@ Video::SinkConnector::SinkConnector(std::shared_ptr<FramePipe> pipe, QVideoSink*
 
         });
 }
+void Video::SinkConnector::connect(QVideoSink* s)
+{
+    if (s == sink)
+        return;
+    if (input && sink)
+        close();
+    sink = s;
+    if (input && sink)
+        establish();
+}
+Video::SinkConnector::SinkConnector()
+    :input(nullptr)
+    ,sink(nullptr)
+    ,listenerIndex(-1)
+{
+    //QVideoFrame takes ownership of QtVideoBuffer  
+    current.buf = new QtVideoBuffer();
+    prev.buf = new QtVideoBuffer();
+}
+//Video::SinkConnector::~SinkConnector()
+//{
+//    close();
+//}
+//void Video::SinkConnector::drain()
+//{
+//    sink->setVideoFrame(QVideoFrame());
+//    current = FrameData();
+//    prev = FrameData();
+//    current.buf = new QtVideoBuffer();
+//    prev.buf = new QtVideoBuffer();
+//}
+//void Video::SinkConnector::close()
+//{
+//    drain();
+//    if (input && listenerIndex >= 0)
+//    {
+//        input->removeListener(listenerIndex);
+//        input.reset();
+//    }
+//}
+//void Video::SinkConnector::connect(std::shared_ptr<FramePipe> fr)
+//{
+//    if (input == fr)
+//        return;
+//    if (input && sink)
+//        close();
+//    input = std::move(fr);
+//    if (input && sink)
+//        establish();
+//}
+//void Audio::SinkConnector::establish()
+//{
+//    listenerIndex = input->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index)
+//        {
+//            sink->
+//            input->unmapReading(prev.pipeIndex);
+//
+//        });
+//}
+//void Audio::SinkConnector::connect(QAudioSink* s)
+//{
+//    if (s == sink)
+//        return;
+//    if (input && sink)
+//        close();
+//    sink = s;
+//    if (input && sink)
+//        establish();
+//}
+//Audio::SinkConnector::SinkConnector()
+//    :input(nullptr)
+//    ,sink(nullptr)
+//    ,listenerIndex(-1)
+//{}

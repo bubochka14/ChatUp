@@ -18,15 +18,15 @@ namespace Media::Audio
     public:
         explicit Microphone(std::string devcice);
         std::shared_ptr<PacketPipe> output();
-        std::optional<Audio::Source> open();
+        std::optional<Audio::SourceConfig> open();
         bool isOpened();
         void close();
         static std::vector<std::string> availableDevices();
         std::string currentDevice() const;
         ~Microphone();
-        std::shared_ptr<AVFormatContext> context();
+        /*AVFormatContext* context();*/
     private:
-        std::shared_ptr<AVFormatContext> ctx;
+        AVFormatContext* ctx;
         std::shared_ptr<PacketPipe> out;
         std::string device;
         std::thread micThread;

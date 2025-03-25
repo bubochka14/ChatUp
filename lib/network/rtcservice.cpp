@@ -3,161 +3,374 @@ using namespace rtc;
 using namespace std;
 using namespace Media;
 Q_LOGGING_CATEGORY(LC_RTC_SERVICE, "RTCService");
-PeerConnectionHandle::PeerConnectionHandle(std::shared_ptr<PeerConnection> pc, int userID)
-	:pc(pc)
-	,_userID(userID)
+uint32_t generate_ssrc()
 {
-	pc->onTrack([this](std::shared_ptr<rtc::Track> track)
+	std::random_device dev;
+	std::mt19937 rng(dev());
+	std::uniform_int_distribution<std::mt19937::result_type> dist6(1, 10000);
+	return dist6(rng);
+}
+std::chrono::system_clock::rep time_since_epoch() {
+	static_assert(
+		std::is_integral<std::chrono::system_clock::rep>::value,
+		"Representation of ticks isn't an integral value."
+		);
+	auto now = std::chrono::system_clock::now().time_since_epoch();
+	return std::chrono::duration_cast<std::chrono::seconds>(now).count();
+}
+QFuture<void> Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media::Video::SourceConfig config)
+{
+	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::lock_guard g(ctx->mutex);
+	if(!_videoEncoder)
+	{
+		_videoEncoder = std::make_shared<Media::Video::H264Encoder>();
+	}
+	if(_videoEncoder->input() != input)
+		_videoEncoder->start(input, std::move(config));
+
+	PacketizationConfig pConfig;
+	pConfig.ecnCtx = _videoEncoder->codecContext();
+	if(!_videoPacketizer)
+	{
+		_videoPacketizer = std::make_shared<Media::RtpPacketizer>(pConfig);
+	}
+	if (!_videoPacketizer->isStarted())
+	{
+		_videoPacketizer->start(_videoEncoder->output());
+	}
+
+	auto packetizerRawHandler = [this,userID](std::shared_ptr<Media::Raw> raw, size_t index) {
+		auto ctx = getPeerContext(userID);
+		if (!ctx)
 		{
-
-			std::cout << "Track open, direction: " << track->direction()
-				<< "\ndescription: " << std::string(track->description());
-
-			if (track->mid() == "video")
-			{
-
-				auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(42, "channelName", 96, rtc::H264RtpPacketizer::defaultClockRate);
-				auto videoReceivingSession = std::make_shared<rtc::H264RtpDepacketizer>(rtc::H264RtpDepacketizer::Separator::LongStartSequence);
-				auto sess = std::make_shared<RtcpReceivingSession>();
-				videoReceivingSession->addToChain(sess);
-				AVCodecParameters* pars = nullptr;
-				videoReceivingSession->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtpConfig));
-				videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
-				track->setMediaHandler(videoReceivingSession);
-
-				sess->requestKeyframe([](message_ptr message) {
-					});
-				videoTrack = track;
-			/*	if (!_videoCb.has_value())
-					return;*/
-				_videoDecoder.reset(new Video::H264Decoder());
-				_videoRaw = std::make_shared<Media::RawPipe>();
-				_videoDemuxer = std::make_shared<Media::Video::H264Demuxer>();
-				_videoDecoder->start(_videoDemuxer->output());
-				_videoDemuxer->start(_videoRaw);
-				if (_videoCb.has_value())
-					_videoCb.value()(_videoDecoder->output());
-			}
-			track->onMessage([](rtc::binary data)
-				{
-					qDebug() << "received message" << data.size();
-				},
-				[](std::string error)
-				{
-					qDebug() << "received error" << error;
-
-				});
-			track->onFrame([this](rtc::binary data, rtc::FrameInfo info) {
-				qDebug() << "Frame received" << data.size();
-				auto pipeData = _videoRaw->holdForWriting();
-				pipeData.ptr->raw = (uint8_t*)data.data();
-				pipeData.ptr->size = data.size();
-				_videoRaw->unmapWriting(pipeData.subpipe,true);
-				});
-		});
-
-}
-int PeerConnectionHandle::userID()
-{
-	return _userID;
-}
-QFuture<void> PeerConnectionHandle::openLocalVideo(std::shared_ptr<FramePipe> input,Video::SourceConfig conf)
-{
-		if (!_videoEncoder)
-			_videoEncoder = std::make_shared<Media::Video::H264Encoder>();
+			qCWarning(LC_RTC_SERVICE) << "Cannot send video packet, peer" << userID << "isReleased";
+			_videoPacketizer->output()->unmapReading(index);
+			return;
+		}
+		try {
+			auto rtp = reinterpret_cast<rtc::RtpHeader*>(raw->raw);
+			rtp->setSsrc(1);
+			ctx->videoTrack->send((std::byte*)raw->raw, raw->size);
+		}
+		catch (std::exception& e)
+		{
+			qCWarning(LC_RTC_SERVICE) << "Cannot send video packet" << e.what();
+		}
+		_videoPacketizer->output()->unmapReading(index);
+		};
+	if (!ctx->videoTrack)
+	{
 		rtc::Description::Video media("video", rtc::Description::Direction::SendRecv);
 		media.addH264Codec(96); // Must match the payload type of the external h264 RTP stream
-		media.addSSRC(42, "video-send");
-		videoTrack = pc->addTrack(media);
-		auto rtpConfig = make_shared<RtpPacketizationConfig>(42, "video-send", 96, H264RtpPacketizer::defaultClockRate);
-		// create packetizer
-		auto packetizer = make_shared<H264RtpPacketizer>(NalUnit::Separator::LongStartSequence, rtpConfig);
-		// add RTCP SR handler
-		auto reporter = make_shared<RtcpSrReporter>(rtpConfig);
-		packetizer->addToChain(reporter);
-		// add RTCP NACK handler
-		auto nackResponder = make_shared<RtcpNackResponder>();
-		packetizer->addToChain(nackResponder);
-		_videoEncoder->start(input, std::move(conf));
-		PacketizationConfig pConfig;
-		pConfig.ecnCtx = _videoEncoder->codecContext();
-		_videoPacketizer = std::make_shared<Media::RtpPacketizer>(pConfig);
-		_videoPacketizer->start(_videoEncoder->output());
-		videoTrack->onOpen([wInput = std::weak_ptr(input), this, conf]() {
-			auto input = wInput.lock();
-			if (!input)
-				return;
-			_videoPacketizer->output()->onDataChanged([this](std::weak_ptr<Media::Raw> wraw, size_t index) {
-					auto raw = wraw.lock();
-					if (!raw)
-						return;
-					videoTrack->send((std::byte*)raw->raw, raw->size);
-					_videoPacketizer->output()->unmapReading(index);
-					qDebug() << "data send" << raw->size;
-				});
+		media.addSSRC(1, "video-stream");
+		std::shared_ptr<PeerConnection> pc = ctx->pc;
+		ctx->videoTrack = pc->addTrack(media);
+		auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(1, "video-stream", 96, rtc::H264RtpPacketizer::defaultClockRate);
+		auto videoReceivingSession = std::make_shared<rtc::H264RtpDepacketizer>(rtc::H264RtpDepacketizer::Separator::LongStartSequence);
+		auto sess = std::make_shared<RtcpReceivingSession>();
+		videoReceivingSession->addToChain(sess);
+		videoReceivingSession->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtpConfig));
+		//videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+		ctx->videoTrack->setMediaHandler(videoReceivingSession);
 
-		});
+		ctx->videoTrack->onOpen([wctx = std::weak_ptr(ctx), this,h = std::move(packetizerRawHandler)]() {
+			if(auto ctx = wctx.lock())
+				ctx->videoPacketizerListener =_videoPacketizer->output()->onDataChanged(std::move(h));
+			});
+		ctx->videoTrack->onClosed([this, wCtx = std::weak_ptr(ctx),userID]() {
+			//if (auto ctx = wCtx.lock())
+			//{
+			//	std::lock_guard g(ctx->mutex);
+			//	if (ctx->videoPacketizerListener.has_value())
+			//	{
+			//		_videoPacketizer->output()->removeListener(ctx->videoPacketizerListener.value());
+			//		ctx->videoPacketizerListener = std::nullopt;
+			//	}
+			//}
+			qCDebug(LC_RTC_SERVICE) << "Video track width" << userID << "closed";
+			});
+		ctx->videoTrack->onFrame([this, userID](rtc::binary data, rtc::FrameInfo info) {
+			std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+			std::lock_guard g(ctx->mutex);
+
+			if(!ctx->videoPackets)
+				ctx->videoPackets = Media::createPacketPipe();
+			if (!ctx->videoDecoder)
+			{
+				ctx->videoDecoder.reset(new Video::H264Decoder());
+				ctx->videoDecoder->start(ctx->videoPackets);
+			}
+			auto pipeData = ctx->videoPackets->tryHoldForWriting();
+			if (!pipeData.has_value())
+			{
+				qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
+				return;
+			}
+			Media::fillPacket(pipeData->ptr, (uint8_t*)data.data(), data.size());
+			pipeData->ptr->pts = info.timestamp;
+			pipeData->ptr->dts = info.timestamp;
+			ctx->videoPackets->unmapWriting(pipeData->subpipe, true);
+			});
 		pc->setLocalDescription();
+	}else
+		ctx->videoPacketizerListener = _videoPacketizer->output()->onDataChanged(std::move(packetizerRawHandler));
 
 	return QtFuture::makeReadyVoidFuture();
 }
-void PeerConnectionHandle::onRemoteVideoOpen(VideoCallBack cb)
+Service::PeerContext::~PeerContext()
 {
-	_videoCb = std::move(cb);
-}
-//
-//bool PeerConnectionHandle::openAudio(std::shared_ptr<Media::PacketPipe> input)
-//{
-//	return true;
-//}
+	std::lock_guard g(mutex);
+	if (audioTrack)
+		audioTrack->close();	
+	if (videoTrack)
+		videoTrack->close();
 
+}
+void Service::closeUserConnection(int userID)
+{
+	auto ctx = getPeerContext(userID);
+	if (!ctx)
+		return;
+	std::lock_guard g(ctx->mutex);
+	if (ctx->videoPacketizerListener.has_value())
+	{
+		_videoPacketizer->output()->removeListener(ctx->videoPacketizerListener.value());
+		ctx->videoPacketizerListener = std::nullopt;
+	}
+	if (ctx->audioEncoderListener.has_value())
+	{
+		_audioEncoder->output()->removeListener(ctx->audioEncoderListener.value());
+		ctx->audioEncoderListener = std::nullopt;
+	}
+	_peerContexts.erase(userID);
+}
+void Service::closeAllConnections()
+{
+	std::lock_guard g(_peerMutex);
+	_videoEncoder.reset();
+	_audioEncoder.reset();
+	_videoPacketizer.reset();
+	_isClosingConnections = true;
+	_peerContexts.clear();
+	_isClosingConnections = false;
+
+}
+void Service::flushRemoteVideo(int userID)
+{
+	qCDebug(LC_RTC_SERVICE) << "Flush remote video from" << userID;
+	std::shared_ptr<PeerContext> ctx = getPeerContext(userID);
+	if(ctx)
+	{
+		std::lock_guard g(ctx->mutex);
+		ctx->videoPackets.reset();
+		ctx->videoDecoder.reset();
+	}
+}
+void Service::flushRemoteAudio(int userID)
+{
+	qCDebug(LC_RTC_SERVICE) << "Flush remote audio from" << userID;
+	std::shared_ptr<PeerContext> ctx = getPeerContext(userID);
+	if (ctx)
+	{
+		std::lock_guard g(ctx->mutex);
+		ctx->audioPackets.reset();
+		ctx->audioDecoder.reset();
+	}
+}
+std::shared_ptr<Media::FramePipe> Service::getRemoteAudio(int userID)
+{
+	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::lock_guard g(ctx->mutex);
+	if (!ctx->audioPackets)
+		ctx->audioPackets = Media::createPacketPipe();
+	if (!ctx->audioDecoder)
+	{
+		ctx->audioDecoder = std::make_shared<Media::Audio::OpusDecoder>();
+		ctx->audioDecoder->start(ctx->audioPackets);
+	}
+	return ctx->audioDecoder->output();
+}
+QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config)
+{
+	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::lock_guard g(ctx->mutex);
+	if(!_audioEncoder)
+	{
+		_audioEncoder = std::make_shared<Media::Audio::OpusEncoder>();
+	}
+	if (_audioEncoder->input() != input)
+		_audioEncoder->start(input, std::move(config));
+
+	auto encHandler = [this, userID](std::shared_ptr<AVPacket> packet, size_t index) {
+		//QtConcurrent::run([this, wCtx, packet, index, userID]() {
+		auto ctx = getPeerContext(userID);
+		if (ctx)
+		{
+			std::lock_guard g(ctx->mutex);
+			try
+			{
+				auto rtpConfig = ctx->rtcp->rtpConfig;
+				auto elapsedSeconds = time_since_epoch();
+				// get elapsed time in clock rate
+				uint32_t elapsedTimestamp = rtpConfig->secondsToTimestamp(elapsedSeconds);
+				// set new timestamp
+				rtpConfig->timestamp = rtpConfig->startTimestamp + elapsedTimestamp;
+
+				// get elapsed time in clock rate from last RTCP sender report
+				auto reportElapsedTimestamp = rtpConfig->timestamp - ctx->rtcp->lastReportedTimestamp();
+				// check if last report was at least 1 second ago
+				if (rtpConfig->timestampToSeconds(reportElapsedTimestamp) > 1) {
+					ctx->rtcp->setNeedsToReport();
+				}
+				ctx->audioTrack->send((std::byte*)packet->data, packet->size);
+			}
+			catch (std::exception& e)
+			{
+				qCWarning(LC_RTC_SERVICE) << "Cannot send packet to peer" << userID << ":" << e.what();
+			}
+			_audioEncoder->output()->unmapReading(index);
+		}
+		else
+			qCWarning(LC_RTC_SERVICE) << "Cannot send audio packet, peer" << userID << "isReleased";
+
+		_audioEncoder->output()->unmapReading(index);
+
+			//});
+		};
+	if(!ctx->audioTrack)
+	{
+		rtc::Description::Audio media("audio", Description::Direction::SendRecv);
+		media.addOpusCodec(111);
+		media.addSSRC(2, "audio_stream");
+		std::shared_ptr<PeerConnection> pc = ctx->pc;
+		//_audioEncoder->start(input);
+		ctx->audioTrack = pc->addTrack(media);
+		// create RTP configuration
+		auto rtpConfig = make_shared<RtpPacketizationConfig>(2, "audio_stream", 111, OpusRtpPacketizer::DefaultClockRate);
+		// create packetizer
+		auto packetizer = make_shared<OpusRtpPacketizer>(rtpConfig);
+		// add RTCP SR handler
+		ctx->rtcp = make_shared<RtcpSrReporter>(rtpConfig);
+		packetizer->addToChain(ctx->rtcp);
+		// add RTCP NACK handler
+/*		auto nack = make_shared<RtcpNackResponder>();
+		packetizer->addToChain(nack)*/;
+
+		auto audioReceivingSession = std::make_shared<rtc::OpusRtpDepacketizer>();
+		auto sess = std::make_shared<RtcpReceivingSession>();
+		audioReceivingSession->addToChain(sess);
+		//audioReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+		ctx->audioTrack->chainMediaHandler(audioReceivingSession);
+		// set handler
+		ctx->audioTrack->chainMediaHandler(packetizer);
+		ctx->audioTrack->onOpen([this, wctx = std::weak_ptr(ctx), cb = std::move(encHandler)]() {
+			if(auto ctx = wctx.lock())
+				ctx->audioEncoderListener = _audioEncoder->output()->onDataChanged(std::move(cb));
+			});
+		ctx->audioTrack->onClosed([userID]() {
+			qCDebug(LC_RTC_SERVICE) << "Audio track width" << userID << "closed";
+			});
+		ctx->audioTrack->onFrame([this, userID, wctx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
+			//QtConcurrent::run([this, userID, wctx, data = std::move(data),info]() {
+				auto ctx = wctx.lock();
+				if (!ctx)
+					return;
+				std::lock_guard g(ctx->mutex);
+				if (!ctx->audioPackets)
+					ctx->audioPackets = Media::createPacketPipe();
+				if (!ctx->audioDecoder)
+				{
+					ctx->audioDecoder.reset(new Audio::OpusDecoder());
+					ctx->audioDecoder->start(ctx->audioPackets);
+				}
+				auto pipeData = ctx->audioPackets->holdForWriting();
+				Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
+				pipeData->pts = info.timestamp;
+				pipeData->dts = info.timestamp;
+				ctx->audioPackets->unmapWriting(pipeData.subpipe, true);
+				//});
+			});
+		pc->setLocalDescription();
+
+	}
+	else
+		ctx->audioEncoderListener = _audioEncoder->output()->onDataChanged(std::move(encHandler));
+
+	return QtFuture::makeReadyFuture();
+}
 Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration config)
 	:_config(std::move(config))
-    ,_coordinator(std::move(coord))
+    ,_coordinator(coord)
 {
-	rtc::InitLogger(rtc::LogLevel::Info);
-	Api::Description::handle(_coordinator, [this](Data::Description msg)
+	_config.forceMediaTransport = true;
+	rtc::InitLogger(rtc::LogLevel::Warning);
+	Api::Description::handle(_coordinator, [this](Data::Description msg) {
+		if (msg.id == Data::invalidID)
 		{
-			if (msg.id == Data::invalidID)
-			{
-				qCWarning(LC_RTC_SERVICE) << "Invalid userID in description received";
-				return;
-			}
-			std::shared_ptr<rtc::PeerConnectionHandle> peerHandle = nullptr;
-			if (auto jt = _peerHandles.find(msg.id); jt != _peerHandles.end()) {
-				peerHandle = jt->second;
-			}
-			else if (msg.type == "offer") {
-				std::cout << "Answering to " + msg.id << std::endl;
-				peerHandle = createPeerHandle(msg.id);
-			}
-			else {
-				return;
-			}
-			peerHandle->pc->setRemoteDescription(rtc::Description(msg.description, msg.type));
+			qCWarning(LC_RTC_SERVICE) << "Invalid userID in description received";
+			return;
+		}
+		std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(msg.id);
+		std::lock_guard g(ctx->mutex);
+		auto desc = rtc::Description(msg.description, msg.type);
+		ctx->pc->setRemoteDescription(desc);
+		//for (size_t i = 0; i < desc.mediaCount(); i++)
+		//{
+		//	auto var = desc.media(i);
+		//	if (!std::holds_alternative<Description::Media*>(var))
+		//		continue;
+		//	auto media = std::get<Description::Media*>(var);
+		//	if (media->mid() == "video" && ctx->videoDecoder)
+		//	{
+		//		if (media->direction() == rtc::Description::Direction::Inactive ||
+		//			media->direction() == rtc::Description::Direction::RecvOnly)
+		//		{
+		//			if (_closeVideoCb.has_value())
+		//				_closeVideoCb.value()(msg.id);
+		//			ctx->videoDecoder.reset();
+		//			ctx->videoPackets.reset();
+		//		}
 
-		});
-	rtc::Api::Candidate::handle(_coordinator, [this](rtc::Data::Candidate candidate)
-		{
-			if (auto jt = _peerHandles.find(candidate.id); jt != _peerHandles.end()) {
-				jt->second->pc->addRemoteCandidate(rtc::Candidate(std::move(candidate.candidate),
-					std::move(candidate.mid)));
-			}
-		});
+		//	}
+		//}
+
+	});
+	rtc::Api::Candidate::handle(_coordinator, [this](rtc::Data::Candidate candidate){
+		std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(candidate.id);
+		std::lock_guard g(ctx->mutex);
+		ctx->pc->addRemoteCandidate(rtc::Candidate(std::move(candidate.candidate),
+			std::move(candidate.mid)));
+	});
 }
-std::shared_ptr<rtc::PeerConnectionHandle> Service::createPeerHandle(int id)
+std::shared_ptr<Service::PeerContext> Service::getOrCreatePeerContext(int id)
 {
+	std::lock_guard g(_peerMutex);
+	auto ctx = getPeerContext(id);
+	if (!ctx)
+	{
+		createPeerContext(id);
+		return getPeerContext(id);
+	}
+	return ctx;
+}
+void Service::createPeerContext(int id)
+{
+ 	auto ctx = std::make_shared<PeerContext>();
+	std::lock_guard g(ctx->mutex);
+
 	auto pc = std::make_shared<rtc::PeerConnection>(_config);
-
+	ctx->pc = pc;
+	_peerContexts.emplace(id, ctx);
 	pc->onStateChange(
-		[](rtc::PeerConnection::State state) { std::cout << "State: " << state << std::endl; });
-
+		[this,id, wctx = std::weak_ptr(ctx)](rtc::PeerConnection::State state) {
+			std::cout << "State: " << state << std::endl; 
+		});
 	pc->onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
 		std::cout << "Gathering State: " << state << std::endl;
 		});
-	pc->onLocalDescription([this, id](rtc::Description description) 
+	pc->onLocalDescription([this, id](rtc::Description description)
 		{
-			qDebug() << "LOCAL DESACRIPTION";
 			Api::Description outMsg;
 			outMsg.id = id;
 			outMsg.type = description.typeString();
@@ -165,38 +378,134 @@ std::shared_ptr<rtc::PeerConnectionHandle> Service::createPeerHandle(int id)
 			outMsg.exec(_coordinator);
 		});
 
-	pc->onLocalCandidate([this, id](rtc::Candidate candidate) 
+	pc->onLocalCandidate([this, id](rtc::Candidate candidate)
 		{
-			qDebug() << "LOCAL Candidate";
-
 			Api::Candidate outMsg;
 			outMsg.id = id;
 			outMsg.mid = candidate.mid();
 			outMsg.candidate = std::move(candidate);
 			outMsg.exec(_coordinator);
 		});
-	auto pcHandle = std::make_shared<PeerConnectionHandle>(pc,id);
-	_peerHandles.emplace(id, pcHandle);
-	return pcHandle;
+	pc->onTrack([this,id](std::shared_ptr<rtc::Track> track)
+	{
+		if (track->mid() == "video")
+		{
+			auto rtpConfig = std::make_shared<rtc::RtpPacketizationConfig>(1, "video-stream", 96, rtc::H264RtpPacketizer::defaultClockRate);
+			auto videoReceivingSession = std::make_shared<rtc::H264RtpDepacketizer>(rtc::H264RtpDepacketizer::Separator::LongStartSequence);
+			auto sess = std::make_shared<RtcpReceivingSession>();
+			videoReceivingSession->addToChain(sess);
+			videoReceivingSession->addToChain(std::make_shared<rtc::RtcpSrReporter>(rtpConfig));
+			//videoReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+
+			track->setMediaHandler(videoReceivingSession);
+			sess->requestKeyframe([](message_ptr message) {
+				});
+			std::shared_ptr<PeerContext> ctx = getPeerContext(id);
+			ctx->videoTrack = track;
+			if (!ctx->videoPackets)
+				ctx->videoPackets = Media::createPacketPipe();
+ 			track->onClosed([this,id, wCtx = std::weak_ptr(ctx)]() {
+				qCDebug(LC_RTC_SERVICE) << "Video track width" << id << "closed";
+			});
+			track->onFrame([this, id, wCtx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
+				//QtConcurrent::run([wCtx, this, id, data = std::move(data)]() {
+					auto ctx = wCtx.lock();
+					if (!ctx)
+						return;
+					auto pipeData = ctx->videoPackets->holdForWriting();
+		/*			if (!pipeData.has_value())
+					{
+						qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
+						return;
+					}*/
+					Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
+					pipeData->pts = info.timestamp;
+					pipeData->dts = info.timestamp;
+					ctx->videoPackets->unmapWriting(pipeData.subpipe, true);
+					});
+				//});
+		}
+		if (track->mid() == "audio")
+		{
+			std::shared_ptr<PeerContext> ctx = getPeerContext(id);
+
+			ctx->audioTrack = track;
+			auto audioReceivingSession = std::make_shared<rtc::OpusRtpDepacketizer>();
+			auto sess = std::make_shared<RtcpReceivingSession>();
+			audioReceivingSession->addToChain(sess);
+			//audioReceivingSession->addToChain(std::make_shared<rtc::RtcpNackResponder>());
+
+			// create RTP configuration
+			auto rtpConfig = make_shared<RtpPacketizationConfig>(2, "audio", 111, OpusRtpPacketizer::DefaultClockRate);
+			// create packetizer
+			auto packetizer = make_shared<OpusRtpPacketizer>(rtpConfig);
+			// add RTCP SR handler
+			ctx->rtcp = make_shared<RtcpSrReporter>(rtpConfig);
+			packetizer->addToChain(ctx->rtcp);
+			// add RTCP NACK handler
+			//auto nack = make_shared<RtcpNackResponder>();
+			//packetizer->addToChain(nack);
+			track->chainMediaHandler(audioReceivingSession);
+			track->chainMediaHandler(packetizer);
+			sess->requestKeyframe([](message_ptr message) {
+				});
+			if (!ctx->audioDecoder)
+				ctx->audioDecoder.reset(new Audio::OpusDecoder());
+			if(!ctx->audioPackets)
+			{
+				ctx->audioPackets = Media::createPacketPipe();
+				ctx->audioDecoder->start(ctx->audioPackets);
+			}
+			track->onClosed([id]() {
+				qCDebug(LC_RTC_SERVICE) << "Audio track width" << id << "closed";
+				});
+			track->onFrame([wCtx = std::weak_ptr(ctx)](rtc::binary data, rtc::FrameInfo info) {
+				//QtConcurrent::run([wCtx, data = std::move(data),info]() {
+
+					if (auto ctx = wCtx.lock())
+					{
+						std::lock_guard(ctx->mutex);
+						auto pipeData = ctx->audioPackets->tryHoldForWriting();
+						if (!pipeData.has_value())
+						{
+							qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
+							return;
+						}
+						Media::fillPacket(pipeData->ptr, (uint8_t*)data.data(), data.size());
+						pipeData->ptr->pts = info.timestamp;
+						pipeData->ptr->dts = info.timestamp;
+						ctx->audioPackets->unmapWriting(pipeData->subpipe, true);
+					}
+					//});
+				});
+			track->onMessage([this, id](rtc::message_variant data) {
+				/*std::shared_ptr<PeerContext> ctx = getPeerContext(id);
+				auto pipeData = ctx->videoRaw->holdForWriting();
+				pipeData.ptr->raw = (uint8_t*)data.data();
+				pipeData.ptr->size = data.size();
+				ctx->videoRaw->unmapWriting(pipeData.subpipe, true);*/
+				});
+		}
+	});
 }
-std::shared_ptr<PeerConnectionHandle> Service::getPeerConnectionHandle(int userID)
+std::shared_ptr<Media::FramePipe> Service::getRemoteVideo(int userID)
 {
-	if (!_peerHandles.contains(userID))
-		return createPeerHandle(userID);
-	return _peerHandles[userID];
+	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::lock_guard g(ctx->mutex);
+	if(!ctx->videoPackets)
+		ctx->videoPackets = Media::createPacketPipe();
+	if (!ctx->videoDecoder)
+	{
+		ctx->videoDecoder.reset(new Video::H264Decoder());
+		ctx->videoDecoder->start(ctx->videoPackets);
+	}
+	return ctx->videoDecoder->output();
 }
-QFuture<void> Service::establishPeerConnection(int userID)
+std::shared_ptr<Service::PeerContext> Service::getPeerContext(int id)
 {
-	if (_peerHandles.contains(userID))
-		return QtFuture::makeExceptionalFuture(make_exception_ptr("Peer already exist"));
-	qCDebug(LC_RTC_SERVICE) << "Establishing peer connection with user" << userID;
- 	auto pcHandle = createPeerHandle(userID);
-	//rtc::Description::Video media("video", rtc::Description::Direction::RecvOnly);
-	//media.addH264Codec(96); // Must match the payload type of the external h264 RTP stream
-	//media.addSSRC(42, "video-send");
-	//videoTrack = pc->addTrack(media);
-	//pc->setLocalDescription();
-	return QtFuture::makeReadyVoidFuture();
+	if (_peerContexts.contains(id))
+		return _peerContexts[id];
+	return nullptr;
 }
 QDebug operator<<(QDebug debug, const rtc::PeerConnection::GatheringState& s)
 {
@@ -246,4 +555,46 @@ QDebug operator<<(QDebug debug, const rtc::PeerConnection::State& s)
 		break;
 	}
 	return debug << str;
+}
+void Service::closeLocalAudio(int userID)
+{
+	std::lock_guard g(_peerMutex);
+	for (auto& i : _peerContexts)
+	{
+		std::lock_guard g(i.second->mutex);
+		if (i.second->audioEncoderListener.has_value())
+			_audioEncoder->output()->removeListener(i.second->audioEncoderListener.value());
+	}
+}
+void Service::closeLocalVideo(int userID)
+{
+	std::lock_guard g(_peerMutex);
+	for (auto& i : _peerContexts)
+	{
+		std::lock_guard g(i.second->mutex);
+		if (i.second->videoPacketizerListener.has_value())
+			_videoPacketizer->output()->removeListener(i.second->videoPacketizerListener.value());
+	}
+	//_videoEncoder->close();
+	//_videoPacketizer->stop();
+	//if (!_peerContexts.contains(userID))
+	//	return;
+	//auto& context = _peerContexts[userID];
+	//if (context->videoTrack->direction() == rtc::Description::Direction::SendRecv)
+	//{
+	//	_videoEncoder.reset();
+	//	_videoPacketizer.reset();
+	//	rtc::Description::Media dsc = context->videoTrack->description();
+	//	dsc.setDirection(Description::Direction::RecvOnly);
+	//	context->videoTrack = context->pc->addTrack(std::move(dsc));
+	//	context->pc->setLocalDescription();
+	//}
+	//if (context->videoTrack->direction() == rtc::Description::Direction::SendOnly)
+	//{
+	//	rtc::Description::Media dsc = context->videoTrack->description();
+	//	dsc.setDirection(Description::Direction::Inactive);
+	//	context->videoTrack = context->pc->addTrack(std::move(dsc));
+	//	context->pc->setLocalDescription();
+
+	//}
 }

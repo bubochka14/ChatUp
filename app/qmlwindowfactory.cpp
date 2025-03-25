@@ -2,7 +2,7 @@
 Q_LOGGING_CATEGORY(LC_QML_WINDOW_FACTORY, "QmlWindowFactory");
 QmlWindowFactory::QmlWindowFactory(QObject* parent)
 	:AbstractWindowFactory(parent)
-	, _engine(new QQmlApplicationEngine (this))
+	, _engine(new QQmlApplicationEngine)
 {
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)

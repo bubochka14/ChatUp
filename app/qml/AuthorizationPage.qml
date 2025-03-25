@@ -31,6 +31,7 @@ Page {
             Layout.fillHeight: true
             Layout.fillWidth: true
             currentIndex: bar.currentIndex
+            onCurrentIndexChanged: errorString =""
             Item {
                 ColumnLayout {
                     anchors.fill: parent
@@ -115,7 +116,7 @@ Page {
                                     root.registerUser(signUpUsernameField.text,
                                                       signUpPasswordField.text)
                                 } else
-                                    setError(qsTr("Password missmatch"))
+                                    errorString =qsTr("Password missmatch")
                             }
                         }
                     }

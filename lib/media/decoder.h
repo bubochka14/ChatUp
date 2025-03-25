@@ -12,23 +12,11 @@ extern "C"
 	#include <libavcodec/avcodec.h>
 }
 #include "media_include.h"
+#include "QtConcurrent/qtconcurrentrun.h"
 #include <qloggingcategory.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_DECODER)
 Q_DECLARE_LOGGING_CATEGORY(LC_H264DEMUXER)
 namespace Media {
-	class CC_MEDIA_EXPORT DataBuffer
-	{
-	public:
-		using Binary = std::vector<std::byte>;
-		DataBuffer():byteOffset(0) {}
-		bool empty();
-		void pushData(Binary bin);
-		int popData(uint8_t* prt, int size);
-	public:
-		std::deque <Binary> data;
-		std::mutex mutex;
-		size_t byteOffset;
-	};
 	class CC_MEDIA_EXPORT AbstractDecoder
 	{
 	public:
@@ -39,16 +27,19 @@ namespace Media {
 		std::shared_ptr<FramePipe> output();
 		virtual ~AbstractDecoder();
 	protected:
-		void initialize(std::shared_ptr<AVCodecContext>, const AVCodec*);
+		void initialize(std::shared_ptr<AVCodecContext>, const AVCodec*, std::shared_ptr<FramePipe>);
 	private:
 		std::atomic<bool> active = {false};
 		std::optional<int> inputListenIndex;
 		TaskQueue quene;
-		std::shared_ptr<FramePipe> out;
-		std::shared_ptr<PacketPipe> input;
+		std::shared_ptr<FramePipe> _out;
+		std::shared_ptr<PacketPipe> _input;
 		std::shared_ptr<AVCodecContext> _ctx;
 		const AVCodec* _codec;
-
+		std::mutex _decodeMutex;
+		std::shared_ptr<AVFrame> _drainFrame;
+		QThreadPool _pool;
+		int64_t delta = 0;
 	};
 	namespace Video {
 		class CC_MEDIA_EXPORT Decoder : public AbstractDecoder
@@ -85,7 +76,30 @@ namespace Media {
 		class CC_MEDIA_EXPORT Decoder : public AbstractDecoder
 		{
 		public:
-			Decoder(const Source& src);
+			Decoder(const SourceConfig& src);
+		};
+		class CC_MEDIA_EXPORT OpusDecoder : public AbstractDecoder
+		{
+		public:
+			OpusDecoder();
+		};
+		class CC_MEDIA_EXPORT OpusDemuxer
+		{
+		public:
+			OpusDemuxer();
+			void start(std::shared_ptr<Media::RawPipe>);
+			std::shared_ptr<Media::PacketPipe> output();
+			struct ReadingOpaque
+			{
+				const uint8_t* data;
+				size_t size = 0;
+				size_t totalWritten = 0;
+			};
+		private:
+			AVFormatContext* _ctx;
+			std::shared_ptr<Media::PacketPipe> _out;
+			ReadingOpaque _readingOpaque;
+
 		};
 	}
 }

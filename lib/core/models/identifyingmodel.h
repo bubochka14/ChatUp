@@ -30,6 +30,12 @@ public:
 		return read(_data[index.row()], index.row(), role);
 
 	}
+	void reset(C<T> data)
+	{
+		beginResetModel();
+		_data = std::move(data);
+		endResetModel();
+	}
 	QVariant data(int id, int role) const 
 	{
 		if (!_index.contains(id))
@@ -68,10 +74,7 @@ public:
 	QModelIndex idToIndex(int id) const
 	{
 		if (!_index.contains(id))
-		{
-			qWarning() << "Specified id " << id << " not found";
 			return QModelIndex();
-		}
 		return index(_index.at(id));
 	}
 	template<class Iter>
@@ -83,7 +86,7 @@ public:
 			return false;
 		}
 		beginInsertRows(QModelIndex(), row, row+distance);
-		_data.insert(_data.begin(), begin, end);
+		_data.insert(_data.begin()+row, begin, end);
 		for (size_t i = row; i <= row + distance; i++)
 		{
 			_index.insert({read( _data[i],i,IDRole()).toInt(), i });

@@ -10,12 +10,22 @@
 #include "rtcservice.h"
 #include "rtppacketizer.h"
 #include "encoder.h"
+#include <qaudiooutput.h>
+#include <qaudiodevice.h>
+#include <unordered_map>
+#include <qaudiosink.h>
+#include <qmediadevices.h>
 #include "media.h"
+#include "audiooutput.h"
+#include <qtimer>
 //#include "audiooutput.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
+
 namespace Call {
+
 	class Controller;
 	class Handler;
+
 	class CC_NETWORK_EXPORT Handler : public QObject
 	{
 		Q_OBJECT;
@@ -34,13 +44,16 @@ namespace Call {
 		bool hasVideo();
 		bool hasAudio();
 		Q_INVOKABLE QFuture<void> openVideo(Media::Video::StreamSource* source);
-		//Q_INVOKABLE QFuture<void> openAudio(Media::StreamSource* source);
+		Q_INVOKABLE QFuture<void> openAudio(Media::Audio::StreamSource* source);
+		Q_INVOKABLE void connectAudioOutput(int userID, Media::Audio::Output*);
+
 		//Q_INVOKABLE QFuture<void> connectAudioSink(int userID, QAudioSi);
 		Q_INVOKABLE QFuture<void> disconnect();
 		Q_INVOKABLE void closeVideo();
-		Q_INVOKABLE QFuture<void> closeAudio();
+		Q_INVOKABLE void closeAudio();
 		Q_INVOKABLE QFuture<void> join();
 		Q_INVOKABLE void connectVideoSink(int userID, QVideoSink*);
+	//	Q_INVOKABLE void connectAudioSink(int userID, QAudioSink*);
 		Q_INVOKABLE void release();
 	signals:
 		void participantsChanged();
@@ -66,14 +79,20 @@ namespace Call {
 		State _state;
 		friend class Controller;
 	};
-	struct StreamContext
+	struct AudioStreamContext
 	{
-		Media::Video::StreamSource* videoSource = nullptr;
-		std::unique_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
-		//Media::StreamSource* audio = nullptr;
-		//Media::Audio::Source audioSource;
+		Media::Audio::StreamSource* src = nullptr;
+		std::mutex mutex;
+		Media::Audio::SourceConfig config;
 	};
+	struct VideoStreamContext
+	{
+		Media::Video::StreamSource* src = nullptr;
+		//std::shared_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
+		std::mutex mutex;
+		Media::Video::SourceConfig config;
 
+	};
 
 
 	class CC_NETWORK_EXPORT Controller : public AbstractController
@@ -89,9 +108,11 @@ namespace Call {
 		QFuture<void> disconnect(Handler* h);
 		QFuture<void> join(Handler* h);
 		QFuture<void> openVideo(Handler* h, Media::Video::StreamSource* st);
+		QFuture<void> openAudio(Handler* h, Media::Audio::StreamSource* st);
 		void closeVideo(Handler* h);
-		//QFuture<void> openAudio(Handler* h, Media::StreamSource* st);
+		void closeAudio(Handler* h);
 		void connectVideoSink(Handler* h,int userID, QVideoSink*);
+		void connectAudioOutput(Handler* h,int userID, Media::Audio::Output*);
 		void setAudio(bool st, Handler* h);
 		void setVideo(bool st, Handler* h);
 		bool hasAudio(Handler* h);
@@ -99,9 +120,15 @@ namespace Call {
 		void release(Handler* h);
 
 	private:
-		QHash<int, Handler*> _handlers;
+		void clearMedia();
+		std::unordered_map<int, Handler*> _handlers;
+		std::unordered_map<int, std::shared_ptr<Media::Video::SinkConnector>> _connectors;
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;
-		std::unordered_map<int, StreamContext> _userContexts;
+		AudioStreamContext _localAudioStream;
+		VideoStreamContext _localVideoStream;
+		std::mutex _handlersMutex;
+		std::optional<int> _activeCallRoomID;
+
 	};
 }

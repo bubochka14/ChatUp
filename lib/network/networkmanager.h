@@ -6,8 +6,8 @@
 class NetworkCoordinator;
 struct CC_NETWORK_EXPORT Credentials
 {
-	std::string password;
 	std::string login;
+	std::string password;
 };
 namespace Api
 {
@@ -29,7 +29,9 @@ public:
 	using Callback = std::function<void(json&&)>;
 	void addClientHandler(std::string method, Callback&& h);
 	void setCredentials(Credentials other);
-	int currentUser() const;
+	int  currentUser() const;
+	void setReconnectionCount(int other);
+	void onDisconnected(std::function<void()> cb);
 	QFuture<void> initialize();
 
 	enum Priority
@@ -42,13 +44,14 @@ public:
 		json args,
 		Priority priority = AuthorizedCall);
 	explicit NetworkCoordinator(std::string host, int port);
+	//~NetworkCoordinator();
 private:
 
 	struct MethodInfo
 	{
 		std::string method;
 		json args;
-		std::unique_ptr<QPromise<json>> prom;
+		std::shared_ptr<QPromise<json>> prom;
 		int priority;
 	};
 	MethodInfo takeMethod();
@@ -61,5 +64,7 @@ private:
 	std::condition_variable _condvar;
 	std::mutex _mutex;
 	std::shared_ptr<ServerHandler> _handler;
+	std::optional<std::function<void()>> _disconnectedCb;
+	int _reconnectionCount;
 	int _user;
 };

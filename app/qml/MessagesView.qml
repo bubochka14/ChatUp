@@ -10,11 +10,13 @@ import QuickFuture
 Item {
     id: root
     required property ControllerManager manager
+    property int topLoaded: 0
     property alias listView: listView
     property alias model: listView.model
     property var bottomVisibleMessageIndex
     signal userProfileClicked(var id)
     signal unreadWasRead(var count)
+    signal loadingMessagesNeeded()
     ListView {
         id: listView
         property var usersCache: ({})
@@ -22,7 +24,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.right: parent.right
         anchors.left: parent.left
-        height:  parent.height
+        height: parent.height
         anchors.rightMargin: 15
         spacing: 10
         reuseItems: true
@@ -41,11 +43,13 @@ Item {
                         + delegateLoader.x + delegateLoader.width <= listView.width
             }
             onIsVisibleChanged: {
-                if (messageStatus == MessageModel.Sent
-                        && userID != CurrentUser.id
-                        && isVisible
-                        && enabled)
-                    root.unreadWasRead(messageIndex)
+                if (isVisible && enabled) {
+                    if (messageStatus == MessageModel.Sent
+                            && userID != CurrentUser.id)
+                        root.unreadWasRead(messageIndex)
+                    if(messageIndex == topLoaded && topLoaded !=0)
+                        root.loadingMessagesNeeded()
+                }
             }
             ListView.onPooled: if (item)
                                    item.statusIcon.paused = true
@@ -88,12 +92,21 @@ Item {
                 }
             }
         }
-        header:Item{
-            height:10
+        footer: Item {
+            height: 35
             width: listView.width
+            AnimatedImage {
+                id: loadingIcon
+                anchors.centerIn: parent
+                visible: topLoaded != 0
+                mipmap: true
+                sourceSize.height: 72
+                sourceSize.width: 108
+                source: Qt.resolvedUrl("gif/loading.gif")
+            }
         }
-        footer:Item{
-            height:10
+        header: Item {
+            height: 10
             width: listView.width
         }
     }

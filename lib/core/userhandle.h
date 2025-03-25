@@ -9,10 +9,10 @@ namespace User {
 		Q_OBJECT;
 		QML_NAMED_ELEMENT(UserHandle);
 		QML_UNCREATABLE("");
-		Q_PROPERTY(User::Status status READ status NOTIFY statusChanged);
-		Q_PROPERTY(QString name READ name NOTIFY nameChanged);
-		Q_PROPERTY(QString tag READ tag NOTIFY tagChanged);
-		Q_PROPERTY(int id READ id NOTIFY idChanged);
+		Q_PROPERTY(User::Status status READ status WRITE setStatus NOTIFY statusChanged);
+		Q_PROPERTY(QString name READ name WRITE setName NOTIFY nameChanged);
+		Q_PROPERTY(QString tag READ tag WRITE setTag NOTIFY tagChanged);
+		Q_PROPERTY(int id READ id WRITE setID NOTIFY idChanged);
 	public:
 		explicit Handle(User::Data&& data, QObject* parent = nullptr);
 		void release();
@@ -20,6 +20,11 @@ namespace User {
 		QString tag() const;
 		int id() const;
 		User::Status status() const;
+		void setID(int other);
+		void setTag(const QString& other);
+		void setName(const QString& other);
+		void setStatus(Status other);
+		void copy(Handle* other);
 	signals:
 		void statusChanged();
 		void nameChanged();

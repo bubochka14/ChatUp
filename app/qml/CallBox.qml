@@ -3,6 +3,7 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Controls.Material
 import ChatClient.Network
+import ChatClient.Core
 import QuickFuture
 
 Rectangle {
@@ -29,21 +30,30 @@ Rectangle {
             name: "disconnected"
             PropertyChanges {
                 root.visible: false
-                interactionBtn.text: "Call"
+                mediaBtn.visible: false
+                voiceBtn.visible: false
             }
         },
         State {
             name: "notJoined"
             PropertyChanges {
                 root.visible: true
-                interactionBtn.text: "Join"
+                interactionBtn.source: Qt.resolvedUrl("pics/startcall")
+                mediaBtn.visible: false
+                voiceBtn.visible: false
+
             }
         },
         State {
             name: "joined"
             PropertyChanges {
                 root.visible: true
-                interactionBtn.text: "Disconnect"
+                interactionBtn.source: Qt.resolvedUrl("pics/endcall")
+                mediaBtn.visible: true
+                voiceBtn.visible: true
+            }
+            StateChangeScript{
+                script:view.syncOutput()
             }
         }
     ]
@@ -60,43 +70,60 @@ Rectangle {
         root.callHandler = manager.callController.handler(root.roomID)
         view.model = root.callHandler.participants
     }
-    ColumnLayout {
+    CallParticipantView {
+        id: view
         anchors.fill: parent
-        CallParticipantView {
-            id: view
-            boxHeight: root.height
-            boxWidth: root.width
-            Layout.fillHeight: true
-            Layout.fillWidth: true
-            callHandler: root.callHandler
+        callHandler: root.callHandler
+    }
+    Row {
+        spacing: 5
+        anchors {
+            bottom: view.bottom
+            bottomMargin: 5
+            horizontalCenter: parent.horizontalCenter
         }
-        Row {
-            spacing: 5
-            Layout.alignment: Qt.AlignHCenter
-            Button {
-                id: interactionBtn
-                onClicked: {
-                    if (root.state == "joined") {
-                        root.callHandler.disconnect()
-                    } else {
-                        root.callHandler.join()
-                    }
+        IconButton {
+            id: interactionBtn
+            height: 45
+            width: 45
+            onClicked: {
+                if (root.state == "joined") {
+                    root.callHandler.disconnect()
+                } else {
+                    root.callHandler.join()
                 }
             }
-            Button {
-                text: root.callHandler.hasVideo ? "Media OFF" : "Media ON"
-                onClicked: {
-                    if (root.callHandler.hasVideo) {
-                        root.callHandler.closeVideo()
-                    } else {
-                        CameraPipeline.currentDevice = CameraPipeline.availableDevices[0]
-                        root.callHandler.openVideo(CameraPipeline)
-                    }
+        }
+        IconButton {
+            id:mediaBtn
+            height: 45
+            width: 45
+            source: root.callHandler.hasVideo ? Qt.resolvedUrl(
+                                                    "pics/cameraopen") : Qt.resolvedUrl(
+                                                    "pics/cameraclose")
+            onClicked: {
+                if (root.callHandler.hasVideo) {
+                    root.callHandler.closeVideo()
+                } else {
+                    CameraPipeline.currentDevice = ApplicationSettings.videoDevice
+                    root.callHandler.openVideo(CameraPipeline)
                 }
             }
-            Button {
-                text: root.callHandler.hasAudio ? "Audio OFF" : "Audio ON"
-                onClicked: root.callHandler.hasAudio = !root.callHandler.hasAudio
+        }
+        IconButton {
+            id:voiceBtn
+            height: 45
+            width: 45
+            source: root.callHandler.hasAudio ? Qt.resolvedUrl(
+                                                    "pics/micround") : Qt.resolvedUrl(
+                                                    "pics/nomicround")
+            onClicked: {
+                if (root.callHandler.hasAudio) {
+                    root.callHandler.closeAudio()
+                } else {
+                    MicrophonePipeline.currentDevice = ApplicationSettings.audioDevice
+                    root.callHandler.openAudio(MicrophonePipeline)
+                }
             }
         }
     }

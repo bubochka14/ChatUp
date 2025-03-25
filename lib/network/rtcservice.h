@@ -1,4 +1,6 @@
 #pragma once
+
+#include <WinSock2.h>
 #include <QFuture>
 #include <rtc/rtc.hpp>
 #include <qloggingcategory.h>
@@ -9,54 +11,75 @@
 #include "encoder.h"
 #include "media.h"
 #include "rtppacketizer.h"
+#include <random>
+
 #include "decoder.h"
+#include "scopeguard.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_RTC_SERVICE);
 namespace rtc
 {
-	class Service;
-	class PacketizationPipeline
+	struct LocalVideoDescription
 	{
-		void open(std::shared_ptr<Media::FramePipe> framePipe);
-
-	};
-	struct CC_NETWORK_EXPORT PeerConnectionHandle
-	{
-		using VideoCallBack = std::function<void(std::shared_ptr<Media::FramePipe>)>;
-
-		PeerConnectionHandle(std::shared_ptr<PeerConnection> pc, int userID);
-		QFuture<void> openLocalVideo(std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig conf);
-		QFuture<bool> openListenning();
-		std::optional<rtc::Track> openLocalAudio(std::shared_ptr<Media::PacketPipe> input);
-		void onRemoteVideo(std::function<void(VideoCallBack)>);
-		void onRemoteVideoOpen(VideoCallBack cb);
-		int userID();
-	protected:
-		std::shared_ptr<PeerConnection> pc;
-		std::shared_ptr<rtc::Track> audioTrack;
-		std::shared_ptr<rtc::Track> videoTrack;
-		std::optional<VideoCallBack> _videoCb;
-		std::shared_ptr<Media::Video::H264Encoder> _videoEncoder;
-		std::shared_ptr<Media::RtpPacketizer> _videoPacketizer;
-		std::shared_ptr<Media::AbstractDecoder> _videoDecoder;
-		std::shared_ptr<Media::RawPipe> _videoRaw;
-		std::shared_ptr<Media::Video::H264Demuxer> _videoDemuxer;
-		int _userID;
-		friend class Service;
-
+		enum VideoCodec
+		{
+			H264,
+			H265
+		};
+		std::shared_ptr<Media::FramePipe> input;
+		Media::Video::SourceConfig config;
+		VideoCodec codec;
 	};
 	class CC_NETWORK_EXPORT Service
 	{
 	public:
 		explicit Service(std::shared_ptr<NetworkCoordinator>, rtc::Configuration config);
-		QFuture<void> establishPeerConnection(int userID);
-		std::shared_ptr<PeerConnectionHandle> getPeerConnectionHandle(int userID);
-		void onPeerConnection(std::function<void(std::shared_ptr<PeerConnectionHandle>)> cb);
+		QFuture<void> openLocalVideo(int userID,std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config);
+		QFuture<void> openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config);
+		std::shared_ptr<Media::FramePipe> getRemoteVideo(int userID);
+		std::shared_ptr<Media::FramePipe> getRemoteAudio(int userID);
+		void closeLocalVideo(int userID);
+		void closeLocalAudio(int userID);
+		void flushRemoteVideo(int userID);
+		void flushRemoteAudio(int userID);
+		void closeUserConnection(int userID);
+		void closeAllConnections();
+		
+		//void onPeerConnection(std::function<void(std::shared_ptr<PeerConnectionHandle>)> cb);
+	protected:
+		struct PeerContext
+		{
+			std::shared_ptr<rtc::Track> audioTrack;
+			std::shared_ptr<rtc::Track> videoTrack;
+			std::shared_ptr<Media::AbstractDecoder> videoDecoder;
+			std::shared_ptr<Media::AbstractDecoder> audioDecoder;
+			std::shared_ptr<Media::PacketPipe> audioPackets;
+			std::shared_ptr<Media::PacketPipe> videoPackets;
+			std::shared_ptr<rtc::PeerConnection> pc;
+			std::shared_ptr<rtc::RtcpSrReporter> rtcp;
+			std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
+			std::optional<int> videoPacketizerListener;
+			std::optional<int> audioEncoderListener;
+			uint64_t auidioTimestamp =0;
+			std::mutex mutex;
+			~PeerContext();
+		};
+		void createPeerContext(int id);
+
+		std::shared_ptr<PeerContext> getPeerContext(int id);
+		std::shared_ptr<PeerContext> getOrCreatePeerContext(int id);
 	private:
-		std::shared_ptr<rtc::PeerConnectionHandle> createPeerHandle(int id);
-		std::unordered_map<int, std::shared_ptr<PeerConnectionHandle>> _peerHandles;
-		std::unordered_map<int, std::shared_ptr<QPromise<void>>> _pending;
+		std::unordered_map<int, std::shared_ptr<PeerContext>> _peerContexts;
+		std::mutex _peerMutex;
 		rtc::Configuration _config;
 		std::shared_ptr<NetworkCoordinator> _coordinator;
+		std::optional<std::function<void(int)>> _closeVideoCb;
+		std::shared_ptr<Media::Video::AbstractEncoder> _videoEncoder;
+		std::shared_ptr<Media::Audio::AbstractEncoder> _audioEncoder;
+		std::shared_ptr<Media::RtpPacketizer> _videoPacketizer;
+		std::optional<int> _packetizerListener;
+		bool _isClosingConnections = false;
+		//std::shared_ptr<Media::RtpPacketizer> _audioPacketizer;
+
 
 	};
 }

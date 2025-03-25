@@ -11,6 +11,7 @@ extern "C" {
 #include <memory>
 #include <qabstractvideobuffer.h>
 #include <qvideosink.h>
+#include <qaudiosink.h>
 #include <QFuture>
 #include <qdebug>
 namespace Media
@@ -48,12 +49,12 @@ namespace Media
     }
     struct Raw
     {
-        const uint8_t* raw = nullptr;
+        uint8_t* raw = nullptr;
         size_t size = 0;
     };
 
-    using PacketPipe = DataPipe<4, AVPacket>;
-    using FramePipe = DataPipe<32, AVFrame>;
+    using PacketPipe = DataPipe<128, AVPacket>;
+    using FramePipe = DataPipe<128, AVFrame>;
     using BytePipe = DataPipe<2, std::vector<std::byte>>;
     using RawPipe = DataPipe<2, Raw>;
 
@@ -69,28 +70,60 @@ namespace Media
     {
         return std::shared_ptr<AVCodecContext>(avcodec_alloc_context3(c), [](AVCodecContext* p) {avcodec_free_context(&p); });
     }
-    static std::shared_ptr<PacketPipe> createPacketPipe()
+    //for video
+    static std::shared_ptr<FramePipe> createFramePipe(int width, int height, AVPixelFormat fmt, size_t al = 32)
     {
-        return std::make_shared<PacketPipe>([]()
-            {
-                return av_packet_alloc();
-            },
-            [](AVPacket* p)
-            {
-                av_packet_free(&p);
-            }
-        );
+        return std::make_shared<FramePipe>([height, width, fmt,al]() {
+            auto frame = av_frame_alloc();
+            frame->height = height;
+            frame->width = width;
+            frame->format = fmt;
+            av_frame_get_buffer(frame, al);
+            return frame;
+            }, [](AVFrame* p) {
+            av_frame_free(&p);
+            });
     }
-
+    //for audio, does not allocate frame buffer
+    static std::shared_ptr<FramePipe> createFramePipe(AVChannelLayout layout, AVSampleFormat fmt, int sampleRate)
+    {
+        return std::make_shared<FramePipe>([layout, fmt,sampleRate]() {
+            auto frame = av_frame_alloc();
+            frame->format = fmt;
+            frame->ch_layout = layout;
+            frame->sample_rate = sampleRate;
+            return frame;
+        }, [](AVFrame* p) {
+            av_frame_free(&p);
+        });
+    }
+    CC_MEDIA_EXPORT std::shared_ptr<PacketPipe> createPacketPipe();
+    CC_MEDIA_EXPORT bool fillPacket(
+        std::shared_ptr<AVPacket> pack,
+        uint8_t* data,
+        size_t dataSize
+    );
     namespace Audio
     {
-        struct Source
+        struct SourceConfig
         {
-            int channelCount;
-            AVSampleFormat format;
-            AVCodecID codecID;
-            AVCodecParameters* par;
+            std::string name;
+            AVCodecParameters* par;//replace later
         };
+        //class CC_MEDIA_EXPORT SinkConnector
+        //{
+        //    SinkConnector();
+        //    void drain();
+        //    void close();
+        //    void connect(std::shared_ptr<FramePipe> fr);
+        //    void connect(QAudioSink* s);
+        //    ~SinkConnector();
+        //private:
+        //    void establish();
+        //    int listenerIndex;
+        //    QUIo
+        //    std::shared_ptr<Media::FramePipe> input;
+        //};
         static QAudioFormat::SampleFormat toQtFormat(AVSampleFormat format)
         {
             switch (format) {
@@ -132,6 +165,15 @@ namespace Media
                 return AV_SAMPLE_FMT_NONE;
             }
         }
+        class CC_MEDIA_EXPORT StreamSource : public QObject
+        {
+            Q_OBJECT;
+        public:
+            virtual std::shared_ptr<FramePipe> frameOutput() = 0;
+            virtual QFuture<SourceConfig> open() = 0;
+            virtual void close() = 0;
+            virtual bool isOpen() = 0;
+        };
     }
     namespace Video {
         CC_MEDIA_EXPORT QVideoFrameFormat::PixelFormat toQtPixel(AVPixelFormat avPixelFormat);
@@ -199,6 +241,7 @@ namespace Media
         {
             int height = 0;
             int width = 0;
+            std::string name;
             AVRational aspectRatio;
             AVPixelFormat format = AV_PIX_FMT_NONE;
             AVCodecID codecID = AV_CODEC_ID_NONE;
@@ -225,12 +268,17 @@ namespace Media
         };
         struct CC_MEDIA_EXPORT SinkConnector
         {
-            SinkConnector(std::shared_ptr<FramePipe> pipe, QVideoSink* sink);
+            SinkConnector();
+            void drain(); 
+            void close(); 
+            void connect(std::shared_ptr<FramePipe> fr);
+            void connect(QVideoSink* s);
             ~SinkConnector();
         private:
+            void establish();
             struct FrameData
             {
-                QtVideoBuffer* buf;
+                QtVideoBuffer* buf = nullptr;
                 size_t pipeIndex = -1;
                 std::optional<QVideoFrame> qframe;
             };

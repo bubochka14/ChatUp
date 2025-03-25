@@ -1,20 +1,11 @@
-﻿// QtWSClient.cpp: определяет точку входа для приложения.
-//
-
-#include <QGuiApplication>
+﻿#include <QGuiApplication>
 #include <QCommandlineparser>
 #include <QProcessEnvironment>
 #include "qtranslator.h"
 #include <qdiriterator.h>
 #include "app.h"
 #include <QUrl>
-#ifdef Q_OS_WIN
-    // Indicates to hybrid graphics systems to prefer the discrete part by default.
-extern "C" {
-    Q_DECL_EXPORT unsigned long NvOptimusEnablement = 0x00000001;
-    Q_DECL_EXPORT int AmdPowerXpressRequestHighPerformance = 1;
-}
-#endif
+
 int main(int argc, char ** argv)
 {
 	using namespace Qt::Literals::StringLiterals;
@@ -25,12 +16,11 @@ int main(int argc, char ** argv)
     parser.addVersionOption();
     //A boolean options with multiple names, e.g. (-p, --port);
     QCommandLineOption portOption(QStringList() << "p" << "port",
-        QCoreApplication::translate("main", "Property to specify host port, default value is 9000"),QString(),"8000");
+        QCoreApplication::translate("main", "Property to specify host port, default value is 9000"),"portOption", "8000");
     parser.addOption(portOption);
-    QDirIterator it(":", QDirIterator::Subdirectories);
     QCommandLineOption addrOption(QStringList() << "h" << "host",
-        QCoreApplication::translate("main", "Property to specify host address, default value is 127.0.0.1"),
-        QString(), "127.0.0.1");
+        QCoreApplication::translate("main", "Property to specify host address, default value is 5.35.124.43"),
+        "hostOption", "5.35.124.43");
     parser.addOption(addrOption);
     parser.process(gApp);
 

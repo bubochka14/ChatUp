@@ -52,6 +52,7 @@ namespace Media
 		}
 		void reset(const Constructor& constructor, const Deleter& deleter)
 		{
+			std::lock_guard guard(reader_mutex);
 			for (size_t i = 0; i < size; i++)
 			{
 				subpipes[i].ptr = std::shared_ptr<T>(constructor(), [deleter](T* t) {deleter(t); });
@@ -60,34 +61,44 @@ namespace Media
 		//unsafe
 		std::shared_ptr<T> storedData(size_t index)
 		{
+			std::lock_guard guard(reader_mutex);
 			return subpipes[index].ptr;
 		}
-		 PipeData holdForWriting(){
+		PipeData holdForWriting(){
 			sem.acquire();
+			std::lock_guard guard(reader_mutex);
 			return getFree();
 
 		}
 		std::optional<PipeData> tryHoldForWriting()
 		{
 			if(sem.try_acquire())
+			{
+				std::lock_guard guard(reader_mutex);
 				return getFree();
+			}
 			return std::nullopt;
 		}
 		int onDataChanged(const DataCallback& c)
 		{
-			std::lock_guard<std::mutex>guard (reader_mutex);
+			std::lock_guard guard (reader_mutex);
 			listeners[++listenerFreeIndex] = c;
 			return listenerFreeIndex;
 		}
+		int listenerCount()
+		{
+			std::lock_guard guard(reader_mutex);
+			return listeners.size();
+		}
 		void removeListener(int index)
 		{
-			std::lock_guard<std::mutex>guard(reader_mutex);
+			std::lock_guard guard(reader_mutex);
 			listeners.erase(index);
 
 		}
 		void unmapWriting(size_t index, bool notifyReaders)
 		{
-			std::lock_guard<std::mutex>guard(reader_mutex);
+			std::lock_guard guard(reader_mutex);
 
 			if (!notifyReaders || !listeners.size())
 			{
@@ -104,10 +115,14 @@ namespace Media
 		}
 		void unmapReading(size_t index)
 		{
-			if (--subpipes[index].readings ==0)
+			std::lock_guard guard(reader_mutex);
+
+			if (--subpipes[index].readings ==0 && !subpipes[index].isFree)
 			{
 				subpipes[index].isFree = true;
+
 				sem.release();
+
 			}
 		}
 
@@ -127,15 +142,15 @@ namespace Media
 		}
 		struct SubPipe
 		{
-			std::shared_ptr<T> ptr;
 			bool isFree = true;
+			std::shared_ptr<T> ptr;
 			size_t readings = 0;
 		};
 		std::weak_ptr<T> make_weak_ptr(std::shared_ptr<T> ptr) { return ptr; }
 		std::map<int,DataCallback> listeners;
 		Constructor constructor;
 		Deleter     deleter;
-		std::mutex reader_mutex;
+		std::recursive_mutex reader_mutex;
 		std::counting_semaphore<size> sem;
 		std::array<SubPipe, size> subpipes;
 		inline static int listenerFreeIndex = 0;

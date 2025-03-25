@@ -67,3 +67,9 @@ QFuture<void> Delete::exec(std::shared_ptr<NetworkCoordinator> h)
 {
 	return h->serverMethod(methodName,{ {"id"_L1,messageID} }).then([](json&&) {});
 }
+QFuture<void> MarkRead::exec(std::shared_ptr<NetworkCoordinator> h)
+{
+	return h->serverMethod(methodName, { { "roomID",roomID },{"count",count} })
+		.then([](json&& res) {
+			});
+}

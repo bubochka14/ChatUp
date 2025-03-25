@@ -5,10 +5,24 @@ CallerController::CallerController(std::shared_ptr<NetworkCoordinator> manager,
 	:Controller(parent)
 	,_manager(manager)
 {
-	User::Data dumpUser;
-	dumpUser.name = "null";
-	dumpUser.tag = "null";
-	_empty = new User::Handle(std::move(dumpUser), this);
+	User::Data dumbUser;
+	dumbUser.name = "null";
+	dumbUser.tag = "null";
+	_empty = new User::Handle(std::move(dumbUser), this);
+	Group::Api::AddUser::handle(_manager, [this](Group::Api::AddUser::Desc req) {
+		if (_usersInRooms.contains(req.roomID))
+		{
+			Model* model = _usersInRooms[req.roomID];
+			if (_userHandlers.contains(req.userID))
+				model->insertHandler(_userHandlers[req.userID]);
+			else
+			{
+				get(req.userID).then([model](User::Handle* res) {
+					model->insertHandler(res);
+			});
+			}
+		}
+	});
 }
 Controller::Controller(QObject* parent)
 	:AbstractController(parent)
@@ -23,10 +37,65 @@ Handle* CallerController::getEmpty() const
 {
 	return _empty;
 }
-
-QFuture<Model*> CallerController::find(const QVariantHash& pattern, int limit)
+bool CallerController::parseSearchString(const QString& pattern, Api::Find& req)
 {
-	return QtFuture::makeReadyFuture<Model*>(new Model);
+	if(!pattern.size())
+		return false;
+	if (pattern[0] == "@")
+		req.tag = "^"+pattern.right(1).toStdString();
+	else
+		req.name = "^" + pattern.toStdString();
+	return true;
+}
+QFuture<Model*> CallerController::getGroupUsers(int groupID)
+{
+	if (_usersInRooms.contains(groupID))
+		return QtFuture::makeReadyValueFuture(_usersInRooms[groupID]);
+	Group::Api::GetUsers req;
+	req.roomID = groupID;
+	return req.exec(_manager).then(this,[this,groupID](std::vector<Data>&& res) {
+		auto out = new Model;
+		_usersInRooms[groupID] = out;
+		std::vector<User::Handle*> handleList;
+		for (auto& user : res)
+		{
+			if (!_userHandlers.contains(user.id))
+			{
+				auto newHandle = new User::Handle(std::move(user), this);
+				_userHandlers.emplace(user.id, newHandle);
+				handleList.push_back(newHandle);
+			}
+			else
+				handleList.push_back(_userHandlers[user.id]);
+		}
+		out->reset(handleList);
+		return out;
+	});
+}
+QFuture<Model*> CallerController::find(const QString& pattern, int limit)
+{
+	Api::Find req;
+	parseSearchString(pattern, req);
+	req.limit = limit;
+	req.useRegexp = true;
+	return req.exec(_manager).then(this,[this](std::vector<User::Data>&& res) {
+		//qml ownership
+		Model* out = new Model;
+		std::vector<User::Handle*> _handles;
+		for (auto& user : res)
+		{
+			if (_userHandlers.contains(user.id))
+				_handles.push_back(_userHandlers[user.id]);
+			else
+			{
+				auto newHandle = new User::Handle(std::move(user), this);
+				_userHandlers[newHandle->id()] = newHandle;
+				_handles.push_back(newHandle);
+			}
+		}
+		out->reset(_handles);
+		return out;
+	});
 }
 QFuture<Handle*> CallerController::get()
 {
@@ -44,14 +113,12 @@ QFuture<Handle*>CallerController::get(int userID)
 		return _pendingRequests[userID];
 	Api::Get req;
 	req.id = userID;
-	_pendingRequests[userID] = req.exec(_manager)
-		.then(this,[this,userID](User::Data&& res) 
-			{
-				auto handler = new Handle(std::move(res),this);
-				_userHandlers.emplace(userID, handler);
-				return handler;
-			//_pendingRequests.remove(userID);
-		});
+	_pendingRequests[userID] = req.exec(_manager).then(this,[this,userID](User::Data&& res) {
+		auto handler = new Handle(std::move(res),this);
+		_userHandlers.emplace(userID, handler);
+		return handler;
+	//_pendingRequests.remove(userID);
+	});
 	return _pendingRequests[userID];
 }
 QFuture<void> CallerController::update(const QVariantHash& data)

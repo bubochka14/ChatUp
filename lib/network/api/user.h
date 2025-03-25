@@ -22,7 +22,8 @@ namespace User::Api
 		std::optional<std::string> name;
 		std::optional<std::string> tag;
 		std::optional<std::string> id;
-		QFuture<std::vector<int>> exec(std::shared_ptr<NetworkCoordinator> handler);
+		void extractFromQHash(const QVariantHash& h);
+		QFuture<std::vector<Data>> exec(std::shared_ptr<NetworkCoordinator> handler);
 	private:
 		static constexpr char methodName[] = "findUsers";
 	};

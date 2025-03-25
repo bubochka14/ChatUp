@@ -2,16 +2,18 @@
 using namespace Media::Video;
 Q_LOGGING_CATEGORY(LC_CAMERA, "Camera");
 Camera::Camera(std::string dev)
-    :ictx(avformat_alloc_context())
+    :ictx(nullptr)
     ,device(std::move(dev))
     ,out(Media::createPacketPipe())
     ,active(false)
 {
-   
+    Media::Init();
 
 }
 std::vector<std::string> Camera::availableDevices()
 {
+    Media::Init();
+
     std::vector<std::string> out;
 
     const AVInputFormat* ifmt = av_find_input_format(Media::getPlatformDeviceName());
@@ -82,6 +84,7 @@ std::optional<SourceConfig> Camera::open()
     out.height  = cp->height;
     out.width   = cp->width;
     out.format  = (AVPixelFormat)cp->format;
+    out.name = device;
     av_dump_format(ictx, 0, "", 0);
     return out;
 }
@@ -90,7 +93,8 @@ void Camera::close()
     active.store(false, std::memory_order_seq_cst);
     if (cameraThread.joinable())
         cameraThread.join();
-    avformat_close_input(&ictx);
+    if(ictx)
+        avformat_close_input(&ictx);
 }
 Camera::~Camera()
 {

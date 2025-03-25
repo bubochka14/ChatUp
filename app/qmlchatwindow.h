@@ -9,7 +9,12 @@
 #include <qqmlcomponent.h>
 #include "controllers/controllermanager.h"
 #include "streamsource.h"
-#include "camerapipeline.h"
+#include <Qtimer>
+#include "pipelines.h"
+#include <qloggingcategory.h>
+#include "standarderror.h"
+#include "audiooutput.h"
+Q_DECLARE_LOGGING_CATEGORY(LC_QML_CHAT_WINDOW);
 struct MessageControllerWrapper
 {
 	Q_GADGET;
@@ -21,9 +26,11 @@ public:
 
 	static Message::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -44,9 +51,11 @@ public:
 
 	static Group::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -67,9 +76,11 @@ public:
 
 	static Call::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -90,9 +101,11 @@ public:
 
 	static User::Controller* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -113,9 +126,11 @@ public:
 
 	static User::Handle* create(QQmlEngine* , QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -128,17 +143,68 @@ private:
 struct CameraPipelineWrapper
 {
 	Q_GADGET;
-	QML_FOREIGN(CameraPipeline);
+	QML_FOREIGN(Media::Video::CameraPipeline);
 	QML_SINGLETON;
 	QML_NAMED_ELEMENT(CameraPipeline);
 public:
-	inline static CameraPipeline* singletonInstance = nullptr;
+	inline static Media::Video::CameraPipeline* singletonInstance = nullptr;
 
-	static CameraPipeline* create(QQmlEngine*, QJSEngine* engine)
+	static Media::Video::CameraPipeline* create(QQmlEngine*, QJSEngine* engine)
 	{
-		Q_ASSERT(singletonInstance);
 		if (s_engine)
-			Q_ASSERT(engine == s_engine);
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
+		else
+			s_engine = engine;
+		QJSEngine::setObjectOwnership(singletonInstance,
+			QJSEngine::CppOwnership);
+		return singletonInstance;
+	}
+private:
+	inline static QJSEngine* s_engine = nullptr;
+};
+struct AudioOutputWrapper
+{
+	Q_GADGET;
+	QML_FOREIGN(Media::Audio::Output);
+	QML_NAMED_ELEMENT(MyAudioOutput);
+public:
+	inline static Media::Audio::Output* singletonInstance = nullptr;
+
+	static Media::Audio::Output* create(QQmlEngine*, QJSEngine* engine)
+	{
+		if (s_engine)
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
+		else
+			s_engine = engine;
+		QJSEngine::setObjectOwnership(singletonInstance,
+			QJSEngine::CppOwnership);
+		return singletonInstance;
+	}
+private:
+	inline static QJSEngine* s_engine = nullptr;
+};
+struct MicrophonePipelineWrapper
+{
+	Q_GADGET;
+	QML_FOREIGN(Media::Audio::MicrophonePipeline);
+	QML_SINGLETON;
+	QML_NAMED_ELEMENT(MicrophonePipeline);
+public:
+	inline static Media::Audio::MicrophonePipeline* singletonInstance = nullptr;
+
+	static Media::Audio::MicrophonePipeline* create(QQmlEngine*, QJSEngine* engine)
+	{
+		if (s_engine)
+		{
+			if (engine == s_engine)
+				qCFatal(LC_QML_CHAT_WINDOW) << "Received new qqmlengine";
+		}
 		else
 			s_engine = engine;
 		QJSEngine::setObjectOwnership(singletonInstance,
@@ -162,15 +228,19 @@ public:
 	QFuture<void> initialize() override;
 	bool hasError() const;
 	QString errorString() const; 
+	~QmlChatWindow();
 public slots:
 	void show() override;
 	void hide() override;
 private slots:
-	//void handleLogout();
+	void finalizeCreation();
 private:
 	bool _hasError;
 	QString _error;
 	std::shared_ptr<ControllerManager> _manager;
+	std::unique_ptr<QPromise<void>> _initPromise;
+	QQmlIncubator _inc;
+	QTimer _creationChecker;
 	QQuickWindow* _window;
-	QQmlEngine* _engine;
+	QQmlComponent _comp;
 };

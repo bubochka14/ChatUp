@@ -23,6 +23,8 @@ protected slots:
 	void handleRegistration(const QString& login, const QString& pass);
 	void handleLogin(const QString& login, const QString& pass);
 private:
+	QtEventLoopEmplacer* _emp;
+	AbstractChatWindow* createChatWindow();
 	StartupWindow* startup;
 	AbstractChatWindow* chat;
 	std::shared_ptr<NetworkCoordinator> _network;

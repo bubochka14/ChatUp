@@ -10,6 +10,8 @@ App::App(std::shared_ptr<NetworkCoordinator> netFact,
 	std::shared_ptr<AbstractWindowFactory> windowFactory)
 	:_windowFactory(windowFactory)
 	,_network(netFact)
+	,_emp(new QtEventLoopEmplacer(this))
+	,chat(nullptr)
 {
 	_controllerManager = std::make_shared<CallerControllerManager>(_network);
 	setAppLanguage();
@@ -20,74 +22,73 @@ void App::handleRegistration(const QString& login, const QString& pass)
 	startup->clear();
 	startup->setState(StartupWindow::Loading);
 	startup->setStatus("Connecting");
-	_controllerManager->userController()->create(pass, login)
-		.then([this, login, pass]() {
-		_network->setCredentials({ pass.toStdString(),login.toStdString() });
-		_network->initialize()
-			.then(this, [this]() {
-			chat->initialize().then(this, [this]()
-				{
-					startup->hide();
-					chat->show();
-					startup->clear();
-				});
-				});
-
+	_controllerManager->userController()->create(pass, login).then([this, login, pass]() {
+		_network->setCredentials({login.toStdString(),pass.toStdString() });
+		_network->initialize().then(this, [this](){
+			if (!chat)
+				chat = createChatWindow();
+			if (!chat)
+				throw std::string("Cannot create chat window");
+			chat->initialize().then(this, [this](){
+				startup->hide();
+				chat->show();
+				startup->clear();
 			});
-	
-	/*	.then(context, [this]() {
+		});
+
+	}).onFailed(this,[this](std::string err) {
 		startup->clear();
-		chat->show();
-		startup->hide();
-			})
-		.onFailed(this, [this](const QString& error)
-			{
-				startup->clear();
-				startup->setErrorString(error);
-			}
-		).onFailed([this]
-			{
-				startup->clear();
-				startup->setErrorString("Unknown error");
-			});*/
+		startup->setErrorString(QString::fromStdString(std::move(err)));
+	});
 }
 void App::handleLogin(const QString& login, const QString& pass)
 {
 	startup->clear();
 	startup->setState(StartupWindow::Loading);
+	startup->setStatus("Connecting");
 	_network->setCredentials({ login.toStdString(),pass.toStdString() });
-	_network->initialize()
-		.then(this, [this]() 
-			{
-				chat->initialize().then(this, [this]()
-					{
-						startup->hide();
-						chat->show();
-						startup->clear();
-					});
+	_network->initialize().then(this, [this]() {
+		if(!chat)
+			chat = createChatWindow();
+		if (!chat)
+			throw std::string("Cannot create chat window");
+		chat->initialize().then(this, [this](){
+			startup->hide();
+			chat->show();
+			startup->clear();
+		});
+		}).onFailed(this, [this](std::string error){
+			startup->clear();
+			startup->setErrorString(QString::fromStdString(std::move(error)));
+		}
+		).onFailed(this, [this]{
+			startup->clear();
+			startup->setErrorString("Unknown error");
+		});
+}
+AbstractChatWindow* App::createChatWindow()
+{
+	if (!_windowFactory || !_controllerManager)
+		return nullptr;
+	auto out = _windowFactory->createChatWindow(_controllerManager);
+	connect(out, &AbstractChatWindow::logout, this, [this]() {logout(""); });
+	return out;
 
-			})
-		.onFailed(this, [this](const QString& error)
-			{
-				startup->clear();
-				startup->setErrorString(error);
-			}
-		).onFailed(this, [this]
-			{
-				startup->clear();
-				startup->setErrorString("Unknown error");
-			});
 }
 int App::run()
 {
-
+	qCDebug(LC_ChatClient) << "Running app";
+	Core::Init();
 	startup = _windowFactory->createStartupWindow();
-	chat = _windowFactory->createChatWindow(_controllerManager);
-	if (!startup || !chat)
-		return 0;
+	if (!startup)
+		return -1;
 	QObject::connect(startup, &StartupWindow::registerPassed, this, &App::handleRegistration);
 	QObject::connect(startup, &StartupWindow::loginPassed, this, &App::handleLogin);
-	//connect(chat, &AbstractChatWindow::logout, this, [this]() {logout(); });
+	_network->onDisconnected([this]() {
+		_emp->emplaceTask([this]() {
+			logout("Server disconnected");
+			});
+		});
 	startup->show();
 	return 1;
 }
@@ -137,7 +138,8 @@ void App::setAppLanguage(const QString& lan)
 void App::logout(const QString& reason)
 {
 	chat->hide();
-	delete chat;
+	chat->deleteLater();
+	chat = nullptr;
 /*	roomController->logout();
 	messageController->logout();
 	userController->logout()*/;

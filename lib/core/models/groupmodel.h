@@ -10,7 +10,7 @@ namespace Group {
 	class CC_CORE_EXPORT Model : public IdentifyingModel<Group::ExtendedData>
 	{
 		Q_OBJECT;
-		//QML_ELEMENT;
+		QML_NAMED_ELEMENT(GroupModel);
 	public:
 		enum RoleNames
 		{
@@ -18,7 +18,8 @@ namespace Group {
 			NameRole,
 			TagRole,
 			HashRole,
-			HasCallRole
+			HasCallRole,
+			MessageCountRole
 
 		}; Q_ENUM(RoleNames);
 		explicit Model(QObject* parent = nullptr);
