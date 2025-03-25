@@ -1,20 +1,11 @@
-﻿// QtWSClient.cpp: определяет точку входа для приложения.
-//
-
-#include <QGuiApplication>
+﻿#include <QGuiApplication>
 #include <QCommandlineparser>
 #include <QProcessEnvironment>
 #include "qtranslator.h"
 #include <qdiriterator.h>
 #include "app.h"
 #include <QUrl>
-#ifdef Q_OS_WIN
-    // Indicates to hybrid graphics systems to prefer the discrete part by default.
-extern "C" {
-    Q_DECL_EXPORT unsigned long NvOptimusEnablement = 0x00000001;
-    Q_DECL_EXPORT int AmdPowerXpressRequestHighPerformance = 1;
-}
-#endif
+
 int main(int argc, char ** argv)
 {
 	using namespace Qt::Literals::StringLiterals;
