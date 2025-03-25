@@ -34,10 +34,14 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 		return false;
 	}
 	_input = input;
-
+	_pool.setMaxThreadCount(1);
+	
 	inputListenIndex = input->onDataChanged([this](std::shared_ptr<AVPacket> pack, size_t index) {
-		//QtConcurrent::run([pack,index,this](){
-		//std::lock_guard g(_decodeMutex);
+		QtConcurrent::run(& _pool,[pack,index,this](){
+		std::lock_guard g(_decodeMutex);
+		if(pack->pts - delta < 0)
+		qDebug() <<avcodec_get_name(_codec->id) << "NEGATIVE DELTA:" << pack->pts - delta << "PTS" << pack->pts << "DTS" << pack->dts;
+		delta = pack->pts;
 		//quene.enqueue([this,pack,index]() {
 			if (!pack)
 			{
@@ -74,7 +78,7 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 					_out->unmapWriting(outFrame.subpipe, true);
 				}
 			}
-		//	});
+			});
 			});
 	return true;
 

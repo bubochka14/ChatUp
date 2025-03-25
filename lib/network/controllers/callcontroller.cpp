@@ -75,6 +75,7 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	});
 	Api::Disconnect::handle(m, [this](Participate::Data&& part) {
 		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
+			_rtc->closeUserConnection(part.userID);
 			std::lock_guard g(_handlersMutex);
 			_connectors.erase(part.userID);
 			if (_handlers.contains(part.roomID))
@@ -292,6 +293,7 @@ Handler* Controller::handler(int roomID)
 	Api::Get req;
 	req.roomID = roomID;
 	req.exec(_manager).then(this, [this,roomID, handler](std::vector<Participate::Data> res) {
+		std::lock_guard g(_handlersMutex);
 		handler->participants()->insertRange(0,std::make_move_iterator(res.begin()), std::make_move_iterator(res.end()));
 	});
 	return handler;

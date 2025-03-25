@@ -35,7 +35,7 @@ Rectangle {
                 id:audioOutput
             }
 
-            onHasAudioChanged: if (hasAudio)
+            onHasAudioChanged: if (hasAudio && userID != CurrentUser.id)
                                    callHandler.connectAudioOutput(root.userID,
                                                                   audioOutput)
 
@@ -145,8 +145,7 @@ Rectangle {
             }
             //for delegate
             function syncOutput() {
-                console.log("inside")
-                if (hasAudio)
+                if (hasAudio  && userID != CurrentUser.id)
                     callHandler.connectAudioOutput(root.userID, audioOutput)
                 if (hasVideo)
                     callHandler.connectVideoSink(root.userID,

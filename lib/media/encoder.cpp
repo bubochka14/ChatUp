@@ -79,33 +79,33 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 		if (response < 0)
 			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
 		while (response >= 0 /*|| response == AVERROR(EAGAIN)*/) {
-			auto outPacket = _out->tryHoldForWriting();
-			if (!outPacket.has_value())
-			{
-				qCWarning(LC_ENCODER) << "Output pipe overflow";
-				return;
-			}
+			auto outPacket = _out->holdForWriting();
+			//if (!outPacket.has_value())
+			//{
+			//	qCWarning(LC_ENCODER) << "Output pipe overflow";
+			//	return;
+			//}
 			//qCDebug(LC_ENCODER) << "Writing to" << outPacket->subpipe;
 
-			response = avcodec_receive_packet(_cCtx.get(), outPacket->ptr.get());
+			response = avcodec_receive_packet(_cCtx.get(), outPacket.ptr.get());
 			if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
 				//qCDebug(LC_ENCODER) << "Finish writing widthout notify" << outPacket->subpipe;
-				_out->unmapWriting(outPacket->subpipe, false);
+				_out->unmapWriting(outPacket.subpipe, false);
 				break;
 			}
 			else if (response < 0) {
 				printf("Error while receiving packet from encoder: %d", response);
 				//qCDebug(LC_ENCODER) << "Finish writing widthout notify" << outPacket->subpipe;
-				_out->unmapWriting(outPacket->subpipe, false);
+				_out->unmapWriting(outPacket.subpipe, false);
 				break;
 			}
-			outPacket->ptr->stream_index = 0;
-			outPacket->ptr->pts = ++_pts;
-			outPacket->ptr->dts = ++_dts;
-			outPacket->ptr->time_base.num = 1;
-			outPacket->ptr->time_base.den = 30;
+			outPacket.ptr->stream_index = 0;
+			outPacket.ptr->pts = ++_pts;
+			outPacket.ptr->dts = ++_dts;
+			outPacket.ptr->time_base.num = 1;
+			outPacket.ptr->time_base.den = 30;
 			//qCDebug(LC_ENCODER) << "Finish writing width notify" << outPacket->subpipe;
-			_out->unmapWriting(outPacket->subpipe, true);
+			_out->unmapWriting(outPacket.subpipe, true);
 		}
 		//});
 		});

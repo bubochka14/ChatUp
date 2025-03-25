@@ -41,7 +41,9 @@ namespace rtc
 		void closeLocalAudio(int userID);
 		void flushRemoteVideo(int userID);
 		void flushRemoteAudio(int userID);
+		void closeUserConnection(int userID);
 		void closeAllConnections();
+		
 		//void onPeerConnection(std::function<void(std::shared_ptr<PeerConnectionHandle>)> cb);
 	protected:
 		struct PeerContext
@@ -57,6 +59,7 @@ namespace rtc
 			std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
 			std::optional<int> videoPacketizerListener;
 			std::optional<int> audioEncoderListener;
+			uint64_t auidioTimestamp =0;
 			std::mutex mutex;
 			~PeerContext();
 		};

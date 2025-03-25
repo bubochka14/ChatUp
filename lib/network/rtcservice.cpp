@@ -127,7 +127,24 @@ Service::PeerContext::~PeerContext()
 		videoTrack->close();
 
 }
-
+void Service::closeUserConnection(int userID)
+{
+	auto ctx = getPeerContext(userID);
+	if (!ctx)
+		return;
+	std::lock_guard g(ctx->mutex);
+	if (ctx->videoPacketizerListener.has_value())
+	{
+		_videoPacketizer->output()->removeListener(ctx->videoPacketizerListener.value());
+		ctx->videoPacketizerListener = std::nullopt;
+	}
+	if (ctx->audioEncoderListener.has_value())
+	{
+		_audioEncoder->output()->removeListener(ctx->audioEncoderListener.value());
+		ctx->audioEncoderListener = std::nullopt;
+	}
+	_peerContexts.erase(userID);
+}
 void Service::closeAllConnections()
 {
 	std::lock_guard g(_peerMutex);
@@ -185,25 +202,39 @@ QFuture<void> Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePi
 	if (_audioEncoder->input() != input)
 		_audioEncoder->start(input, std::move(config));
 
-	auto encHandler = [this, wCtx = std::weak_ptr(ctx), userID](std::shared_ptr<AVPacket> packet, size_t index) {
+	auto encHandler = [this, userID](std::shared_ptr<AVPacket> packet, size_t index) {
 		//QtConcurrent::run([this, wCtx, packet, index, userID]() {
-			if (auto ctx = wCtx.lock())
+		auto ctx = getPeerContext(userID);
+		if (ctx)
+		{
+			std::lock_guard g(ctx->mutex);
+			try
 			{
-				std::lock_guard g(ctx->mutex);
-				try
-				{
-					ctx->audioTrack->send((std::byte*)packet->data, packet->size);
-				}
-				catch (std::exception& e)
-				{
-					qCWarning(LC_RTC_SERVICE) << "Cannot send packet to peer" << userID << ":" << e.what();
-				}
-				_audioEncoder->output()->unmapReading(index);
-			}
-			else
-				qCWarning(LC_RTC_SERVICE) << "Cannot send audio packet, peer" << userID << "isReleased";
+				auto rtpConfig = ctx->rtcp->rtpConfig;
+				auto elapsedSeconds = time_since_epoch();
+				// get elapsed time in clock rate
+				uint32_t elapsedTimestamp = rtpConfig->secondsToTimestamp(elapsedSeconds);
+				// set new timestamp
+				rtpConfig->timestamp = rtpConfig->startTimestamp + elapsedTimestamp;
 
+				// get elapsed time in clock rate from last RTCP sender report
+				auto reportElapsedTimestamp = rtpConfig->timestamp - ctx->rtcp->lastReportedTimestamp();
+				// check if last report was at least 1 second ago
+				if (rtpConfig->timestampToSeconds(reportElapsedTimestamp) > 1) {
+					ctx->rtcp->setNeedsToReport();
+				}
+				ctx->audioTrack->send((std::byte*)packet->data, packet->size);
+			}
+			catch (std::exception& e)
+			{
+				qCWarning(LC_RTC_SERVICE) << "Cannot send packet to peer" << userID << ":" << e.what();
+			}
 			_audioEncoder->output()->unmapReading(index);
+		}
+		else
+			qCWarning(LC_RTC_SERVICE) << "Cannot send audio packet, peer" << userID << "isReleased";
+
+		_audioEncoder->output()->unmapReading(index);
 
 			//});
 		};
@@ -334,25 +365,6 @@ void Service::createPeerContext(int id)
 	pc->onStateChange(
 		[this,id, wctx = std::weak_ptr(ctx)](rtc::PeerConnection::State state) {
 			std::cout << "State: " << state << std::endl; 
-			//remote peer has closed connection
-			if (state == PeerConnection::State::Closed && !_isClosingConnections)
-			{
-				auto ctx = getPeerContext(id);
-				if (!ctx)
-					return;
-				std::lock_guard g(ctx->mutex);
-				if (ctx->videoPacketizerListener.has_value())
-				{
-					_videoPacketizer->output()->removeListener(ctx->videoPacketizerListener.value());
-					ctx->videoPacketizerListener = std::nullopt;
-				}
-				if (ctx->audioEncoderListener.has_value())
-				{
-					_audioEncoder->output()->removeListener(ctx->audioEncoderListener.value());
-					ctx->audioEncoderListener = std::nullopt;
-				}
-				_peerContexts.erase(id);
-			}
 		});
 	pc->onGatheringStateChange([](rtc::PeerConnection::GatheringState state) {
 		std::cout << "Gathering State: " << state << std::endl;
@@ -407,8 +419,8 @@ void Service::createPeerContext(int id)
 						return;
 					}*/
 					Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
-					/*			pipeData->ptr->pts = info.timestamp;
-								pipeData->ptr->dts = info.timestamp;*/
+					pipeData->pts = info.timestamp;
+					pipeData->dts = info.timestamp;
 					ctx->videoPackets->unmapWriting(pipeData.subpipe, true);
 					});
 				//});

@@ -6,6 +6,7 @@
 #include <qaudiodevice.h>
 #include <qiodevice.h>
 #include <QAudioSink>
+#include <QScopeGuard>
 #include "core.h"
 extern "C"
 {
@@ -46,6 +47,9 @@ namespace Media::Audio {
 	public:
 		Output();
 		Q_INVOKABLE bool start(const QString& dev, std::shared_ptr<Media::FramePipe>pipe);
+		Q_INVOKABLE void close();
+		bool isStarted();
+
 		QStringList availableDevices();
 		QAudioSink* sink();
 	signals:
@@ -58,5 +62,9 @@ namespace Media::Audio {
 		QAudioDevice _device;
 		QtEventLoopEmplacer* _emp;
 		QAudioSink* _sink;
+		std::atomic<bool> _isStarted = {false};
+		std::shared_ptr<Media::FramePipe> _input;
+		std::optional<int> _listenerIndex;
+		std::mutex _mutex;
 	};
 }

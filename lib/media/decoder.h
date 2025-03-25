@@ -38,6 +38,8 @@ namespace Media {
 		const AVCodec* _codec;
 		std::mutex _decodeMutex;
 		std::shared_ptr<AVFrame> _drainFrame;
+		QThreadPool _pool;
+		int64_t delta = 0;
 	};
 	namespace Video {
 		class CC_MEDIA_EXPORT Decoder : public AbstractDecoder

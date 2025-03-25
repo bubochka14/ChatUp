@@ -15,7 +15,7 @@ void Group::to_json(json& j, const ExtendedData& p)
 		   {"name",p.name.toStdString()},
 		   {"tag", p.tag.toStdString()},
 		   {"messageCount",p.messageCount}
-		   }
+		}
 	};
 }
 
@@ -252,6 +252,8 @@ void Participate::from_json(const json& j, Participate::Data& p)
 	try {
 		p.userID = j.value("participate", User::invalidID);
 		p.roomID = j.value("roomID", Group::invalidID);
+		p.hasAudio = j.value("audio", false);
+		p.hasVideo = j.value("video", false);
 	}
 	catch (...)
 	{

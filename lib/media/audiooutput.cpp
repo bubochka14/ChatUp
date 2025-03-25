@@ -32,21 +32,44 @@ void Output::setSink(QAudioSink* sink)
 	_sink = sink;
 	sinkChanged();
 }
+void Output::close()
+{
+	std::lock_guard g(_mutex);
+	if (_isStarted)
+	{
+		if (_listenerIndex.has_value() && _input)
+		{
+			_input->removeListener(_listenerIndex.value());
+			_input.reset();
+			_listenerIndex = std::nullopt;
+		}
+		if (_sink)
+			_sink->deleteLater();
+		_io = nullptr;
+		_isStarted = false;
+	}
+}
 QAudioSink* Output::sink()
 {
 	return _sink;
 }
+bool Output::isStarted()
+{
+	return _isStarted;
+}
 bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 {
+	if (isStarted())
+		close();
 	auto device = findDevice(devName);
 	if (!device.has_value())
 		return false;
+	std::lock_guard g(_mutex);
 	_device = device.value();
-	pipe->onDataChanged([this, wPipe = std::weak_ptr(pipe)](std::shared_ptr<AVFrame> frame, size_t index) {
-		_emp->emplaceTask([=]() {
-			auto pipe = wPipe.lock();
-			if (!pipe)
-				return;
+	_input = pipe;
+	_listenerIndex = pipe->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index) {
+		_emp->emplaceTask([this,frame,index]() {
+			std::lock_guard gm(_mutex);
 			if (!_sink)
 			{
 				QAudioFormat format;
@@ -56,21 +79,20 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 				format.setSampleFormat(Media::Audio::toQtFormat((AVSampleFormat)frame->format));
 				if (!_device.isFormatSupported(format)) {
 					qCWarning(LC_AUDIO_OUTPUT) << "Raw audio format not supported by backend, cannot play audio.";
-					pipe->unmapReading(index);
-
+					_input->unmapReading(index);
 					return;
 				}
 				_sink = new QAudioSink(_device, format);
-				connect(_sink, &QAudioSink::stateChanged, this, [=](QAudio::State st) {
-					qCDebug(LC_AUDIO_OUTPUT) << "New audio state " << st;
-					});
+				//connect(_sink, &QAudioSink::stateChanged, this, [=](QAudio::State st) {
+				//	qCDebug(LC_AUDIO_OUTPUT) << "New audio state " << st;
+				//	});
 			}
 			if (_sink->state() != QAudio::ActiveState)
 				_io= _sink->start();
 			_io->write((char*)*frame->extended_data, frame->linesize[0]);
-			pipe->unmapReading(index);
+			_input->unmapReading(index);
 		});
 		});
-
+	_isStarted = true;
 	return true;
 }
