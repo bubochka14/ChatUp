@@ -43,17 +43,25 @@ set(APP_SOURCES
     qml/qml.qrc
     resources/resources.qrc
     )
-qt_add_executable (app ${APP_SOURCES}
+qt_add_executable (app  ${APP_SOURCES}
 )
 qt_add_qml_module(app 
     URI app 
     QML_FILES ${qml_files}
     RESOURCES ${app_resources}
 )
+set_target_properties(
+    app
+    PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
+               LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
+)
 set_target_properties(app PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
 )
+if(MSVC)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+endif()
 
 #file(REAL_PATH "../components" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 #list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
