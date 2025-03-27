@@ -46,11 +46,9 @@ namespace User{
 		QFuture<void> update(const QVariantHash& data) override;
 		QFuture<void> remove() override;
 		QFuture<void> initialize() override;
+		void reset() override;
 	protected:
 		Handle* getEmpty() const override;
-
-
-	protected:
 		void connectToDispatcher();
 		bool parseSearchString(const QString& pattern, Api::Find& req);
 	private:

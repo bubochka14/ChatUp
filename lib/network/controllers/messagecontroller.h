@@ -40,11 +40,13 @@ namespace Message {
 		QFuture<void> remove(int roomid, int messId) override;
 		QFuture<void> markAsRead(int roomID, size_t count) override;
 		QFuture<void> initialize() override;
+		void reset() override;
+
 	protected:
 		void connectToDispatcher();
 	private:
 		std::shared_ptr<NetworkCoordinator> _manager;
-		QMap<int, Model*> _history;
+		std::unordered_map<int, Model*> _history;
 		int _tempMessageCounter;
 
 	};

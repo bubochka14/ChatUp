@@ -42,14 +42,24 @@ QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode map
 }
 bool Media::fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size)
 {
+    int ret = 0;
     if (!pack->buf || pack->buf->size < size)
     {
-        av_grow_packet(pack.get(), size);
+        if ((ret = av_grow_packet(pack.get(), size)) < 0)
+        {
+            qWarning() << "Cannot grow packet" << Media::av_err2string(ret);
+            return false;
+        }
+    }
+    if ((ret = av_buffer_make_writable(&pack->buf)) < 0)
+    {
+        qWarning() << "Cannot make packet writable" << Media::av_err2string(ret);
+        return false;
     }
     memcpy(pack->buf->data, data, size);
-    if (av_packet_from_data(pack.get(), pack->buf->data, size) < 0)
+    if ((ret = av_packet_from_data(pack.get(), pack->buf->data, size)) < 0)
     {
-        qWarning() << "Cannot fill packet";
+        qWarning() << "Cannot fill packet" << Media::av_err2string(ret);
         return false;
     }
     pack->size = size;

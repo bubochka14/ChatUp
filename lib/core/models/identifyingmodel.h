@@ -36,6 +36,12 @@ public:
 		_data = std::move(data);
 		endResetModel();
 	}
+	void reset()
+	{
+		beginResetModel();
+		_data.clear();
+		endResetModel();
+	}
 	QVariant data(int id, int role) const 
 	{
 		if (!_index.contains(id))

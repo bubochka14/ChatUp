@@ -4,15 +4,19 @@ ControllerManager::ControllerManager(QObject* parent)
 {
 
 }
+QFuture<void> ControllerManager::initializeAll()
+{
+	return QtFuture::makeReadyVoidFuture(); 
+};
+void ControllerManager::resetAll()
+{}
 CallerControllerManager::CallerControllerManager(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	:ControllerManager(parent)
-	, message(new Message::CallerController(m,this))
-	, group(new Group::CallerController(m,this))
-	, call(new Call::Controller(m,this))
-	, user(new User::CallerController(m,this))
-{
-
-}
+	,message(new Message::CallerController(m,this))
+	,group(new Group::CallerController(m,this))
+	,call(new Call::Controller(m,this))
+	,user(new User::CallerController(m,this))
+{}
 QFuture<void> CallerControllerManager::initializeAll()
 {
 	QList<QFuture<void>> futures({
@@ -26,15 +30,19 @@ QFuture<void> CallerControllerManager::initializeAll()
 			{_lastError = err; })
 		});
 	return QtFuture::whenAll(futures.begin(), futures.end())
-		.then([this](const QList<QFuture<void>>& results)
-			{
-				if (_lastError.has_value())
-					throw _lastError.value();
-			});
+		.then([this](const QList<QFuture<void>>& results){
+			if (_lastError.has_value())
+				throw _lastError.value();
+		});
 
 }
-
-
+void CallerControllerManager::resetAll()
+{
+	message->reset();
+	user->reset();
+	group->reset();
+	call->reset();
+}
 Group::Controller* CallerControllerManager::groupController()
 {
 	return group;

@@ -112,7 +112,11 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 			//	qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 			//	return;
 			//}
-			Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
+			if(!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+			{
+				qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
+				return;
+			}
 			pipeData.ptr->pts = info.timestamp;
 			pipeData.ptr->dts = info.timestamp;
 			ctx->video.packetPipe->unmapWriting(pipeData.subpipe, true);
@@ -319,7 +323,11 @@ void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input
 				ctx->audio.decoder->start(ctx->audio.packetPipe);
 			}
 			auto pipeData = ctx->audio.packetPipe->holdForWriting();
-			Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
+			if(!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+			{
+				qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
+				return;
+			}
 			pipeData->pts = info.timestamp;
 			pipeData->dts = info.timestamp;
 			ctx->audio.packetPipe->unmapWriting(pipeData.subpipe, true);
@@ -432,7 +440,11 @@ void Service::createPeerContext(int id)
 					qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 					return;
 				}*/
-				Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
+				if(!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+				{
+					qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
+					return;
+				}
 				pipeData->pts = info.timestamp;
 				pipeData->dts = info.timestamp;
 				ctx->video.packetPipe->unmapWriting(pipeData.subpipe, true);
@@ -476,14 +488,18 @@ void Service::createPeerContext(int id)
 			track->onFrame([wCtx = std::weak_ptr(ctx),id](rtc::binary data, rtc::FrameInfo info) {
 				if (auto ctx = wCtx.lock())
 				{
-					std::lock_guard(ctx->audio.mutex);
+					std::lock_guard g(ctx->audio.mutex);
 					auto pipeData = ctx->audio.packetPipe->holdForWriting();
 		/*			if (!pipeData.has_value())
 					{
 						qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 						return;
 					}*/
-					Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size());
+					if (!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+					{
+						qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
+						return;
+					}
 					pipeData.ptr->pts = info.timestamp;
 					pipeData.ptr->dts = info.timestamp;
 					ctx->audio.packetPipe->unmapWriting(pipeData.subpipe, true);

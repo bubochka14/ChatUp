@@ -116,6 +116,7 @@ namespace Call {
 		bool hasAudio(Handler* h);
 		bool hasVideo(Handler* h);
 		void release(Handler* h);
+		void reset() override;
 
 	private:
 		void clearMedia();

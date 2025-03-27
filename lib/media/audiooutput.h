@@ -52,6 +52,7 @@ namespace Media::Audio {
 
 		QStringList availableDevices();
 		QAudioSink* sink();
+		~Output();
 	signals:
 		void availableDevicesChanged();
 		void sinkChanged();

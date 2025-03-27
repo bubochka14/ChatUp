@@ -139,6 +139,7 @@ void App::logout(const QString& reason)
 {
 	chat->hide();
 	chat->deleteLater();
+	_controllerManager.reset();
 	chat = nullptr;
 /*	roomController->logout();
 	messageController->logout();

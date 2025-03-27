@@ -1,7 +1,6 @@
 #include "usercontroller.h"
 using namespace User;
-CallerController::CallerController(std::shared_ptr<NetworkCoordinator> manager,
-	QObject* parent)
+CallerController::CallerController(std::shared_ptr<NetworkCoordinator> manager,QObject* parent)
 	:Controller(parent)
 	,_manager(manager)
 {
@@ -29,6 +28,7 @@ Controller::Controller(QObject* parent)
 {
 
 }
+
 Handle* Controller::empty() const
 {
 	return getEmpty();
@@ -140,4 +140,9 @@ QFuture<void> CallerController::create(const QString& password, const QString& l
 QFuture<void> CallerController::initialize()
 {
 	return QtFuture::makeReadyVoidFuture();
+}
+void CallerController::reset()
+{
+	_userHandlers.clear();
+	_usersInRooms.clear();
 }

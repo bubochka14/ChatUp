@@ -40,6 +40,7 @@ namespace Media {
 		std::shared_ptr<AVFrame> _drainFrame;
 		QThreadPool _pool;
 		int64_t delta = 0;
+		int64_t timestamp = 0;
 	};
 	namespace Video {
 		class CC_MEDIA_EXPORT Decoder : public AbstractDecoder

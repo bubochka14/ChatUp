@@ -21,6 +21,13 @@ struct DumpStreamSource : public Media::Video::StreamSource
 	}
 	std::shared_ptr<Media::FramePipe> pipe;
 };
+void Controller::reset()
+{
+	clearMedia();
+	std::lock_guard g(_handlersMutex);
+	_activeCallRoomID = std::nullopt;
+	_handlers.clear();
+}
 Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	:AbstractController(parent)
 	,_manager(m)
@@ -81,6 +88,7 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 				_localVideoStream.connectors.erase(part.userID);
 			}
 			std::lock_guard g(_handlersMutex);
+			_activeCallRoomID = std::nullopt;
 			if (_handlers.contains(part.roomID))
 			{
 				auto handler = _handlers[part.roomID];

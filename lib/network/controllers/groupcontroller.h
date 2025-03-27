@@ -11,8 +11,6 @@ namespace Group {
 	class CC_NETWORK_EXPORT  Controller: public AbstractController
 	{
 		Q_OBJECT;
-		//QML_ELEMENT;
-		//QML_UNCREATABLE("Abstract class");
 		Q_PROPERTY(Model* model READ model NOTIFY modelChanged);
 	public:
 		explicit Controller(QObject* parent = nullptr);
@@ -22,6 +20,7 @@ namespace Group {
 		Q_INVOKABLE virtual QFuture<void> update(const QVariantHash& data) = 0;
 		Q_INVOKABLE virtual QFuture<void> load() = 0;
 		Model* model() const;
+		void reset() override;
 	signals:
 		void modelChanged();
 	protected:

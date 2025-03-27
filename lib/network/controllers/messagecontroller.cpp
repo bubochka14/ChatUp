@@ -1,6 +1,7 @@
 #include "messagecontroller.h"
 
 using namespace Message;
+
 CallerController ::CallerController(std::shared_ptr<NetworkCoordinator> m,
 	QObject* parent)
 	:Controller(parent)
@@ -36,6 +37,10 @@ QFuture<void> CallerController::initialize()
 QFuture<void> CallerController::updateMessageBody(const QString& body, int roomID)
 {
 	return QtFuture::makeReadyVoidFuture();
+}
+void Message::CallerController::reset()
+{
+	_history.clear();
 }
 QFuture<void> CallerController::create(const QString& body, int roomID)
 {

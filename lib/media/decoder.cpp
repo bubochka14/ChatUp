@@ -37,6 +37,9 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 	_pool.setMaxThreadCount(1);
 	
 	inputListenIndex = input->onDataChanged([this](std::shared_ptr<AVPacket> pack, size_t index) {
+		if (pack->pts - timestamp < 0)
+			qDebug() << avcodec_get_name(_codec->id) << "NEGATIVE TIMESTAMP:" << pack->pts - timestamp << "PTS" << pack->pts << "DTS" << pack->dts;
+		timestamp = pack->pts;
 		QtConcurrent::run(& _pool,[pack,index,this](){
 		std::lock_guard g(_decodeMutex);
 		if(pack->pts - delta < 0)

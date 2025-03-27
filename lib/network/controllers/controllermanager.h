@@ -16,11 +16,12 @@ class CC_NETWORK_EXPORT ControllerManager : public QObject
 	Q_PROPERTY(User::Controller* userController READ userController);
 	Q_PROPERTY(Call::Controller* callController READ callController);
 public:
-	virtual Group::Controller* groupController() = 0;
-	virtual Message::Controller* messageController() = 0;
-	virtual User::Controller* userController() = 0;
-	virtual Call::Controller* callController() = 0;
-	virtual QFuture<void> initializeAll() { return QtFuture::makeReadyVoidFuture(); };
+	virtual Group::Controller*		groupController() = 0;
+	virtual Message::Controller*	messageController() = 0;
+	virtual User::Controller*		userController() = 0;
+	virtual Call::Controller*		callController() = 0;
+	virtual QFuture<void>			initializeAll();
+	virtual void resetAll();
 protected:
 	explicit ControllerManager(QObject* parent = nullptr);
 };
@@ -30,12 +31,12 @@ public:
 	explicit CallerControllerManager(std::shared_ptr<NetworkCoordinator> manager,
 		QObject* parent = nullptr
 	);
-	Group::Controller* groupController() override;
-	Message::Controller* messageController() override;
-	User::Controller* userController() override;
-	Call::Controller* callController() override;
-	QFuture<void> initializeAll() override;
-
+	Group::Controller*		groupController()	override;
+	Message::Controller*	messageController() override;
+	User::Controller*		userController()	override;
+	Call::Controller*		callController()	override;
+	QFuture<void>			initializeAll()		override;
+	void resetAll() override;
 private:
 	Group::Controller* group;
 	Message::Controller* message;

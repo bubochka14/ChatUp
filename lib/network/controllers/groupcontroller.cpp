@@ -8,6 +8,10 @@ void Controller::setModel(Group::Model* other)
 	_model->setParent(this);
 	emit modelChanged();
 }
+void Controller::reset()
+{
+	_model->reset();
+}
 CallerController::CallerController(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	:Controller(parent)
 	,_manager(m) 
