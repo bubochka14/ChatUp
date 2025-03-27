@@ -50,6 +50,7 @@ namespace Call {
 		Q_INVOKABLE void closeAudio();
 		Q_INVOKABLE QFuture<void> join();
 		Q_INVOKABLE void connectVideoSink(int userID, QVideoSink*);
+	//	Q_INVOKABLE void connectAudioSink(int userID, QAudioSink*);
 		Q_INVOKABLE void release();
 	signals:
 		void participantsChanged();

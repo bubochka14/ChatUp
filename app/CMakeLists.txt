@@ -43,12 +43,17 @@ set(APP_SOURCES
     qml/qml.qrc
     resources/resources.qrc
     )
-qt_add_executable (app ${APP_SOURCES}
+qt_add_executable (app  ${APP_SOURCES}
 )
 qt_add_qml_module(app 
     URI app 
     QML_FILES ${qml_files}
     RESOURCES ${app_resources}
+)
+set_target_properties(
+    app
+    PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
+               LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
 )
 set_target_properties(app PROPERTIES
     CXX_STANDARD 20
