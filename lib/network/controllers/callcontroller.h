@@ -18,7 +18,6 @@
 #include "media.h"
 #include "audiooutput.h"
 #include <qtimer>
-//#include "audiooutput.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
 
 namespace Call {
@@ -46,14 +45,11 @@ namespace Call {
 		Q_INVOKABLE QFuture<void> openVideo(Media::Video::StreamSource* source);
 		Q_INVOKABLE QFuture<void> openAudio(Media::Audio::StreamSource* source);
 		Q_INVOKABLE void connectAudioOutput(int userID, Media::Audio::Output*);
-
-		//Q_INVOKABLE QFuture<void> connectAudioSink(int userID, QAudioSi);
 		Q_INVOKABLE QFuture<void> disconnect();
 		Q_INVOKABLE void closeVideo();
 		Q_INVOKABLE void closeAudio();
 		Q_INVOKABLE QFuture<void> join();
 		Q_INVOKABLE void connectVideoSink(int userID, QVideoSink*);
-	//	Q_INVOKABLE void connectAudioSink(int userID, QAudioSink*);
 		Q_INVOKABLE void release();
 	signals:
 		void participantsChanged();
@@ -88,9 +84,10 @@ namespace Call {
 	struct VideoStreamContext
 	{
 		Media::Video::StreamSource* src = nullptr;
-		//std::shared_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
 		std::mutex mutex;
 		Media::Video::SourceConfig config;
+		std::unordered_map<int, std::shared_ptr<Media::Video::SinkConnector>> connectors;
+
 
 	};
 
@@ -122,7 +119,6 @@ namespace Call {
 	private:
 		void clearMedia();
 		std::unordered_map<int, Handler*> _handlers;
-		std::unordered_map<int, std::shared_ptr<Media::Video::SinkConnector>> _connectors;
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;
 		AudioStreamContext _localAudioStream;

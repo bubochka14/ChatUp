@@ -46,6 +46,7 @@ void Output::close()
 		if (_sink)
 			_sink->deleteLater();
 		_io = nullptr;
+		_sink = nullptr;
 		_isStarted = false;
 	}
 }
@@ -95,4 +96,8 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 		});
 	_isStarted = true;
 	return true;
+}
+Output::~Output()
+{
+	close();
 }

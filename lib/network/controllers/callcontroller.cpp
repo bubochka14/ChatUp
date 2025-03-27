@@ -76,8 +76,11 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	Api::Disconnect::handle(m, [this](Participate::Data&& part) {
 		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
 			_rtc->closeUserConnection(part.userID);
+			{
+				std::lock_guard g(_localVideoStream.mutex);
+				_localVideoStream.connectors.erase(part.userID);
+			}
 			std::lock_guard g(_handlersMutex);
-			_connectors.erase(part.userID);
 			if (_handlers.contains(part.roomID))
 			{
 				auto handler = _handlers[part.roomID];
@@ -146,13 +149,13 @@ void Controller::connectVideoSink(Handler* h, int userID, QVideoSink* s)
 	std::shared_ptr<SinkConnector> connector;
 	{
 		std::lock_guard g(_localVideoStream.mutex);
-		if(!_connectors.contains(userID))
-			_connectors[userID] = std::make_shared<SinkConnector>();;
-		_connectors[userID]->connect(s);
+		if(!_localVideoStream.connectors.contains(userID))
+			_localVideoStream.connectors[userID] = std::make_shared<SinkConnector>();;
+		_localVideoStream.connectors[userID]->connect(s);
 		if(userID != _manager->currentUser())
-			_connectors[userID]->connect(_rtc->getRemoteVideo(userID));
+			_localVideoStream.connectors[userID]->connect(_rtc->getRemoteVideo(userID));
 		else
-			_connectors[userID]->connect(_localVideoStream.src->frameOutput());
+			_localVideoStream.connectors[userID]->connect(_localVideoStream.src->frameOutput());
 	}
 }
 
@@ -176,8 +179,8 @@ void Controller::clearMedia()
 		_localVideoStream.src = nullptr;
 		_localVideoStream.config = Media::Video::SourceConfig();
 
+		_localVideoStream.connectors.clear();
 	}
-	_connectors.clear();
 }
 QFuture<void> Controller::disconnect(Handler* h)
 {
