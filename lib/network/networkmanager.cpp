@@ -85,15 +85,15 @@ QFuture<json> NetworkCoordinator::serverMethod(std::string method,
 	_condvar.notify_one();
 	return future;
 }
-//NetworkCoordinator::~NetworkCoordinator()
-//{
-//	
-//	if (_networkThread.joinable())
-//	{
-//		_active = false;
-//		_networkThread.join();
-//	}
-//}
+NetworkCoordinator::~NetworkCoordinator()
+{
+	
+	if (_networkThread.joinable())
+	{
+		_active = false;
+		_networkThread.join();
+	}
+}
 void NetworkCoordinator::setReconnectionCount(int other)
 {
 	_reconnectionCount = other;

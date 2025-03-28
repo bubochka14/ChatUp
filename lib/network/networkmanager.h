@@ -44,7 +44,7 @@ public:
 		json args,
 		Priority priority = AuthorizedCall);
 	explicit NetworkCoordinator(std::string host, int port);
-	//~NetworkCoordinator();
+	~NetworkCoordinator();
 private:
 
 	struct MethodInfo

@@ -30,16 +30,11 @@ public:
 		return read(_data[index.row()], index.row(), role);
 
 	}
-	void reset(C<T> data)
-	{
-		beginResetModel();
-		_data = std::move(data);
-		endResetModel();
-	}
 	void reset()
 	{
 		beginResetModel();
 		_data.clear();
+		_index.clear();
 		endResetModel();
 	}
 	QVariant data(int id, int role) const 
@@ -86,16 +81,21 @@ public:
 	template<class Iter>
 	bool insertRange(int row, Iter begin, Iter end)
 	{
-		int distance = std::distance(begin, end) - 1;
-		if (row > rowCount() || row < 0 || distance <0)
+		const auto [first, last] = std::ranges::remove_if(std::ranges::subrange(begin, end), [this](const T& val) {
+			if (_index.contains(read(val, 0, IDRole()).toInt()))
+				return false;
+			return true;
+			});
+		int distance = std::distance(first, last) - 1;
+		if (row > rowCount() || row < 0 || distance < 0)
 		{
 			return false;
 		}
-		beginInsertRows(QModelIndex(), row, row+distance);
-		_data.insert(_data.begin()+row, begin, end);
+		beginInsertRows(QModelIndex(), row, row + distance);
+		_data.insert(_data.begin() + row, first, last);
 		for (size_t i = row; i <= row + distance; i++)
 		{
-			_index.insert({read( _data[i],i,IDRole()).toInt(), i });
+			_index.insert({ read(_data[i],i,IDRole()).toInt(), i });
 		}
 		endInsertRows();
 
