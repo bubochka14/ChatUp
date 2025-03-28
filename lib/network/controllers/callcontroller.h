@@ -17,6 +17,7 @@
 #include <qmediadevices.h>
 #include "media.h"
 #include "audiooutput.h"
+#include "stack"
 #include <qtimer>
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
 
@@ -36,7 +37,7 @@ namespace Call {
 			Disconnected,
 			InsideTheCall
 		};Q_ENUM(State)
-		explicit Handler(Controller* controller, int roomID);
+		explicit Handler(Controller* controller, int roomID = Group::invalidID);
 		State state() const;
 		Participate::Model* participants();
 		int roomID() const;
@@ -62,6 +63,8 @@ namespace Call {
 		void setState(State other);
 		void setHasAudio(bool);
 		void setHasVideo(bool);
+		//must be called before passing to qml
+		void setRoomID(int other);
 	private:
 		Q_PROPERTY(Participate::Model* participants READ participants NOTIFY participantsChanged);
 		Q_PROPERTY(State state READ state NOTIFY stateChanged);
@@ -71,7 +74,7 @@ namespace Call {
 
 		Controller* _controller;
 		Participate::Model* _prt;
-		const int _roomID;
+		int _roomID;
 		bool _isMuted;
 		State _state;
 		friend class Controller;
@@ -120,7 +123,9 @@ namespace Call {
 
 	private:
 		void clearMedia();
+		void growHandlerPool(size_t size);
 		std::unordered_map<int, Handler*> _handlers;
+		std::stack<Handler*> _freeHandlerPool;
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;
 		AudioStreamContext _localAudioStream;

@@ -23,7 +23,8 @@ struct DumpStreamSource : public Media::Video::StreamSource
 };
 void Controller::reset()
 {
-	clearMedia();
+	if(_activeCallRoomID.has_value())
+		disconnect(_handlers[_activeCallRoomID.value()]);
 	std::lock_guard g(_handlersMutex);
 	_activeCallRoomID = std::nullopt;
 	_handlers.clear();
@@ -35,10 +36,11 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	rtc::Configuration config;
 	config.iceServers.emplace_back("stun:stun.l.google.com:19302");
 	//config.disableAutoNegotiation = true;
+	growHandlerPool(12);
 	_rtc = std::make_shared<rtc::Service>(_manager, std::move(config));
 	Media::Audio::Output* out = new Media::Audio::Output();
 	Api::Join::handle(m, [this](Participate::Data&& part) {
-		QtFuture::makeReadyFuture().then(this, [this, part = std::move(part)]() {
+		QtConcurrent::run([this,part = std::move(part)]() {
 			auto h = handler(part.roomID);
 			{
 				std::lock_guard g(_handlersMutex);
@@ -105,6 +107,12 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 				qCWarning(LC_CALL_CONTROLLER) << "Unknown roomID in disconnectCall: "<< part.roomID;
 			});
 		});
+}
+void Handler::setRoomID(int other)
+{
+	if (_roomID == other)
+		return;
+	_roomID = other;
 }
 Handler::Handler(Controller* controller, int roomID)
 	:_controller(controller)
@@ -224,63 +232,65 @@ Participate::Model* Handler::participants()
 }
 void Controller::closeAudio(Handler* h)
 {
-	{
-		std::lock_guard g(_localAudioStream.mutex);
-		if (_localAudioStream.src)
+	QtConcurrent::run([this, h]() {
 		{
-			_localAudioStream.src->close();
-			_localAudioStream.src = nullptr;
+			std::lock_guard g(_localAudioStream.mutex);
+			if (_localAudioStream.src)
+			{
+				_localAudioStream.src->close();
+				_localAudioStream.src = nullptr;
+			}
 		}
-	}
-	{
-		std::lock_guard g(_handlersMutex);
-		setAudio(false, h);
-		auto model = h->participants();
-		int currentUser = _manager->currentUser();
-		for (size_t i = 0; i < model->rowCount(); i++)
 		{
-			int paricipantID = model->data(model->index(i),
-				Participate::Model::IDRole()).toInt();
-			if (paricipantID == currentUser)
-				continue;
-			_rtc->closeLocalAudio(paricipantID);
+			std::lock_guard g(_handlersMutex);
+			setAudio(false, h);
+			auto model = h->participants();
+			int currentUser = _manager->currentUser();
+			for (size_t i = 0; i < model->rowCount(); i++)
+			{
+				int paricipantID = model->data(model->index(i),
+					Participate::Model::IDRole()).toInt();
+				if (paricipantID == currentUser)
+					continue;
+				_rtc->closeLocalAudio(paricipantID);
 
-		};
-	}
-	emit h->hasAudioChanged();
+			};
+		}
+		emit h->hasAudioChanged();
 
-	Api::UpdateCallMedia req;
-	req.audio = false;
-	req.exec(_manager);
+		Api::UpdateCallMedia req;
+		req.audio = false;
+		req.exec(_manager);
+		});
 }
 QFuture<void> Controller::join(Handler* h)
 {
-	Call::Api::Join req;
-	{
-		std::lock_guard g(_handlersMutex);
-		if (h->state() == Handler::InsideTheCall)
-			QtFuture::makeExceptionalFuture(std::make_exception_ptr("Already inside the call"));
-		req.roomID = h->roomID();
-	}
-	return req.exec(_manager).then([this,h]() {
+	return QtConcurrent::run([this, h]() {
+		Call::Api::Join req;
+		{
+			std::lock_guard g(_handlersMutex);
+			if (h->state() == Handler::InsideTheCall)
+				QtFuture::makeExceptionalFuture(std::make_exception_ptr("Already inside the call"));
+			req.roomID = h->roomID();
+		}
+		req.exec(_manager).waitForFinished();
 		Participate::Data current;
 		int userID;
-
 		std::lock_guard g(_handlersMutex);
 		h->setState(Handler::InsideTheCall);
 		_activeCallRoomID = h->roomID();
-		Participate::Model*model = h->participants();
+		Participate::Model* model = h->participants();
 		for (size_t i = 0; i < model->rowCount(); i++)
 		{
-			userID = model->data(model->index(i),Participate::Model::IDRole()).toInt();
+			userID = model->data(model->index(i), Participate::Model::IDRole()).toInt();
 			if (userID == _manager->currentUser())
 				continue;
 		}
 		current.hasAudio = false;
 		current.hasVideo = false;
-		current.userID   = _manager->currentUser();
+		current.userID = _manager->currentUser();
 		h->participants()->insertData(0, std::move(current));
-		});
+	});
 }
 void Controller::release(Handler* h)
 {
@@ -288,10 +298,21 @@ void Controller::release(Handler* h)
 
 	if (_handlers.contains(h->roomID()))
 	{
+		_freeHandlerPool.emplace(_handlers[h->roomID()]);
 		_handlers.erase(h->roomID());
 	}
 	h->deleteLater();
 
+}
+void Controller::growHandlerPool(size_t size)
+{
+	//run on constroller`s thread
+	QtFuture::makeReadyFuture().then(this, [this, size]() {
+		for (size_t i = 0; i < size; i++)
+		{
+			_freeHandlerPool.emplace(new Handler(this));
+		}
+		});
 }
 Handler* Controller::handler(int roomID)
 {
@@ -299,15 +320,20 @@ Handler* Controller::handler(int roomID)
 
 	if (_handlers.contains(roomID))
 		return _handlers[roomID];
-	auto handler = new Handler(this, roomID);
-	_handlers[roomID] = handler;
+	if(_freeHandlerPool.empty())
+		growHandlerPool(max(_handlers.size(),10));
+	auto newHandler = _freeHandlerPool.top();
+	_freeHandlerPool.pop();
+	newHandler->setRoomID(roomID);
+	_handlers[roomID] = newHandler;
 	Api::Get req;
 	req.roomID = roomID;
-	req.exec(_manager).then(this, [this,roomID, handler](std::vector<Participate::Data> res) {
+	req.exec(_manager).then(this, [this,roomID, newHandler](std::vector<Participate::Data> res) {
 		std::lock_guard g(_handlersMutex);
-		handler->participants()->insertRange(0,std::make_move_iterator(res.begin()), std::make_move_iterator(res.end()));
+
+		newHandler->participants()->insertRange(0,std::make_move_iterator(res.begin()), std::make_move_iterator(res.end()));
 	});
-	return handler;
+	return newHandler;
 }
 QFuture<void> Handler::join()
 {
