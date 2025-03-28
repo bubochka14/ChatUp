@@ -9,7 +9,6 @@ import QuickFuture
 
 Item {
     id: root
-    required property ControllerManager manager
     property int topLoaded: 0
     property alias listView: listView
     property alias model: listView.model
@@ -60,7 +59,7 @@ Item {
                 if (listView.usersCache[userID]) {
                     item.user = listView.usersCache[userID]
                 } else
-                    Future.onFinished(manager.userController.get(userID),
+                    Future.onFinished(UserController.get(userID),
                                       function (user) {
                                           if (user) {
                                               listView.usersCache[userID] = user
@@ -73,7 +72,7 @@ Item {
 
             width: ListView.view.width
             Component.onCompleted: {
-                Future.onFinished(manager.userController.get(userID),
+                Future.onFinished(UserController.get(userID),
                                   function (user) {
                                       if (user) {
                                           listView.usersCache[userID] = user

@@ -16,7 +16,6 @@ ApplicationWindow {
     signal languageSet(string language)
     signal logout
     color: "transparent"
-    required property ControllerManager manager
     WindowAgent {
         id: windowAgent
     }
@@ -53,7 +52,6 @@ ApplicationWindow {
                 id: stack
                 RoomsPage {
                     id: roomsPage
-                    manager: root.manager
                 }
                 Page {
                     Label {

@@ -11,7 +11,6 @@ QmlChatWindow::QmlChatWindow(QQmlEngine* eng, std::shared_ptr<ControllerManager>
 {
 	_creationChecker.setInterval(1000);
 	_inc.setInitialProperties({
-			{"manager",QVariant::fromValue(_manager.get())},
 			{"visible",false} 
 		});
 	connect(&_creationChecker, &QTimer::timeout, this, &QmlChatWindow::finalizeCreation);

@@ -10,7 +10,6 @@ import ObjectConverter
 ColoredFrame {
     id: root
     //for messages
-    required property ControllerManager manager
     property var roomID
     property int messageUploadCount: 50
     property var roomsCache: ({})
@@ -72,7 +71,6 @@ ColoredFrame {
                                                          var obj = roomViewComponent.createObject(
                                                                      roomContainer,
                                                                      {
-                                                                         "manager": manager,
                                                                          "messageModel": history,
                                                                          "roomID": root.roomID,
                                                                          "chatBox": root,
@@ -98,13 +96,13 @@ ColoredFrame {
     }
     function readAll() {
         var model = roomsCache[roomID].model
-        manager.messageController.markAsRead(root.roomID, model.data(
+       MessageController.markAsRead(root.roomID, model.data(
                                                  model.index(0, 0),
                                                  MessageModel.MessageIndexRole))
     }
 
     function showUserProfile(id) {
-        Future.onFinished(manager.userController.get(id), function (user) {
+        Future.onFinished(UserController.get(id), function (user) {
             foreignProfileViewer.showProfle(user)
         })
     }
@@ -164,7 +162,7 @@ ColoredFrame {
             visible: root.roomID != -1
             onMessageEntered: textMessage => {
                                   if (textMessage && root.roomID != -1) {
-                                      manager.messageController.create(
+                                      MessageController.create(
                                           textMessage, root.roomID)
                                       input.clear()
                                   }

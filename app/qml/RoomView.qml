@@ -9,7 +9,6 @@ import ObjectConverter
 
 Control {
     id: root
-    required property ControllerManager manager
     required property var roomID
     property alias topLoaded : view.topLoaded
     required property MessageModel messageModel
@@ -29,14 +28,12 @@ Control {
         CallBox {
             id: callBox
             roomID : root.roomID
-            manager: root.manager
             SplitView.minimumHeight: callBox.minimumHeight
         }
         Item {
             MessagesView {
                 id:view
                 model: messageModel
-                manager: root.manager
                 anchors {
                     fill: parent
                     leftMargin: 8
@@ -44,7 +41,7 @@ Control {
                 }
                 onLoadingMessagesNeeded: {root.loadingMessagesNeeded()}
                 onUserProfileClicked: id => root.showProfile(id)
-                onUnreadWasRead: index => manager.messageController.markAsRead(
+                onUnreadWasRead: index => MessageController.markAsRead(
                                      root.roomID, index)
             }
         }

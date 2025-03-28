@@ -137,10 +137,16 @@ void App::setAppLanguage(const QString& lan)
 }
 void App::logout(const QString& reason)
 {
-	chat->hide();
-	chat->deleteLater();
-	_controllerManager.reset();
-	chat = nullptr;
+	if(chat)
+	{
+		chat->hide();
+		_controllerManager->resetAll();
+		chat->deleteLater();
+		chat = nullptr;
+	}
+	else
+		_controllerManager->resetAll();
+
 /*	roomController->logout();
 	messageController->logout();
 	userController->logout()*/;

@@ -8,7 +8,6 @@ import QuickFuture
 
 Rectangle {
     id: root
-    required property ControllerManager manager
     required property var roomID
     property var minimumHeight: 140
     property CallHandler callHandler
@@ -67,7 +66,7 @@ Rectangle {
             return "disconnected"
     }
     Component.onCompleted: {
-        root.callHandler = manager.callController.handler(root.roomID)
+        root.callHandler = CallController.handler(root.roomID)
         view.model = root.callHandler.participants
     }
     CallParticipantView {

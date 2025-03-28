@@ -10,11 +10,10 @@ import ObjectConverter
 SplitView {
     id: root
     spacing: 0
-    required property ControllerManager manager
     property bool roomSelected: false
     property alias selectedRoomID: chatBox.roomID
     Component.onCompleted: {
-        manager.groupController.load()
+        GroupController.load()
     }
 
     RoomList {
@@ -25,7 +24,7 @@ SplitView {
         SplitView.fillHeight: true
         SplitView.preferredWidth: Math.max(220, parent.width / 4)
         Layout.maximumWidth: 420
-        roomModel: manager.groupController.model
+        roomModel: GroupController.model
         onSelectedRoomChanged: {
             if (!roomSelected)
                 roomSelected = true
@@ -79,7 +78,7 @@ SplitView {
                     source: Qt.resolvedUrl("pics/call")
                     height: 20
                     width: 20
-                    onClicked: manager.callController.handler(
+                    onClicked: CallController.handler(
                                    root.selectedRoomID).join()
                 }
                 MouseArea {
@@ -106,7 +105,6 @@ SplitView {
             focus: true
             leftInset: -1
             initalMessage: qsTr("Select ChatRoom to start messaging")
-            manager: root.manager
             Layout.fillHeight: true
             Layout.fillWidth: true
         }
@@ -115,7 +113,7 @@ SplitView {
     CreateRoomDialog {
         id: createRoomDialog
         anchors.centerIn: parent
-        onAccepted: manager.groupController.create(roomName)
+        onAccepted: GroupController.create(roomName)
     }
     Drawer {
         id: drawer
@@ -147,7 +145,7 @@ SplitView {
         anchors.centerIn: parent
         title: qsTr("Add memder:")
         onSeacrhPatternChanged: {
-            let future = manager.userController.find(seacrhPattern, 5)
+            let future = UserController.find(seacrhPattern, 5)
             Future.onFinished(future, function (users) {
                 selectUserDialog.usersModel = users
             })
