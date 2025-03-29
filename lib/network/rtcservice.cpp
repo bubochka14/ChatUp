@@ -20,8 +20,11 @@ std::chrono::system_clock::rep time_since_epoch() {
 }
 void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media::Video::SourceConfig config)
 {
-	std::lock_guard g(_peerMutex);
-	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::shared_ptr<PeerContext> ctx;
+	{
+		std::lock_guard g(_peerMutex);
+		ctx = getOrCreatePeerContext(userID);
+	}
 	std::scoped_lock lck{ _localVideo.mutex, ctx->video.mutex};
 	if(!_localVideo.encoder)
 	{
@@ -97,29 +100,32 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 				qCWarning(LC_RTC_SERVICE) << "Cannot handle video packet, peer" << userID << "isReleased";
 				return;
 			}
-			std::scoped_lock lck{_localVideo.mutex, ctx->video.mutex };
+			std::lock_guard g{ctx->video.mutex };
 
 			if(!ctx->video.packetPipe)
-				ctx->video.packetPipe = Media::createPacketPipe();
+				ctx->video.packetPipe = createNullBufferPacketPipe();
 			if (!ctx->video.decoder)
 			{
 				ctx->video.decoder.reset(new Video::H264Decoder());
 				ctx->video.decoder->start(ctx->video.packetPipe);
 			}
-			auto pipeData = ctx->video.packetPipe->holdForWriting();
-			//if (!pipeData.has_value())
-			//{
-			//	qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
-			//	return;
-			//}
-			if(!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+			auto pipeData = ctx->video.packetPipe->tryHoldForWriting();
+			if (!pipeData.has_value())
 			{
-				qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
+				qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 				return;
 			}
-			pipeData.ptr->pts = info.timestamp;
-			pipeData.ptr->dts = info.timestamp;
-			ctx->video.packetPipe->unmapWriting(pipeData.subpipe, true);
+			ctx->video.packets[pipeData->subpipe] = std::move(data);
+
+			if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->video.packets[pipeData->subpipe].data(),
+				ctx->video.packets[pipeData->subpipe].size())) 
+			{
+				qCWarning(LC_RTC_SERVICE) << "Cannot fill video packet";
+				return;
+			}
+			pipeData->ptr->pts = info.timestamp;
+			pipeData->ptr->dts = info.timestamp;
+			ctx->video.packetPipe->unmapWriting(pipeData->subpipe, true);
 			});
 		pc->setLocalDescription();
 	}else
@@ -136,7 +142,7 @@ Service::PeerContext::~PeerContext()
 	{
 		std::lock_guard g(video.mutex);
 		if (video.track)
-			audio.track->close();
+			video.track->close();
 	}
 
 }
@@ -145,8 +151,11 @@ void Service::closeUserConnection(int userID)
 	qCDebug(LC_RTC_SERVICE) << "Closing peer connection with" <<userID;
 	flushRemoteAudio(userID);
 	flushRemoteVideo(userID);;
-	std::lock_guard g(_peerMutex);
-	auto ctx = getPeerContext(userID);
+	std::shared_ptr<Service::PeerContext> ctx;
+	{
+		std::lock_guard g(_peerMutex);
+		ctx = getPeerContext(userID);
+	}
 	if (!ctx)
 		return;
 	{
@@ -168,34 +177,44 @@ void Service::closeUserConnection(int userID)
 		}
 	}
 	//destroy context
-	_peerContexts.erase(userID);
+	{
+		std::lock_guard g(_peerMutex);
+		_peerContexts.erase(userID);
+	}
 }
 void Service::closeAllConnections()
 {
 	//closes all peer connections and reset codecs
 	qCDebug(LC_RTC_SERVICE) << "Closing all connections";
-	std::scoped_lock lck{_peerMutex, _localVideo.mutex, _localAudio.mutex};
-	if(_localVideo.encoder)
-		_localVideo.encoder->close();
-	if(_localVideo.packetizer)
-		_localVideo.packetizer->stop();
-	if(_localAudio.encoder)
-		_localAudio.encoder->close();
+	{
+		std::scoped_lock lck{ _localVideo.mutex, _localAudio.mutex };
+		if (_localVideo.encoder)
+			_localVideo.encoder->close();
+		if (_localVideo.packetizer)
+			_localVideo.packetizer->stop();
+		if (_localAudio.encoder)
+			_localAudio.encoder->close();
 
-	_localVideo.encoder.reset();
-	_localVideo.packetizer.reset();
-	_localAudio.encoder.reset();
-
-	_peerContexts.clear();
+		_localVideo.encoder.reset();
+		_localVideo.packetizer.reset();
+		_localAudio.encoder.reset();
+	}
+	{
+		std::lock_guard g(_peerMutex);
+		_peerContexts.clear();
+	}
 }
 void Service::flushRemoteVideo(int userID)
 {
 	qCDebug(LC_RTC_SERVICE) << "Flush remote video from" << userID;
-	std::lock_guard g(_peerMutex);
-	std::shared_ptr<PeerContext> ctx = getPeerContext(userID);;
+	std::shared_ptr<PeerContext> ctx;
+	{
+		std::lock_guard g(_peerMutex);
+		ctx = getPeerContext(userID);;
+	}
 	if(ctx)
 	{
-		std::lock_guard g(ctx->video.mutex);
+		std::lock_guard g(ctx->video.mutex); 
 		ctx->video.packetPipe.reset();
 		ctx->video.decoder.reset();
 	}
@@ -203,23 +222,28 @@ void Service::flushRemoteVideo(int userID)
 void Service::flushRemoteAudio(int userID)
 {
 	qCDebug(LC_RTC_SERVICE) << "Flush remote audio from" << userID;
-	std::lock_guard g(_peerMutex);
-	std::shared_ptr<PeerContext> ctx = getPeerContext(userID);
+	std::shared_ptr<PeerContext> ctx;
+	{
+		std::lock_guard g(_peerMutex);
+		ctx = getPeerContext(userID);
+	}
 	if (ctx)
 	{
-		std::lock_guard g(ctx->video.mutex);
+		std::lock_guard g(ctx->audio.mutex);
 		ctx->audio.packetPipe.reset();
 		ctx->audio.decoder.reset();
 	}
 }
 std::shared_ptr<Media::FramePipe> Service::getRemoteAudio(int userID)
 {
-	std::lock_guard g(_peerMutex);
-
-	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::shared_ptr<PeerContext> ctx;
+	{
+		std::lock_guard g(_peerMutex);
+		ctx = getOrCreatePeerContext(userID);
+	}
 	std::lock_guard ga(ctx->audio.mutex);
 	if (!ctx->audio.packetPipe)
-		ctx->audio.packetPipe = Media::createPacketPipe();
+		ctx->audio.packetPipe = createNullBufferPacketPipe();
 	if (!ctx->audio.decoder)
 	{
 		ctx->audio.decoder = std::make_shared<Media::Audio::OpusDecoder>();
@@ -229,9 +253,11 @@ std::shared_ptr<Media::FramePipe> Service::getRemoteAudio(int userID)
 }
 void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config)
 {
-	std::lock_guard g(_peerMutex);
-
-	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::shared_ptr<PeerContext> ctx;
+	{
+		std::lock_guard g(_peerMutex);
+		ctx = getOrCreatePeerContext(userID);
+	}
 	std::scoped_lock lck{ _localAudio.mutex, ctx->audio.mutex };
 	if(!_localAudio.encoder)
 	{
@@ -314,23 +340,30 @@ void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input
 			auto ctx = wctx.lock();
 			if (!ctx)
 				return;
-			std::scoped_lock lck{ _localAudio.mutex, ctx->audio.mutex };
+			std::lock_guard g(ctx->audio.mutex);
 			if (!ctx->audio.packetPipe)
-				ctx->audio.packetPipe = Media::createPacketPipe();
+				ctx->audio.packetPipe = createNullBufferPacketPipe();
 			if (!ctx->audio.decoder)
 			{
 				ctx->audio.decoder.reset(new Audio::OpusDecoder());
 				ctx->audio.decoder->start(ctx->audio.packetPipe);
 			}
-			auto pipeData = ctx->audio.packetPipe->holdForWriting();
-			if(!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+			auto pipeData = ctx->audio.packetPipe->tryHoldForWriting();
+			if (!pipeData.has_value())
+			{
+				qCWarning(LC_RTC_SERVICE) << "Output pipe overflow";
+			}
+			ctx->audio.packets[pipeData->subpipe] = std::move(data);
+
+			if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->audio.packets[pipeData->subpipe].data(),
+				ctx->audio.packets[pipeData->subpipe].size()))
 			{
 				qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
 				return;
 			}
-			pipeData->pts = info.timestamp;
-			pipeData->dts = info.timestamp;
-			ctx->audio.packetPipe->unmapWriting(pipeData.subpipe, true);
+			pipeData->ptr->pts = info.timestamp;
+			pipeData->ptr->dts = info.timestamp;
+			ctx->audio.packetPipe->unmapWriting(pipeData->subpipe, true);
 		});
 		pc->setLocalDescription();
 	}
@@ -349,8 +382,11 @@ Service::Service(std::shared_ptr<NetworkCoordinator> coord, rtc::Configuration c
 			qCWarning(LC_RTC_SERVICE) << "Invalid userID in description received";
 			return;
 		}
-		std::lock_guard g(_peerMutex);
-		std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(msg.id);
+		std::shared_ptr<PeerContext> ctx;
+		{
+			std::lock_guard g(_peerMutex);
+			ctx = getOrCreatePeerContext(msg.id);
+		}
 		auto desc = rtc::Description(msg.description, msg.type);
 		ctx->pc->setRemoteDescription(desc);
 	});
@@ -421,7 +457,7 @@ void Service::createPeerContext(int id)
 			std::shared_ptr<PeerContext> ctx = getPeerContext(id);
 			ctx->video.track = track;
 			if (!ctx->video.packetPipe)
-				ctx->video.packetPipe = Media::createPacketPipe();
+				ctx->video.packetPipe = createNullBufferPacketPipe();
 
  			track->onClosed([this,id, wCtx = std::weak_ptr(ctx)]() {
 				qCDebug(LC_RTC_SERVICE) << "Video track width" << id << "closed";
@@ -434,20 +470,23 @@ void Service::createPeerContext(int id)
 					return;
 				}
 				std::lock_guard g(ctx->video.mutex);
-				auto pipeData = ctx->video.packetPipe->holdForWriting();
-	/*			if (!pipeData.has_value())
+				auto pipeData = ctx->video.packetPipe->tryHoldForWriting();
+				if (!pipeData.has_value())
 				{
 					qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 					return;
-				}*/
-				if(!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+				}
+				ctx->video.packets[pipeData->subpipe] = std::move(data);
+
+				if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->video.packets[pipeData->subpipe].data(),
+					ctx->video.packets[pipeData->subpipe].size()))
 				{
-					qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
+					qCWarning(LC_RTC_SERVICE) << "Cannot fill video packet";
 					return;
 				}
-				pipeData->pts = info.timestamp;
-				pipeData->dts = info.timestamp;
-				ctx->video.packetPipe->unmapWriting(pipeData.subpipe, true);
+				pipeData->ptr->pts = info.timestamp;
+				pipeData->ptr->dts = info.timestamp;
+				ctx->video.packetPipe->unmapWriting(pipeData->subpipe, true);
 			});
 		}
 		//remote peer opened audio stream
@@ -479,7 +518,7 @@ void Service::createPeerContext(int id)
 				ctx->audio.decoder.reset(new Audio::OpusDecoder());
 			if(!ctx->audio.packetPipe)
 			{
-				ctx->audio.packetPipe = Media::createPacketPipe();
+				ctx->audio.packetPipe = createNullBufferPacketPipe();
 				ctx->audio.decoder->start(ctx->audio.packetPipe);
 			}
 			track->onClosed([id]() {
@@ -489,20 +528,23 @@ void Service::createPeerContext(int id)
 				if (auto ctx = wCtx.lock())
 				{
 					std::lock_guard g(ctx->audio.mutex);
-					auto pipeData = ctx->audio.packetPipe->holdForWriting();
-		/*			if (!pipeData.has_value())
+					auto pipeData = ctx->audio.packetPipe->tryHoldForWriting();
+					if (!pipeData.has_value())
 					{
 						qCWarning(LC_RTC_SERVICE) << "Pipe overflow";
 						return;
-					}*/
-					if (!Media::fillPacket(pipeData.ptr, (uint8_t*)data.data(), data.size()))
+					}
+					ctx->audio.packets[pipeData->subpipe] = std::move(data);
+
+					if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->audio.packets[pipeData->subpipe].data(),
+						ctx->audio.packets[pipeData->subpipe].size()))
 					{
 						qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
 						return;
 					}
-					pipeData.ptr->pts = info.timestamp;
-					pipeData.ptr->dts = info.timestamp;
-					ctx->audio.packetPipe->unmapWriting(pipeData.subpipe, true);
+					pipeData->ptr->pts = info.timestamp;
+					pipeData->ptr->dts = info.timestamp;
+					ctx->audio.packetPipe->unmapWriting(pipeData->subpipe, true);
 				}else
 					qCWarning(LC_RTC_SERVICE) << "Cannot handle audio packet, peer" << id << "isReleased";
 
@@ -512,12 +554,14 @@ void Service::createPeerContext(int id)
 }
 std::shared_ptr<Media::FramePipe> Service::getRemoteVideo(int userID)
 {
-	std::lock_guard g(_peerMutex);
-
-	std::shared_ptr<PeerContext> ctx = getOrCreatePeerContext(userID);
+	std::shared_ptr<PeerContext> ctx;
+	{
+		std::lock_guard g(_peerMutex);
+		ctx = getOrCreatePeerContext(userID);
+	}
 	std::lock_guard gv(ctx->video.mutex);
 	if(!ctx->video.packetPipe)
-		ctx->video.packetPipe = Media::createPacketPipe();
+		ctx->video.packetPipe = createNullBufferPacketPipe();
 	if (!ctx->video.decoder)
 	{
 		ctx->video.decoder.reset(new Video::H264Decoder());

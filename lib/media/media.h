@@ -52,12 +52,36 @@ namespace Media
         uint8_t* raw = nullptr;
         size_t size = 0;
     };
-
+    struct VectorPacket
+    {
+        std::vector<std::byte> vector;
+        AVPacket* packet;
+        void setData(std::vector<std::byte> data)
+        {
+            vector = std::move(data);
+            if (av_packet_from_data(packet, (uint8_t*)vector.data(), vector.size()) < 0)
+            {
+                qWarning() << "Cannot fill packet";
+            }
+            packet->size = vector.size();
+        }
+    };
     using PacketPipe = DataPipe<128, AVPacket>;
     using FramePipe = DataPipe<128, AVFrame>;
     using BytePipe = DataPipe<2, std::vector<std::byte>>;
     using RawPipe = DataPipe<2, Raw>;
-
+    using VectorPacketPipe = DataPipe<32, VectorPacket>;
+    static std::shared_ptr<VectorPacketPipe> createVectorPacketPipe()
+    {
+        return std::make_shared<VectorPacketPipe>([]() {
+            VectorPacket* out= new VectorPacket;
+            out->packet = av_packet_alloc();
+            return out;
+            }, [](VectorPacket* p) {
+                p->packet->buf = nullptr;
+                delete p;
+            });
+    }
     static std::shared_ptr<AVPacket> createPacket()
     {
         return std::shared_ptr<AVPacket>(av_packet_alloc(), [](AVPacket* p) {av_packet_free(&p); });
@@ -70,6 +94,7 @@ namespace Media
     {
         return std::shared_ptr<AVCodecContext>(avcodec_alloc_context3(c), [](AVCodecContext* p) {avcodec_free_context(&p); });
     }
+    CC_MEDIA_EXPORT std::shared_ptr<PacketPipe> createNullBufferPacketPipe();
     //for video
     static std::shared_ptr<FramePipe> createFramePipe(int width, int height, AVPixelFormat fmt, size_t al = 32)
     {

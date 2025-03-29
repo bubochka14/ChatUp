@@ -40,6 +40,7 @@ namespace rtc
 		{
 			std::shared_ptr<rtc::Track> track;
 			std::shared_ptr<Media::AbstractDecoder> decoder;
+			std::array<std::vector<std::byte>, Media::PacketPipe::getSize()> packets;
 			std::shared_ptr<Media::PacketPipe> packetPipe;
 			std::shared_ptr<rtc::RtcpSrReporter> rtcp;
 			///std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
@@ -49,6 +50,7 @@ namespace rtc
 		struct RemoteVideoContext
 		{
 			std::shared_ptr<rtc::Track> track;
+			std::array<std::vector<std::byte>, Media::PacketPipe::getSize()> packets;
 			std::shared_ptr<Media::AbstractDecoder> decoder;
 			std::shared_ptr<Media::PacketPipe> packetPipe;
 			std::optional<int> packetizerListener;

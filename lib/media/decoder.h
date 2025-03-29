@@ -5,6 +5,7 @@
 #include <mutex>
 #include "datapipe.h"
 #include "taskqueue.h"
+#include <qstack>
 #include "media.h"
 extern "C" 
 {
@@ -31,10 +32,10 @@ namespace Media {
 	private:
 		std::atomic<bool> active = {false};
 		std::optional<int> inputListenIndex;
-		TaskQueue quene;
 		std::shared_ptr<FramePipe> _out;
 		std::shared_ptr<PacketPipe> _input;
 		std::shared_ptr<AVCodecContext> _ctx;
+		QStack<int> _holdingIndex;
 		const AVCodec* _codec;
 		std::mutex _decodeMutex;
 		std::shared_ptr<AVFrame> _drainFrame;

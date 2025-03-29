@@ -170,7 +170,7 @@ void Controller::connectVideoSink(Handler* h, int userID, QVideoSink* s)
 		_localVideoStream.connectors[userID]->connect(s);
 		if(userID != _manager->currentUser())
 			_localVideoStream.connectors[userID]->connect(_rtc->getRemoteVideo(userID));
-		else
+		else if(_localVideoStream.src)
 			_localVideoStream.connectors[userID]->connect(_localVideoStream.src->frameOutput());
 	}
 }
