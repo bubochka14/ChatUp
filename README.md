@@ -1,11 +1,11 @@
 # ChatUp
- ChatUp is a  messager available for Linux, Windows and Mac.
+ ChatUp is a desktop messager available for Linux, Windows and Mac.
 In ChatUp you can: 
 * Сreate groups and add users to them
 * Send text messages to group chats
 * Make group video/audio calls<br>
 
-Websockets are used to communicate with the server, and media traffic is transmitted using the [libdatachannel](https://github.com/paullouisageneau/libdatachannel) WebRTC library.
+Websockets are used to communicate with the [server](https://github.com/bubochka14/ChatUp_server), and media traffic is transmitted using the [libdatachannel](https://github.com/paullouisageneau/libdatachannel) WebRTC library.
 Encoding/decoding is performed via [FFmpeg](https://github.com/FFmpeg/FFmpeg).
   
 ## Dependencies
@@ -16,6 +16,11 @@ Qt version >= 6.8.0
 - [libdatachannel](https://github.com/bubochka14/libdatachannel) (submodule)
 - [QWindowKit](https://github.com/stdware/qwindowkit) (submodule)
 - [QuickFuture](https://github.com/bubochka14/quickfuture) (submodule)
+## Server setup
+Communication with the [server](https://github.com/bubochka14/ChatUp_server) is performed using the webscoket protocol,address and port can be set via the command line:
+```sh
+ChatUp -h "address" -p "port"
+```
 ## Building
 The build requires vcpkg, I tested on MSVC 19.41.34123 and CMake 3.27.0
 ```sh
