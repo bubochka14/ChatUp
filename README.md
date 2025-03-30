@@ -17,7 +17,7 @@ Qt version >= 6.8.0
 - [QWindowKit](https://github.com/stdware/qwindowkit) (submodule)
 - [QuickFuture](https://github.com/bubochka14/quickfuture) (submodule)
 ## Building
-The build will require vcpkg, I tested on MSVC 19.41.34123 and CMake 3.27.0
+The build requires vcpkg, I tested on MSVC 19.41.34123 and CMake 3.27.0
 ```sh
 git clone https://github.com/bubochka14/ChatUp.git && cd ChatUp
 git submodule update --init --recursive
