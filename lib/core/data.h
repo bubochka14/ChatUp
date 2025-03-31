@@ -77,7 +77,7 @@ namespace User
 		bool isValid() const;
 		QVariantHash toHash() const;
 		void fromHash(QVariantHash other);
-		Status status;
+		Status status = Offline;
 		QString name;
 		QString tag;
 		int id = User::invalidID;
