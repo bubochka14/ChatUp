@@ -19,17 +19,18 @@
 #include "audiooutput.h"
 #include "stack"
 #include <qtimer>
+#include <QObject>
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
 
 namespace Call {
 
 	class Controller;
-	class Handler;
+	class Handle;
 
-	class CC_NETWORK_EXPORT Handler : public QObject
+	class CC_NETWORK_EXPORT Handle : public QObject
 	{
 		Q_OBJECT;
-		QML_NAMED_ELEMENT(CallHandler);
+		QML_NAMED_ELEMENT(CallHandle);
 		QML_UNCREATABLE("");
 	public:
 		enum State
@@ -37,7 +38,7 @@ namespace Call {
 			Disconnected,
 			InsideTheCall
 		};Q_ENUM(State)
-		explicit Handler(Controller* controller, int roomID = Group::invalidID);
+		explicit Handle(Controller* controller, int roomID = Group::invalidID);
 		State state() const;
 		Participate::Model* participants();
 		int roomID() const;
@@ -104,33 +105,33 @@ namespace Call {
 	public:
 		explicit Controller(std::shared_ptr<NetworkCoordinator> manager,
 			QObject* parent = nullptr);
-		Q_INVOKABLE Handler* handler(int roomID);
+		Q_INVOKABLE Handle* handle(int roomID);
 
-		QFuture<void> disconnect(Handler* h);
-		QFuture<void> join(Handler* h);
-		QFuture<void> openVideo(Handler* h, Media::Video::StreamSource* st);
-		QFuture<void> openAudio(Handler* h, Media::Audio::StreamSource* st);
-		void closeVideo(Handler* h);
-		void closeAudio(Handler* h);
-		void connectVideoSink(Handler* h,int userID, QVideoSink*);
-		void connectAudioOutput(Handler* h,int userID, Media::Audio::Output*);
-		void setAudio(bool st, Handler* h);
-		void setVideo(bool st, Handler* h);
-		bool hasAudio(Handler* h);
-		bool hasVideo(Handler* h);
-		void release(Handler* h);
+		QFuture<void> disconnect(Handle* h);
+		QFuture<void> join(Handle* h);
+		QFuture<void> openVideo(Handle* h, Media::Video::StreamSource* st);
+		QFuture<void> openAudio(Handle* h, Media::Audio::StreamSource* st);
+		void closeVideo(Handle* h);
+		void closeAudio(Handle* h);
+		void connectVideoSink(Handle* h,int userID, QVideoSink*);
+		void connectAudioOutput(Handle* h,int userID, Media::Audio::Output*);
+		void setAudio(bool st, Handle* h);
+		void setVideo(bool st, Handle* h);
+		bool hasAudio(Handle* h);
+		bool hasVideo(Handle* h);
+		void release(Handle* h);
 		void reset() override;
 
 	private:
 		void clearMedia();
-		void growHandlerPool(size_t size);
-		std::unordered_map<int, Handler*> _handlers;
-		std::stack<Handler*> _freeHandlerPool;
+		void growHandlePool(size_t size);
+		std::unordered_map<int, Handle*> _handles;
+		std::stack<Handle*> _freeHandlePool;
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;
 		AudioStreamContext _localAudioStream;
 		VideoStreamContext _localVideoStream;
-		std::mutex _handlersMutex;
+		std::mutex _handlesMutex;
 		std::optional<int> _activeCallRoomID;
 
 	};
