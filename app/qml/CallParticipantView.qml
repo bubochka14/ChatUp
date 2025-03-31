@@ -12,7 +12,7 @@ Rectangle {
     property var minimumCellWidth: 128
     property var minimumCellHeight: 72
     property alias model: view.model
-    required property CallHandler callHandler
+    required property CallHandle callHandle
 
     GridView {
         id: view
@@ -35,7 +35,7 @@ Rectangle {
             }
 
             onHasAudioChanged: if (hasAudio && userID != CurrentUser.id)
-                                   callHandler.connectAudioOutput(root.userID,
+                                   callHandle.connectAudioOutput(root.userID,
                                                                   audioOutput)
 
             Component.onCompleted: {
@@ -75,7 +75,7 @@ Rectangle {
                         }
                         StateChangeScript {
                             name: "sinkConnectScript"
-                            script: callHandler.connectVideoSink(
+                            script: callHandle.connectVideoSink(
                                         userID, videoOutput.videoSink)
                         }
                     }
@@ -150,9 +150,9 @@ Rectangle {
             //for delegate
             function syncOutput() {
                 if (hasAudio && userID != CurrentUser.id)
-                    callHandler.connectAudioOutput(root.userID, audioOutput)
+                    callHandle.connectAudioOutput(root.userID, audioOutput)
                 if (hasVideo)
-                    callHandler.connectVideoSink(root.userID,
+                    callHandle.connectVideoSink(root.userID,
                                                  videoOutput.videoSink)
             }
         }

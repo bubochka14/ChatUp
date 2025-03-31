@@ -78,7 +78,7 @@ SplitView {
                     source: Qt.resolvedUrl("pics/call")
                     height: 20
                     width: 20
-                    onClicked: CallController.handler(
+                    onClicked: CallController.handle(
                                    root.selectedRoomID).join()
                 }
                 MouseArea {

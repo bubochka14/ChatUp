@@ -77,7 +77,8 @@ Item {
                                       if (user) {
                                           listView.usersCache[userID] = user
                                           setSource("MessageDelegate.qml", {
-                                                        "user": user
+                                                        "user": user,
+                                                        "currentUser":user.id === CurrentUser.id
                                                     })
                                       } else
                                           console.error(
