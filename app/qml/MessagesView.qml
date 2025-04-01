@@ -15,10 +15,9 @@ Item {
     property var bottomVisibleMessageIndex
     signal userProfileClicked(var id)
     signal unreadWasRead(var count)
-    signal loadingMessagesNeeded()
+    signal loadingMessagesNeeded
     ListView {
         id: listView
-        property var usersCache: ({})
         verticalLayoutDirection: ListView.BottomToTop
         anchors.bottom: parent.bottom
         anchors.right: parent.right
@@ -29,67 +28,89 @@ Item {
         reuseItems: true
         ScrollBar.vertical: bar
         clip: true
+        synchronousDrag : true
+        flickDeceleration:10000
         boundsBehavior: Flickable.StopAtBounds
+        WheelHandler{
+            id: root_item
+
+            property int speed: 5
+            property var flickable: listView
+
+            onWheel: (event) => {
+
+                let scroll_flick = event.angleDelta.y * speed*2.5;
+
+                if(flickable.verticalOvershoot != 0.0 ||
+                  (scroll_flick>0 && (flickable.verticalVelocity<=0)) ||
+                  (scroll_flick<0 && (flickable.verticalVelocity>=0)))
+                {
+                    flickable.flick(0, (scroll_flick));
+                    return;
+                }
+                else
+                {
+                    flickable.cancelFlick();
+                    return;
+                }
+            }
+        }
         delegate: Loader {
             id: delegateLoader
-            property int modelIndex: index
+            required property int userID
+            required property int messageStatus
+            required property int messageIndex
+            required property string body
+            required property var time
             property bool isVisible
             isVisible: {
-                listView.contentItem.x + delegateLoader.x >= 0
-                        && listView.contentItem.y + delegateLoader.y
-                        >= 0 && listView.contentItem.y + delegateLoader.y + delegateLoader.height
-                        <= listView.height && listView.contentItem.x
-                        + delegateLoader.x + delegateLoader.width <= listView.width
+                listView.contentItem.y + delegateLoader.y >= 0
+                        // && listView.contentItem.y + delegateLoader.y
+                        // + delegateLoader.height <= listView.height
             }
             onIsVisibleChanged: {
                 if (isVisible && enabled) {
                     if (messageStatus == MessageModel.Sent
                             && userID != CurrentUser.id)
                         root.unreadWasRead(messageIndex)
-                    if(messageIndex == topLoaded && topLoaded !=0)
-                        root.loadingMessagesNeeded()
+                    // if (messageIndex == topLoaded && topLoaded != 0)
+                    //     root.loadingMessagesNeeded()
                 }
             }
-            ListView.onPooled: if (item)
-                                   item.statusIcon.paused = true
-            ListView.onReused: {
-                if (!item)
-                    return
-                item.statusIcon.paused = false
-                if (listView.usersCache[userID]) {
-                    item.user = listView.usersCache[userID]
-                } else
-                    Future.onFinished(UserController.get(userID),
-                                      function (user) {
-                                          if (user) {
-                                              listView.usersCache[userID] = user
-                                              item.user = user
-                                          } else
-                                              console.error(
-                                                          "Cannot hanlde received UserInfo")
-                                      })
-            }
 
+            ListView.onReused: {
+                if (messageIndex == topLoaded && topLoaded != 0)
+                    root.loadingMessagesNeeded()
+                sync()
+            }
             width: ListView.view.width
             Component.onCompleted: {
-                Future.onFinished(UserController.get(userID),
+                sync()
+            }
+            Connections {
+                target: item
+                function onProfileClicked() {
+                    root.userProfileClicked(delegateLoader.userID)
+                }
+            }
+            function sync() {
+                if (delegateLoader.userID === CurrentUser.id) {
+                    setSource("MessageDelegate.qml")
+                    return
+                }
+                Future.onFinished(UserController.get(delegateLoader.userID),
                                   function (user) {
+                                      if(!delegateLoader)
+                                          return
                                       if (user) {
-                                          listView.usersCache[userID] = user
-                                          setSource("MessageDelegate.qml", {
-                                                        "user": user,
-                                                        "currentUser":user.id === CurrentUser.id
+                                          setSource("ForeignMessageDelegate.qml",
+                                                    {
+                                                        "user": user
                                                     })
                                       } else
                                           console.error(
                                                       "Cannot hanlde received UserInfo")
                                   })
-            }
-            Connections {
-                target: item
-                function onProfileClicked() {
-                    root.userProfileClicked(userID)
-                }
             }
         }
         footer: Item {
@@ -112,9 +133,11 @@ Item {
     }
     ScrollBar {
         id: bar
+        stepSize:100
         anchors.right: parent.right
         height: parent.height
         width: 5
         active: true
     }
+
 }
