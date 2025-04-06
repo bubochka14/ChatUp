@@ -35,8 +35,7 @@ ListView {
                               })
         }
         Component.onCompleted: {
-            Future.onFinished(UserController.get(lastMessageSender),
-                              user => {
+            Future.onFinished(UserController.get(lastMessageSender), user => {
                                   senderLbl.text = user.name + ": "
                               })
         }

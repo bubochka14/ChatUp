@@ -3,7 +3,6 @@
 #include <QGuiApplication>
 #include <qtranslator.h>
 #include "applicationsettings.h"
-#include "wsnetworkfactory.h"
 #include "qmlwindowfactory.h"
 #include "qffuture.h"
 #include <QWKQuick/qwkquickglobal.h>

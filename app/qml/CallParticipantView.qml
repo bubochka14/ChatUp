@@ -19,8 +19,6 @@ Rectangle {
         anchors.centerIn: parent
         property var selectedDistribution: caclWidth(root.width, root.height,
                                                      model.rowCount)
-        onSelectedDistributionChanged: console.log(selectedDistribution.rows,
-                                                   selectedDistribution.columns)
         cellWidth: Math.max(
                        Math.min(
                            root.width / view.selectedDistribution.rows,
@@ -61,9 +59,6 @@ Rectangle {
                 height: width / root.aspectRatio - 8
 
                 anchors.centerIn: parent
-
-                // height: parent.height - view.spacing
-                // width: parent.width - view.spacing
                 color: "#19182a"
                 property UserHandle user: UserController.empty
                 states: [
@@ -179,7 +174,7 @@ Rectangle {
                     acceptedButtons: Qt.LeftButton | Qt.RightButton
                     onClicked: mouse => {
                                    if (mouse.button === Qt.RightButton)
-                                    partMenu.popup()
+                                   partMenu.popup()
                                }
                     cursorShape: Qt.PointingHandCursor
                 }
@@ -246,35 +241,14 @@ Rectangle {
                     }
                 }
             }
-            let newWidth = Math.max(Math.min(
-                                        boxWidth / m[0],
-                                        boxHeight / m[1] * root.aspectRatio),
-                                    minimumCellWidth)
-
-            // let newHeight = Math.max(Math.min(
-            //                              boxWidth / m[0]/ root.aspectRatio,
-            //                              boxHeight / m[1]),
-            //                          minimumCellHeight)
-            // view.width = Math.min(newWidth * m[0], boxWidth)
-            // view.height = Math.min(newWidth * m[1], boxHeight)
-            // console.log(view.width ,view.height)
             return {
                 "rows": m[0],
                 "columns": m[1]
             }
         }
-
-        // onModelChanged: resetSize()
-        // function resetSize()
-        // {
-        //     view.width = Math.min(parent.width/baseWidth, root.model.rowCount()) * idealWidth
-        //     view.height = Math.min(parent.height/baseHeight, root.model.rowCount()) * idealHeight
-
-        // }
     }
     //for view
     function syncOutput() {
-        console.log("SYNC")
         for (var i = 0; i < view.count; i++) {
             console.log(view.itemAtIndex(i))
             view.itemAtIndex(i).syncOutput()

@@ -183,11 +183,12 @@ void User::from_json(const json& j, User::Data& p)
 			j.at("tag").get_to(temp);
 			p.tag = QString::fromStdString(temp);
 		}
-		if (j.contains("tag"))
+		if (j.contains("status"))
 		{
 			j.at("status").get_to(temp);
 			p.status = temp == "online" ? Online : Offline;
 		}
+
 	}
 	catch (std::exception ex)
 	{

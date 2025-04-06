@@ -16,7 +16,6 @@ set(LIB_SOURCES
 	"userhandle.h"
 	"userhandle.cpp"
 	"core.h"
-	"standarderror.h"
 	"data.cpp"
 	"taskqueue.h"
 	"taskqueue.cpp"

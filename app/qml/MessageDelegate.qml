@@ -18,21 +18,10 @@ RowLayout {
             background: Rectangle {
                 radius: 16
                 color:"#6482f0"
-                // gradient: Gradient {
-                //     GradientStop {
-                //         position: 0
-                //         color: "#6482f0"
-                //     }
-                //     GradientStop {
-                //         position: 1
-                //         color: "#3193ec"
-                //     }
-                // }
             }
             width: Math.max(messageBody.contentWidth + 24,
                             messageTime.contentWidth)
             height: messageBody.height + 16
-
             TextEdit {
                 id: messageBody
                 text: body

@@ -11,8 +11,6 @@ set(LIB_SOURCES
 	"media.h"
 	"media.cpp"
 	"microphoneinput.h"
-	"streamsource.h"
-	"streamsource.cpp"
 	"audiooutput.h"
 	"audiooutput.cpp"
 	"microphoneinput.cpp"
