@@ -6,7 +6,7 @@
 #include <qloggingcategory.h>
 #include "network_include.h"
 #include "network.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "api/sdp.h"
 #include "encoder.h"
 #include "media.h"

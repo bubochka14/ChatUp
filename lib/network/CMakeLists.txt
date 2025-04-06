@@ -1,4 +1,5 @@
 find_package(Qt6 REQUIRED COMPONENTS Core WebSockets Network Concurrent Multimedia)
+find_package(OpenSSL REQUIRED)
 set(LIB_NAME Network)
 set(LIB_SOURCES
     "callernetworkmanager.h"
@@ -9,18 +10,18 @@ set(LIB_SOURCES
     "callerauthentificationmaster.h"
     "rpc.cpp"
     "rpc.h"
-    "networkmanager.h"
-    "networkmanager.cpp"
+    "networkcoordinator.h"
+    "networkcoordinator.cpp"
     "wsnetworkfactory.cpp"
     "wsnetworkfactory.h"
     "connectionhandler.h"
     "networkfactory.h"
     "network_include.h"
     "networkinterface.h"
-    "serverhandler.h"
+    "serverrpcwrapper.h"
     "rtcservice.h"
     "rtcservice.cpp"
-    "serverhandler.cpp"
+    "serverrpcwrapper.cpp"
     "api/authentication.h"
     "api/authentication.cpp"
     "api/sdp.cpp"
@@ -78,5 +79,7 @@ target_link_libraries(${LIB_NAME}  PRIVATE
 	Qt6::Concurrent
 	Qt6::Multimedia
     LibDataChannel::LibDataChannel
+    OpenSSL::SSL
+    OpenSSL::Crypto
 
 )

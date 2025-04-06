@@ -17,10 +17,10 @@ public:
 	std::string message;
 	NetworkError error;
 };
-class CC_NETWORK_EXPORT ServerHandler
+class CC_NETWORK_EXPORT ServerRPCWrapper
 {
 public:
-	explicit ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket>);
+	explicit ServerRPCWrapper(std::string url, std::shared_ptr<rtc::WebSocket>);
 	bool isConnected() const;
 	QFuture<void> connect();
 	void disconnect();

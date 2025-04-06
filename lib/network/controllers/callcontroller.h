@@ -6,7 +6,7 @@
 #include "participatemodel.h"
 #include "abstractcontroller.h"
 #include "api/call.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "rtcservice.h"
 #include "rtppacketizer.h"
 #include "encoder.h"

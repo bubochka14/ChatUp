@@ -1,5 +1,5 @@
 #pragma once
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "data.h"
 #include "core.h"
 #include <QFuture>

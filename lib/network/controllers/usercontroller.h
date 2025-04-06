@@ -6,7 +6,7 @@
 #include "usermodel.h"
 #include "api/user.h"
 #include "api/group.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "abstractcontroller.h"
 #include "userhandle.h"
 #include "unordered_map"

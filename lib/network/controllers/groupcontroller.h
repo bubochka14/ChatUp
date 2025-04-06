@@ -6,7 +6,7 @@
 #include "groupmodel.h"
 #include "api/group.h"
 #include "api/message.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include <qtimer>
 #include <queue>
 #include "abstractcontroller.h"

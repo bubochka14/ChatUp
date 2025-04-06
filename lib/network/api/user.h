@@ -2,7 +2,7 @@
 #include "data.h";
 #include <QString>
 #include <QFuture>
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include <QLoggingCategory>
 Q_DECLARE_LOGGING_CATEGORY(LC_USER_API);
 namespace User::Api
@@ -11,7 +11,7 @@ namespace User::Api
 	{
 		Get() = default;
 		std::optional<int> id;
-		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> handler);
+		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> coordinator);
 	private:
 		static constexpr char methodName[] = "getUser";
 	};
@@ -25,7 +25,7 @@ namespace User::Api
 		std::optional<std::string> tag;
 		std::optional<std::string> id;
 		void extractFromQHash(const QVariantHash& h);
-		QFuture<std::vector<Data>> exec(std::shared_ptr<NetworkCoordinator> handler);
+		QFuture<std::vector<Data>> exec(std::shared_ptr<NetworkCoordinator> coordinator);
 	private:
 		static constexpr char methodName[] = "findUsers";
 	};

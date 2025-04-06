@@ -1,6 +1,6 @@
 #pragma once
 #include "network_include.h"
-#include "serverhandler.h"
+#include "serverrpcwrapper.h"
 #include "userhandle.h"
 #include <deque>
 #include "data.h"
@@ -66,7 +66,7 @@ private:
 	std::atomic<int> _active;
 	std::condition_variable _condvar;
 	mutable std::mutex _mutex ;
-	std::shared_ptr<ServerHandler> _handler;
+	std::shared_ptr<ServerRPCWrapper> _rpc;
 	std::optional<std::function<void()>> _disconnectedCb;
 	int _reconnectionCount;
 	int _user;

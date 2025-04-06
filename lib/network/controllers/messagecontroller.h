@@ -5,7 +5,7 @@
 #include <qfuture.h>
 #include "api/message.h"
 #include "messagemodel.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "abstractcontroller.h"
 #include <QStringBuilder>
 
