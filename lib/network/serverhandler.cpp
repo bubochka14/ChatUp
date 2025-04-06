@@ -8,7 +8,7 @@ bool ServerHandler::isConnected() const
 QFuture<void> ServerHandler::connect()
 {
 	{
-		std::lock_guard g(_connectionMutex);
+		std::lock_guard g(_mutex);
 		if (!_connectionPromise)
 		{
 			_connectionPromise = std::make_shared<QPromise<void>>();
@@ -26,6 +26,11 @@ QFuture<void> ServerHandler::connect()
 	}
 	return _connectionPromise->future();
 
+}
+void ServerHandler::disconnect()
+{
+	std::lock_guard g(_mutex);
+	_transport->close();
 }
 void ServerHandler::handleConnectionError(std::string desc)
 {
@@ -90,34 +95,37 @@ ServerHandler::ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket> tr
 {
 	_transport->onError([this](std::string err) {
 		_taskQueue.enqueue([this, err = std::move(err)]() {
+			std::lock_guard g(_mutex);
 			handleConnectionError(std::move(err));
 			});
 		});
 	_transport->onClosed([this]() {
-		if (!_isConnected)
-			return;
-		_isConnected = false;
-		if (_closedCb.has_value())
-			_closedCb.value()();
+		_taskQueue.enqueue([this]() {
+			std::lock_guard g(_mutex);
+			if (!_isConnected)
+				return;
+			_isConnected = false;
+			if (_closedCb.has_value())
+				_closedCb.value()();
+			});
 		});
 	_transport->onMessage([this](auto msg) {
 		if (!std::holds_alternative<std::string>(msg))
 			return;
+		std::lock_guard g(_mutex);
 		handleTextMessage((std::get<std::string>(msg)));
 		});
 	_transport->onOpen([this]() {
-		_taskQueue.enqueue([this]() {
-			qCDebug(LC_SERVER_HANDLER) << "server open";
-			std::lock_guard g(_connectionMutex);
-			if (_connectionPromise)
-			{
-				_isConnected = true;
-				_connectionPromise->finish();
-				_connectionPromise = nullptr;
-			}
-			else
-				qCCritical(LC_SERVER_HANDLER) << "Error: server open, but no connection request";
-			});
+		qCDebug(LC_SERVER_HANDLER) << "server open";
+		std::lock_guard g(_mutex);
+		if (_connectionPromise)
+		{
+			_isConnected = true;
+			_connectionPromise->finish();
+			_connectionPromise = nullptr;
+		}
+		else
+			qCCritical(LC_SERVER_HANDLER) << "Error: server open, but no connection request";
 		});
 }
 void ServerHandler::handleError(std::string desc, std::shared_ptr<JsonPromise> prom)
@@ -137,7 +145,7 @@ void ServerHandler::serverMethod(std::string method, json args, std::shared_ptr<
 		std::move(method), std::move(args)
 	);
 	int messageID = outMsg.id;
-	_requests.emplace(messageID, std::move(output));
+	_requests.emplace(messageID, output);
 	try {
 		_transport->send(json(std::move(outMsg)).dump());
 	}
@@ -148,6 +156,7 @@ void ServerHandler::serverMethod(std::string method, json args, std::shared_ptr<
 }
 void ServerHandler::addClientHandler(Callback&& h, std::string method)
 {
+	std::lock_guard g(_mutex);
 	_clientHandlers[method].emplace_back(std::move(h));
 
 }

@@ -1,6 +1,13 @@
 #include "networkmanager.h"
 using namespace std::chrono_literals;
-
+void NetworkCoordinator::disconnect()
+{
+	_handler->disconnect();
+	{
+		std::lock_guard g(_mutex);
+		_user = User::invalidID;
+	}
+}
 void Api::Login::fromCredentials(Credentials other)
 {
 	login = std::move(other.login);
@@ -17,6 +24,7 @@ QFuture<User::Data> Api::Login::exec(std::shared_ptr<NetworkCoordinator> h)
 }
 int NetworkCoordinator::currentUser() const
 {
+	std::lock_guard g(_mutex);
 	return _user;
 }
 NetworkCoordinator::NetworkCoordinator(std::string host, int port)
@@ -27,6 +35,7 @@ NetworkCoordinator::NetworkCoordinator(std::string host, int port)
 	,_reconnectionCount(5)
 {
 	_handler->onClosed([this]() {
+		std::lock_guard g(_mutex);
 		if (_disconnectedCb.has_value())
 			_disconnectedCb.value()();
 		});
@@ -39,16 +48,19 @@ QFuture<void> NetworkCoordinator::initialize()
 	Api::Login req;
 	req.fromCredentials(_credentials);
 	return req.exec(shared_from_this()).then([this](User::Data&& res){
-			_user = res.id;
-			_condvar.notify_one();
-		});							
+		std::lock_guard g(_mutex);
+		_user = res.id;
+		_condvar.notify_one();
+	});							
 }
 void NetworkCoordinator::onDisconnected(std::function<void()> cb)
 {
+	std::lock_guard g(_mutex);
 	_disconnectedCb = std::move(cb);
 }
 void NetworkCoordinator::setCredentials(Credentials other)
 {
+	std::lock_guard g(_mutex);
 	_credentials =  std::move(other);
 }
 QFuture<json> NetworkCoordinator::serverMethod(std::string method,
@@ -83,19 +95,20 @@ QFuture<json> NetworkCoordinator::serverMethod(std::string method,
 	}
 	}
 	_condvar.notify_one();
+	
 	return future;
 }
 NetworkCoordinator::~NetworkCoordinator()
 {
-	
+	disconnect();
+	_active = false;
+	_condvar.notify_all();
 	if (_networkThread.joinable())
-	{
-		_active = false;
 		_networkThread.join();
-	}
 }
 void NetworkCoordinator::setReconnectionCount(int other)
 {
+	std::lock_guard g(_mutex);
 	_reconnectionCount = other;
 }
 void NetworkCoordinator::addClientHandler(std::string method, Callback&& h)
@@ -152,4 +165,8 @@ void NetworkCoordinator::threadFunc()
 		}
 		_handler->serverMethod(info.method, std::move(info.args), std::move(info.prom));
 	}
+}
+bool NetworkCoordinator::isActive()
+{
+	return _active;
 }
