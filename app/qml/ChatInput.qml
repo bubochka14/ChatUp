@@ -20,18 +20,6 @@ ColoredFrame {
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.topMargin: 5
-        Image {
-            id: addFileBtn
-            source: Qt.resolvedUrl("pics/paper")
-            Layout.alignment: Qt.AlignBottom
-            Layout.bottomMargin: 5
-            sourceSize.width: 25
-            sourceSize.height: 25
-            MouseArea {
-                anchors.fill: parent
-                cursorShape: Qt.PointingHandCursor
-            }
-        }
         Rectangle {
             id: cloud
             color: "#19182a"
@@ -68,21 +56,21 @@ ColoredFrame {
                 spacing: 5
                 anchors.rightMargin: 5
                 anchors.right: parent.right
-                Image {
-                    id: emojiBtn
-                    source: Qt.resolvedUrl("pics/emoji")
-                    sourceSize.width: 25
-                    sourceSize.height: 30
+                // Image {
+                //     id: emojiBtn
+                //     source: Qt.resolvedUrl("pics/emoji")
+                //     sourceSize.width: 25
+                //     sourceSize.height: 30
 
-                    MouseArea {
-                        anchors.fill: parent
-                        onClicked: emojiList.popup()
-                        cursorShape: Qt.PointingHandCursor
-                    }
-                    EmojiList {
-                        id: emojiList
-                    }
-                }
+                //     MouseArea {
+                //         anchors.fill: parent
+                //         onClicked: emojiList.popup()
+                //         cursorShape: Qt.PointingHandCursor
+                //     }
+                //     EmojiList {
+                //         id: emojiList
+                //     }
+                // }
                 Label {
                     id: clearBtn
                     enabled: inputBox.text == "" ? 0 : 1
@@ -114,7 +102,7 @@ ColoredFrame {
                     }
                     GradientStop {
                         position: 1
-                        color: "#3193ec"
+                        color: "#6482f0"
                     }
                 }
                 opacity: enabled ? 1 : 0.3

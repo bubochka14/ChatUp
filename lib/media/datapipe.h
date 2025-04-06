@@ -6,7 +6,7 @@
 #include <shared_mutex>
 #include <semaphore>
 #include <thread>
-
+#include <queue>
 #include <condition_variable>
 #include "media_include.h"
 namespace Media 
@@ -64,25 +64,35 @@ namespace Media
 			std::lock_guard guard(reader_mutex);
 			return subpipes[index].ptr;
 		}
+		void lock()
+		{
+			reader_mutex.unlock();
+		}
+		void unlock()
+		{
+			reader_mutex.lock();
+		}
 		PipeData holdForWriting(){
 			sem.acquire();
 			std::lock_guard guard(reader_mutex);
 			return getFree();
 
 		}
-		std::optional<PipeData> tryHoldForWriting()
+		std::optional<PipeData> tryHoldForWriting(std::chrono::duration<float> duration
+			= std::chrono::milliseconds(500))
 		{
-			if(sem.try_acquire())
+			if(sem.try_acquire_for(duration))
 			{
 				std::lock_guard guard(reader_mutex);
 				return getFree();
 			}
 			return std::nullopt;
 		}
-		int onDataChanged(const DataCallback& c)
+		int onDataChanged(DataCallback c)
 		{
 			std::lock_guard guard (reader_mutex);
-			listeners[++listenerFreeIndex] = c;
+			addListenerQueue.emplace(std::move(c), ++listenerFreeIndex);
+			//listeners[++listenerFreeIndex] = c;
 			return listenerFreeIndex;
 		}
 		int listenerCount()
@@ -93,20 +103,34 @@ namespace Media
 		void removeListener(int index)
 		{
 			std::lock_guard guard(reader_mutex);
-			listeners.erase(index);
+			removeListenerQueue.emplace(index);
+			//listeners.erase(index);
 
 		}
 		void unmapWriting(size_t index, bool notifyReaders)
 		{
-			std::lock_guard guard(reader_mutex);
-
-			if (!notifyReaders || !listeners.size())
 			{
-				subpipes[index].isFree = true;
-				sem.release();
-				return;
+				std::lock_guard guard(reader_mutex);
+				while (addListenerQueue.size())
+				{
+					std::pair<DataCallback, int> top = addListenerQueue.front();
+					addListenerQueue.pop();
+					listeners.emplace(top.second, std::move(top.first));
+				}
+				while (removeListenerQueue.size())
+				{
+					int top = removeListenerQueue.front();
+					removeListenerQueue.pop();
+					listeners.erase(top);
+				}
+				if (!notifyReaders || !listeners.size())
+				{
+					subpipes[index].isFree = true;
+					sem.release();
+					return;
+				}
+				subpipes[index].readings = listeners.size();
 			}
-			subpipes[index].readings = listeners.size();
 			for (auto& l : listeners)
 			{
 				l.second(subpipes[index].ptr, index);
@@ -125,7 +149,10 @@ namespace Media
 
 			}
 		}
-
+		static constexpr size_t getSize()
+		{
+			return size;
+		}
 	private:
 		PipeData getFree()
 		{
@@ -153,6 +180,8 @@ namespace Media
 		std::recursive_mutex reader_mutex;
 		std::counting_semaphore<size> sem;
 		std::array<SubPipe, size> subpipes;
+		std::queue<int> removeListenerQueue;
+		std::queue<std::pair<DataCallback, int>> addListenerQueue;
 		inline static int listenerFreeIndex = 0;
 	};
 

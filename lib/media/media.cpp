@@ -42,12 +42,12 @@ QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode map
 }
 bool Media::fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size)
 {
-    if (!pack->buf || pack->buf->size < size)
-    {
-        av_grow_packet(pack.get(), size);
-    }
-    memcpy(pack->buf->data, data, size);
-    if (av_packet_from_data(pack.get(), pack->buf->data, size) < 0)
+    //if (!pack->buf || pack->buf->size < size)
+    //{
+    //    av_grow_packet(pack.get(), size);
+    //}
+    //memcpy(pack->buf->data, data, size);
+    if (av_packet_from_data(pack.get(), data, size) < 0)
     {
         qWarning() << "Cannot fill packet";
         return false;
@@ -117,6 +117,18 @@ QVideoFrameFormat::PixelFormat Media::Video::toQtPixel(AVPixelFormat avPixelForm
     if (descriptor->comp[0].depth > 8)
         return QVideoFrameFormat::Format_P016;
     return QVideoFrameFormat::Format_YUV420P;
+}
+std::shared_ptr<PacketPipe> Media::createNullBufferPacketPipe()
+{
+    return std::make_shared<PacketPipe>([]() {
+        return av_packet_alloc();
+        },
+        [](AVPacket* p)
+        {
+            p->buf = nullptr;
+            av_packet_free(&p);
+        }
+    );
 }
 Video::SinkConnector::~SinkConnector()
 {

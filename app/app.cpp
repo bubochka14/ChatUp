@@ -85,9 +85,12 @@ int App::run()
 	QObject::connect(startup, &StartupWindow::registerPassed, this, &App::handleRegistration);
 	QObject::connect(startup, &StartupWindow::loginPassed, this, &App::handleLogin);
 	_network->onDisconnected([this]() {
-		_emp->emplaceTask([this]() {
-			logout("Server disconnected");
-			});
+		if(chat)
+		{
+			_emp->emplaceTask([this]() {
+				logout("Server disconnected");
+				});
+		}
 		});
 	startup->show();
 	return 1;
@@ -137,9 +140,15 @@ void App::setAppLanguage(const QString& lan)
 }
 void App::logout(const QString& reason)
 {
-	chat->hide();
-	chat->deleteLater();
-	chat = nullptr;
+	if(chat)
+	{
+		chat->hide();
+		chat->deleteLater();
+		chat = nullptr;
+	}
+	_network->disconnect();
+	_controllerManager->resetAll();
+
 /*	roomController->logout();
 	messageController->logout();
 	userController->logout()*/;

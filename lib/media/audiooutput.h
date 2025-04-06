@@ -39,7 +39,7 @@ namespace Media::Audio {
 		uint64_t samples = 0;
 		std::deque<std::pair<std::shared_ptr<AVFrame>, size_t>> frameDeque;
 	};
-	class CC_MEDIA_EXPORT Output : public QAudioOutput
+	class CC_MEDIA_EXPORT Output: public QObject
 	{
 		Q_OBJECT;
 		Q_PROPERTY(QStringList availableDevices READ availableDevices NOTIFY availableDevicesChanged);
@@ -49,9 +49,10 @@ namespace Media::Audio {
 		Q_INVOKABLE bool start(const QString& dev, std::shared_ptr<Media::FramePipe>pipe);
 		Q_INVOKABLE void close();
 		bool isStarted();
-
+		Q_INVOKABLE void setVolume(qreal other);
 		QStringList availableDevices();
 		QAudioSink* sink();
+		~Output();
 	signals:
 		void availableDevicesChanged();
 		void sinkChanged();

@@ -5,14 +5,15 @@
 #include <qfuture.h>
 #include "groupmodel.h"
 #include "api/group.h"
-#include "networkmanager.h"
+#include "api/message.h"
+#include "networkcoordinator.h"
+#include <qtimer>
+#include <queue>
 #include "abstractcontroller.h"
 namespace Group {
 	class CC_NETWORK_EXPORT  Controller: public AbstractController
 	{
 		Q_OBJECT;
-		//QML_ELEMENT;
-		//QML_UNCREATABLE("Abstract class");
 		Q_PROPERTY(Model* model READ model NOTIFY modelChanged);
 	public:
 		explicit Controller(QObject* parent = nullptr);
@@ -21,7 +22,13 @@ namespace Group {
 		Q_INVOKABLE virtual QFuture<void> remove(int id) = 0;
 		Q_INVOKABLE virtual QFuture<void> update(const QVariantHash& data) = 0;
 		Q_INVOKABLE virtual QFuture<void> load() = 0;
+		Q_INVOKABLE virtual QFuture<void> setLocalReadings(int roomID, size_t count) =0;
+		Q_INVOKABLE virtual void setLastSender(int roomID, int id) =0;
+		Q_INVOKABLE virtual void setLastMessageBody(int roomID, const QString& body) =0;
+		Q_INVOKABLE virtual void setLastMessageTime(int roomID, const QDateTime& time) =0;
+		Q_INVOKABLE virtual bool incrementMessageCount(int roomID,size_t count) =0;
 		Model* model() const;
+		void reset() override;
 	signals:
 		void modelChanged();
 	protected:
@@ -42,9 +49,15 @@ namespace Group {
 		QFuture<void> update(const QVariantHash& data) override;
 		QFuture<void> load() override;
 		QFuture<void> initialize() override;
-
+		QFuture<void> setLocalReadings(int roomID, size_t count) override;
+		bool incrementMessageCount(int roomID, size_t count) override;
+		void setLastSender(int roomID, int id) override;
+		void setLastMessageBody(int roomID,const QString& body) override;
+		void setLastMessageTime(int roomID, const QDateTime& time) override;
 	private:
 		std::shared_ptr<NetworkCoordinator> _manager;
-
+		std::queue<int> _readingsUpdateQueue;
+		QTimer* _updateReadingsTimer;
+		std::mutex mutex;
 	};
 }

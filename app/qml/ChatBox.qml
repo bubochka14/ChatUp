@@ -10,18 +10,13 @@ import ObjectConverter
 ColoredFrame {
     id: root
     //for messages
-    required property ControllerManager manager
-    property var roomID
-    property int messageUploadCount: 50
-    property var roomsCache: ({})
+    property var room
     property string initalMessage: "Select room to start Messaging"
-    property var roomIndex
     property var roomViewComponent
     states: [
         State {
             name: "RoomNotSelected"
             PropertyChanges {
-                roomContainer.currentIndex: 0
                 input.visible: false
             }
         },
@@ -30,7 +25,6 @@ ColoredFrame {
             PropertyChanges {
                 input.visible: true
                 input.sendingEnabled: false
-                roomContainer.currentIndex: 1
             }
         },
         State {
@@ -38,11 +32,6 @@ ColoredFrame {
             PropertyChanges {
                 input.visible: true
                 input.sendingEnabled: true
-                roomContainer.currentIndex: roomIndex
-            }
-            StateChangeScript {
-                name: "myScript"
-                script: readAll()
             }
         }
     ]
@@ -54,71 +43,18 @@ ColoredFrame {
                           roomViewComponent.errorString())
         }
     }
-
-    onRoomIDChanged: {
-        if (roomsCache[roomID] === undefined) {
+    onRoomChanged: {
+        roomContainer.children[roomContainer.currentIndex].enabled = false
+        if (roomContainer.getIndex(room.id) === undefined) {
             state = "Loading"
-            var history = MessageController.model(roomID)
-            var msgCount = GroupController.model.data(
-                        GroupController.model.idToIndex(roomID),
-                        GroupModel.MessageCountRole)
-            console.log("co", msgCount)
-            Future.onFinished(MessageController.load(roomID, 0,
-                                                     Math.max(0,
-                                                              msgCount - messageUploadCount),
-                                                     msgCount), function () {
-                                                         var component = Qt.createComponent(
-                                                                     "RoomView.qml")
-                                                         var obj = roomViewComponent.createObject(
-                                                                     roomContainer,
-                                                                     {
-                                                                         "manager": manager,
-                                                                         "messageModel": history,
-                                                                         "roomID": root.roomID,
-                                                                         "chatBox": root,
-                                                                         "topLoaded": Math.max(0, msgCount - messageUploadCount)
-                                                                     })
-                                                         obj.showProfile.connect(
-                                                                     showUserProfile)
-                                                         obj.loadingMessagesNeeded.connect(
-                                                                     loadMessages)
-
-                                                         roomsCache[roomID] = {
-                                                             "model": history,
-                                                             "item": obj
-                                                         }
-                                                         root.roomIndex
-                                                                 = roomContainer.children.length - 1
-                                                         root.state = "Chat"
+            var obj = roomViewComponent.createObject(roomContainer, {
+                                                         "room": root.room
                                                      })
+            roomContainer.currentIndex = roomContainer.children.length - 1
         } else {
-            root.roomIndex = roomContainer.getIndex(roomID)
-            root.state = "Chat"
+            roomContainer.currentIndex = roomContainer.getIndex(room.id)
         }
-    }
-    function readAll() {
-        var model = roomsCache[roomID].model
-        manager.messageController.markAsRead(root.roomID, model.data(
-                                                 model.index(0, 0),
-                                                 MessageModel.MessageIndexRole))
-    }
-
-    function showUserProfile(id) {
-        Future.onFinished(manager.userController.get(id), function (user) {
-            foreignProfileViewer.showProfle(user)
-        })
-    }
-    function loadMessages() {
-        var roomView = roomsCache[roomID].item
-        console.log("loding", Math.max(0, roomView.topLoaded - messageUploadCount),
-                    roomView.topLoaded, roomsCache[roomID].model.rowCount)
-        Future.onFinished(MessageController.load(
-                              roomID, roomsCache[roomID].model.rowCount,
-                              Math.max(0, roomView.topLoaded - messageUploadCount),
-                              roomView.topLoaded), function () {
-                                  roomView.topLoaded = Math.max(
-                                              0, roomView.topLoaded - messageUploadCount)
-                              })
+        root.state = "Chat"
     }
     padding: 0
     bottomPadding: 0
@@ -151,21 +87,35 @@ ColoredFrame {
             }
             function getIndex(id) {
                 for (var i = 2; i < roomContainer.children.length; i++) {
-                    if (roomContainer.children[i].roomID == id)
+                    if (roomContainer.children[i].room.id == id)
                         return i
                 }
                 return undefined
             }
+            onCurrentIndexChanged: children[currentIndex].enabled = true
         }
         ChatInput {
             id: input
             Layout.fillWidth: true
             focus: true
-            visible: root.roomID != -1
+            //visible: root.room.id != -1
             onMessageEntered: textMessage => {
-                                  if (textMessage && root.roomID != -1) {
-                                      manager.messageController.create(
-                                          textMessage, root.roomID)
+                                  if (textMessage && root.room.id != -1) {
+                                      GroupController.setLocalReadings(
+                                          root.room.id, room.messageCount + 1)
+                                      GroupController.incrementMessageCount(
+                                          root.room.id, 1)
+                                      Future.onFinished(
+                                          MessageController.create(
+                                              textMessage, root.room.id),
+                                          function (id) {
+                                            let model = MessageController.model(root.room.id)
+                                            let index = model.idToModelIndex(id)
+                                            GroupController.setLastMessageBody(root.room.id,model.data(index,MessageModel.BodyRole))
+                                            GroupController.setLastMessageTime(root.room.id,model.data(index,MessageModel.TimeRole))
+                                            GroupController.setLastSender(root.room.id,CurrentUser.id)
+
+                                          })
                                       input.clear()
                                   }
                               }

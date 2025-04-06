@@ -17,12 +17,13 @@ public:
 	std::string message;
 	NetworkError error;
 };
-class CC_NETWORK_EXPORT ServerHandler
+class CC_NETWORK_EXPORT ServerRPCWrapper
 {
 public:
-	explicit ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket>);
+	explicit ServerRPCWrapper(std::string url, std::shared_ptr<rtc::WebSocket>);
 	bool isConnected() const;
 	QFuture<void> connect();
+	void disconnect();
 	void onClosed(std::function<void()> cb);
 	void serverMethod(std::string, json args, std::shared_ptr<JsonPromise> output);
 	using Callback = std::function<void(json&&)>;
@@ -40,7 +41,7 @@ private:
 	std::unordered_map<std::string, std::vector<Callback >> _clientHandlers;
 	std::shared_ptr<rtc::WebSocket> _transport;
 	std::string _url;
-	std::mutex _connectionMutex;
+	std::mutex _mutex;
 	std::shared_ptr<QPromise<void>> _connectionPromise;
 	std::optional<std::function<void()>> _closedCb;
 	TaskQueue _taskQueue;

@@ -37,55 +37,63 @@ bool AbstractDecoder::start(std::shared_ptr<PacketPipe> input)
 	_pool.setMaxThreadCount(1);
 	
 	inputListenIndex = input->onDataChanged([this](std::shared_ptr<AVPacket> pack, size_t index) {
+		if (pack->pts - timestamp < 0)
+			qDebug() << avcodec_get_name(_codec->id) << "NEGATIVE TIMESTAMP:" << pack->pts - timestamp << "PTS" << pack->pts << "DTS" << pack->dts;
+		timestamp = pack->pts;
 		QtConcurrent::run(& _pool,[pack,index,this](){
 		std::lock_guard g(_decodeMutex);
-		if(pack->pts - delta < 0)
-		qDebug() <<avcodec_get_name(_codec->id) << "NEGATIVE DELTA:" << pack->pts - delta << "PTS" << pack->pts << "DTS" << pack->dts;
-		delta = pack->pts;
-		//quene.enqueue([this,pack,index]() {
+			if(pack->pts - delta < 0)
+			qDebug() <<avcodec_get_name(_codec->id) << "NEGATIVE DELTA:" << pack->pts - delta << "PTS" << pack->pts << "DTS" << pack->dts;
+			delta = pack->pts;
 			if (!pack)
 			{
 				_input->unmapReading(index);
 				return;
 			}
 			int resp = avcodec_send_packet(_ctx.get(), pack.get());
-			_input->unmapReading(index);
 			if (resp < 0)
+			{
 				qCDebug(LC_DECODER) << avcodec_get_name(_codec->id) << "cannot send packet" << av_err2str(resp);
+				_input->unmapReading(index);
+			}
 			while (resp >= 0)
 			{
-				auto outFrame = _out->holdForWriting();
-	/*			if (!outFrame)
+				auto outFrame = _out->tryHoldForWriting();
+				if(!outFrame.has_value())
 				{
-					qCWarning(LC_DECODER) << avcodec_get_name(_codec->id) << "Output pipe overflow";
+					qCWarning(LC_DECODER) << "Output pipe overflow";
 					resp = avcodec_receive_frame(_ctx.get(), _drainFrame.get());
-
 					return;
-				}*/
-			//	qCDebug(LC_DECODER) << "Writing to" << outFrame.subpipe;
-				resp = avcodec_receive_frame(_ctx.get(), outFrame.ptr.get());
+				}
+
+				resp = avcodec_receive_frame(_ctx.get(), outFrame->ptr.get());
 				if (resp < 0)
 				{
-				//	qCDebug(LC_DECODER) << "Finish writing widthout notify" << outFrame.subpipe;
-					_out->unmapWriting(outFrame.subpipe, false);
-					if (resp != AVERROR(EAGAIN) && resp != AVERROR_EOF)
+					_out->unmapWriting(outFrame->subpipe, false);
+					if (resp == AVERROR(EAGAIN) || resp == AVERROR_EOF)
+						_holdingIndex.emplaceBack(index);
+					else
 						qCWarning(LC_DECODER) << "Error while sending a packet to the decoder:" << Media::av_err2string(resp);
 					break;
 				}
 				else
 				{
-				//	qCDebug(LC_DECODER) << "Finish writing width notify" << outFrame.subpipe;
-					_out->unmapWriting(outFrame.subpipe, true);
+					_out->unmapWriting(outFrame->subpipe, true);
+					while (_holdingIndex.size())
+					{
+						_input->unmapReading(_holdingIndex.front());
+						_holdingIndex.pop();
+					}
 				}
 			}
-			});
-			});
+		});
+	});
 	return true;
 
 }
 void AbstractDecoder::stop()
 {
-	
+	std::lock_guard g(_decodeMutex);
 	if (inputListenIndex.has_value()&& _input)
 	{
 		_input->removeListener(inputListenIndex.value());
@@ -167,6 +175,8 @@ Audio::OpusDecoder::OpusDecoder()
 		qCWarning(LC_DECODER) << "Cannot create audio codec context";
 		return;
 	}
+	AVChannelLayout requiredLayout;
+	av_channel_layout_from_string(&cCtx->ch_layout, "mono");
 	int ret = avcodec_open2(cCtx.get(), cdc, nullptr);
 	if (ret < 0)
 	{

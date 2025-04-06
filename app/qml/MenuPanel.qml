@@ -18,7 +18,7 @@ Rectangle {
         }
         GradientStop {
             position: 1
-            color: "#3193ec"
+            color: "#6482f0"
         }
     }
     ColumnLayout {

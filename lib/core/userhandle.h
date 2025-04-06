@@ -14,10 +14,11 @@ namespace User {
 		Q_PROPERTY(QString tag READ tag WRITE setTag NOTIFY tagChanged);
 		Q_PROPERTY(int id READ id WRITE setID NOTIFY idChanged);
 	public:
-		explicit Handle(User::Data&& data, QObject* parent = nullptr);
+		explicit Handle(QObject* parent = nullptr);
 		void release();
 		QString name() const;
 		QString tag() const;
+		Data data();
 		int id() const;
 		User::Status status() const;
 		void setID(int other);
@@ -25,6 +26,7 @@ namespace User {
 		void setName(const QString& other);
 		void setStatus(Status other);
 		void copy(Handle* other);
+		void extractFromData(User::Data other);
 	signals:
 		void statusChanged();
 		void nameChanged();

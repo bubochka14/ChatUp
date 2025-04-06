@@ -1,28 +1,15 @@
 find_package(Qt6 REQUIRED COMPONENTS Core WebSockets Network Concurrent Multimedia)
+find_package(OpenSSL REQUIRED)
 set(LIB_NAME Network)
 set(LIB_SOURCES
-    "callernetworkmanager.h"
-    "callernetworkmanager.cpp"
-    "authenticationmaster.h"
-    "authenticationmaster.cpp"
-    "callerauthentificationmaster.cpp"
-    "callerauthentificationmaster.h"
     "rpc.cpp"
     "rpc.h"
-    "networkmanager.h"
-    "networkmanager.cpp"
-    "wsnetworkfactory.cpp"
-    "wsnetworkfactory.h"
-    "connectionhandler.h"
-    "networkfactory.h"
-    "network_include.h"
-    "networkinterface.h"
-    "serverhandler.h"
+    "networkcoordinator.h"
+    "networkcoordinator.cpp"
+    "serverrpcwrapper.h"
     "rtcservice.h"
     "rtcservice.cpp"
-    "serverhandler.cpp"
-    "api/authentication.h"
-    "api/authentication.cpp"
+    "serverrpcwrapper.cpp"
     "api/sdp.cpp"
     "api/sdp.h"
     "api/group.h"
@@ -33,7 +20,6 @@ set(LIB_SOURCES
     "api/user.cpp"
     "api/call.cpp"
     "api/call.h"
-    "streamsourceprovider.h"
     "controllers/callcontroller.h"
     "controllers/callcontroller.cpp"
     "controllers/controllermanager.h"
@@ -41,8 +27,6 @@ set(LIB_SOURCES
     "controllers/groupcontroller.h"
     "controllers/groupcontroller.cpp"
     "controllers/messagecontroller.h"
-    "controllers/readingscontroller.h"
-    "controllers/readingscontroller.cpp"
     "controllers/messagecontroller.cpp"
     "controllers/usercontroller.h"
     "controllers/usercontroller.cpp"
@@ -59,10 +43,6 @@ add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
 
 target_include_directories(${LIB_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}"
-)
-set_target_properties(app PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED YES
 )
 target_compile_definitions(${LIB_NAME} PRIVATE 	
 	CC_NETWORK_SHARED
@@ -82,5 +62,7 @@ target_link_libraries(${LIB_NAME}  PRIVATE
 	Qt6::Concurrent
 	Qt6::Multimedia
     LibDataChannel::LibDataChannel
+    OpenSSL::SSL
+    OpenSSL::Crypto
 
 )

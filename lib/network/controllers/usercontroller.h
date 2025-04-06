@@ -6,16 +6,16 @@
 #include "usermodel.h"
 #include "api/user.h"
 #include "api/group.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "abstractcontroller.h"
 #include "userhandle.h"
 #include "unordered_map"
+#include "stack"
+#include <algorithm>
 namespace User{
 	class CC_NETWORK_EXPORT  Controller : public AbstractController
 	{
 		Q_OBJECT;
-		QML_ELEMENT;
-		QML_UNCREATABLE("Abstract controller");
 		Q_PROPERTY(Handle* empty READ empty CONSTANT)
 	public:
 		explicit Controller(QObject* parent = nullptr);
@@ -46,18 +46,20 @@ namespace User{
 		QFuture<void> update(const QVariantHash& data) override;
 		QFuture<void> remove() override;
 		QFuture<void> initialize() override;
+		void reset() override;
 	protected:
 		Handle* getEmpty() const override;
-
-
-	protected:
-		void connectToDispatcher();
+		Handle* getFreeHandle();
+		void growHandlePool(size_t size);
 		bool parseSearchString(const QString& pattern, Api::Find& req);
 	private:
+		QtEventLoopEmplacer _emp;
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::unordered_map<int, Model*> _usersInRooms;
 		std::unordered_map<int, Handle*> _userHandlers;
 		QHash<int, QFuture<Handle*>> _pendingRequests;
 		Handle* _empty;
+		std::stack<Handle*> _freeHandlePool;
+		std::mutex _handleMutex;
 	};
 }

@@ -15,11 +15,11 @@ Dialog {
         TextField {
             id: searchField
             Layout.fillWidth: true
-            placeholderText: qsTr("Search")
+            placeholderText: qsTr("Name or @tag")
         }
         UsersView {
             id: view
-            onUserClicked: id => {root.userSelected(id); root.accept()}
+            onUserClicked: handle => {root.userSelected(handle.id); root.accept()}
             Layout.fillHeight: true
             Layout.fillWidth: true
         }

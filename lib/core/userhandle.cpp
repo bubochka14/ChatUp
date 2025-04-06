@@ -1,10 +1,10 @@
 #include "userhandle.h"
 using namespace User;
-Handle::Handle(User::Data&& data, QObject* parent)
+Handle::Handle(QObject* parent)
 	:QObject(parent)
-	, _data(std::move(data))
 {
-
+	_data.name = "";
+	_data.tag = "";
 }
 void Handle::release()
 {
@@ -38,12 +38,20 @@ void Handle::setStatus(Status other)
 	_data.status = other;
 	emit statusChanged();
 }
+Data Handle::data()
+{
+	return _data;
+}
+void Handle::extractFromData(User::Data other)
+{
+	setName(other.name);
+	setTag(other.tag);
+	setID(other.id);
+	setStatus(other.status);
+}
 void Handle::copy(Handle* other)
 {
-	setName(other->name());
-	setTag(other->tag());
-	setID(other->id());
-	setStatus(other->status());
+	extractFromData(other->data());
 }
 QString Handle::name() const
 {

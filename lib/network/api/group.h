@@ -1,8 +1,10 @@
 #pragma once
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "data.h"
 #include "core.h"
 #include <QFuture>
+#include <qloggingcategory.h>
+Q_DECLARE_LOGGING_CATEGORY(LC_GROUP_API);
 namespace Group::Api
 {
 	struct Create 
@@ -19,12 +21,23 @@ namespace Group::Api
 	};
 	struct Update 
 	{
+		struct GroupUpdate
+		{
+			std::optional<std::string> name;
+			std::optional<std::string> tag;
+			std::optional<int> messageCount;
+			std::optional<int> foreignReadings;
+			std::optional<int> localReadings;
+			int id = Group::invalidID;
+			void extractTo(ExtendedData& data);
+		};
+		
 		Update() = default;
 		int roomID = 0;
 		std::optional<std::string> name;
 		std::optional<std::string> tag;
 		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> h);
-		static void handle(std::shared_ptr<NetworkCoordinator> net, std::function<void(Data&&)> h);
+		static void handle(std::shared_ptr<NetworkCoordinator> net, std::function<void(GroupUpdate&&)> h);
 
 	private:
 		static constexpr char methodName[] = "updateRoom";

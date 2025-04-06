@@ -9,7 +9,6 @@
 int main(int argc, char ** argv)
 {
 	using namespace Qt::Literals::StringLiterals;
-
 	QGuiApplication gApp(argc, argv);
     QGuiApplication::setApplicationVersion(APP_VERSION);
     QCommandLineParser parser;
@@ -26,10 +25,6 @@ int main(int argc, char ** argv)
 
     QString host = parser.value(addrOption);
     int port = parser.value(portOption).toInt();
-    QUrl url;
-    url.setPort(port);
-    url.setScheme(u"ws"_s);
-    url.setHost(host);
     App client(host.toStdString(), port);
     if (client.run())
         return gApp.exec();

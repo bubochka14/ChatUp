@@ -108,14 +108,19 @@ void Camera::threadFunc()
 {
     while (active.load(std::memory_order_relaxed))
     {
-        auto packet = out->holdForWriting();
-        av_packet_unref(packet.ptr.get());
-        if (av_read_frame(ictx, packet.ptr.get()) < 0)
+        auto packet = out->tryHoldForWriting();
+        if (!packet.has_value())
         {
-            out-> unmapWriting(packet.subpipe,false);
-            qCWarning(LC_CAMERA) <<  ("cam error");
+            qCWarning(LC_CAMERA) << "Output pipe overflow";
+            return;
         }
-        out->unmapWriting(packet.subpipe,true);
+        av_packet_unref(packet->ptr.get());
+        if (int ret = av_read_frame(ictx, packet->ptr.get()) < 0)
+        {
+            out->unmapWriting(packet->subpipe,false);
+            qCWarning(LC_CAMERA) <<  "Packet read error:"<< Media::av_err2string(ret);
+        }
+        out->unmapWriting(packet->subpipe,true);
 
     }
 }

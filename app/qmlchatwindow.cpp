@@ -11,7 +11,6 @@ QmlChatWindow::QmlChatWindow(QQmlEngine* eng, std::shared_ptr<ControllerManager>
 {
 	_creationChecker.setInterval(1000);
 	_inc.setInitialProperties({
-			{"manager",QVariant::fromValue(_manager.get())},
 			{"visible",false} 
 		});
 	connect(&_creationChecker, &QTimer::timeout, this, &QmlChatWindow::finalizeCreation);
@@ -63,10 +62,10 @@ QFuture<void> QmlChatWindow::initialize()
 	_initPromise->setProgressRange(0, 1);
 	_initPromise->start();
 	//receiving current user
-	_manager->userController()->get().then([this](User::Handle* handle) {
+	_manager->userController()->get().then(this,[this](User::Handle* handle) {
 		//setup wrappers
 		if (!CurrentUserWrapper::singletonInstance)
-			CurrentUserWrapper::singletonInstance			= handle;
+			CurrentUserWrapper::singletonInstance= handle;
 		else
 			CurrentUserWrapper::singletonInstance->copy(handle);
 
@@ -76,20 +75,18 @@ QFuture<void> QmlChatWindow::initialize()
 		MessageControllerWrapper::singletonInstance			= _manager->messageController();
 
 		if(!CameraPipelineWrapper::singletonInstance)
-			CameraPipelineWrapper::singletonInstance		= new Media::Video::TestCameraPipeline();
+			CameraPipelineWrapper::singletonInstance		= new Media::Video::CameraPipeline();
 
 		if(!MicrophonePipelineWrapper::singletonInstance)
 			MicrophonePipelineWrapper::singletonInstance	= new Media::Audio::MicrophonePipeline;
-
-		}).then(this, [this]() {
-			qCDebug(LC_QML_CHAT_WINDOW) << "Current user:" << CurrentUserWrapper::singletonInstance->id() << "received";
+		qCDebug(LC_QML_CHAT_WINDOW) << "Current user:" << CurrentUserWrapper::singletonInstance->id() << "received";
 			//loading component from app module
 			_comp.loadFromModule("app", "ChatWindow", QQmlComponent::Asynchronous);
-			}).onFailed([this]() {
-				qCCritical(LC_QML_CHAT_WINDOW) << "Cannot receive current user info";
-				_initPromise->setException(std::make_exception_ptr(StandardError(0, "Cannot receive current user info")));
-				_initPromise.reset();
-			});
+		}).onFailed([this]() {
+			qCCritical(LC_QML_CHAT_WINDOW) << "Cannot receive current user info";
+			_initPromise->setException(std::make_exception_ptr(StandardError(0, "Cannot receive current user info")));
+			_initPromise.reset();
+		});
 		return _initPromise->future();
 }
 bool QmlChatWindow::hasError() const

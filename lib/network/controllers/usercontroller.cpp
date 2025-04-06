@@ -1,17 +1,28 @@
 #include "usercontroller.h"
 using namespace User;
-CallerController::CallerController(std::shared_ptr<NetworkCoordinator> manager,
-	QObject* parent)
+CallerController::CallerController(std::shared_ptr<NetworkCoordinator> manager,QObject* parent)
 	:Controller(parent)
 	,_manager(manager)
 {
 	User::Data dumbUser;
 	dumbUser.name = "null";
 	dumbUser.tag = "null";
-	_empty = new User::Handle(std::move(dumbUser), this);
+	_empty = new User::Handle(this);
+	_empty->extractFromData(std::move(dumbUser));
+	growHandlePool(256);
+	Api::Update::handle(_manager,[this](Api::Update::UserUpdate upd) {
+		if (!_userHandlers.contains(upd.id))
+			return;
+		if (upd.name.has_value())
+			_userHandlers[upd.id]->setName(QString::fromStdString(std::move(*upd.name)));
+		if (upd.tag.has_value())
+			_userHandlers[upd.id]->setTag(QString::fromStdString(std::move(*upd.name)));
+		if (upd.status.has_value())
+			_userHandlers[upd.id]->setStatus(*upd.status);
+		});
 	Group::Api::AddUser::handle(_manager, [this](Group::Api::AddUser::Desc req) {
 		if (_usersInRooms.contains(req.roomID))
-		{
+		{ 
 			Model* model = _usersInRooms[req.roomID];
 			if (_userHandlers.contains(req.userID))
 				model->insertHandler(_userHandlers[req.userID]);
@@ -29,6 +40,7 @@ Controller::Controller(QObject* parent)
 {
 
 }
+
 Handle* Controller::empty() const
 {
 	return getEmpty();
@@ -42,18 +54,27 @@ bool CallerController::parseSearchString(const QString& pattern, Api::Find& req)
 	if(!pattern.size())
 		return false;
 	if (pattern[0] == "@")
-		req.tag = "^"+pattern.right(1).toStdString();
+		req.tag = "^"+pattern.right(pattern.size()-1).toStdString();
 	else
 		req.name = "^" + pattern.toStdString();
 	return true;
 }
+Handle* CallerController::getFreeHandle()
+{
+	if(!_freeHandlePool.size())
+		growHandlePool(std::max((size_t)64, _userHandlers.size()));
+	auto handle = _freeHandlePool.top();
+	_freeHandlePool.pop();
+	return handle;
+}
 QFuture<Model*> CallerController::getGroupUsers(int groupID)
 {
+	std::lock_guard g(_handleMutex);
 	if (_usersInRooms.contains(groupID))
 		return QtFuture::makeReadyValueFuture(_usersInRooms[groupID]);
 	Group::Api::GetUsers req;
 	req.roomID = groupID;
-	return req.exec(_manager).then(this,[this,groupID](std::vector<Data>&& res) {
+	return req.exec(_manager).then([this,groupID](std::vector<Data>&& res) {
 		auto out = new Model;
 		_usersInRooms[groupID] = out;
 		std::vector<User::Handle*> handleList;
@@ -61,7 +82,8 @@ QFuture<Model*> CallerController::getGroupUsers(int groupID)
 		{
 			if (!_userHandlers.contains(user.id))
 			{
-				auto newHandle = new User::Handle(std::move(user), this);
+				auto newHandle = getFreeHandle();
+				newHandle->extractFromData(std::move(user));
 				_userHandlers.emplace(user.id, newHandle);
 				handleList.push_back(newHandle);
 			}
@@ -88,7 +110,8 @@ QFuture<Model*> CallerController::find(const QString& pattern, int limit)
 				_handles.push_back(_userHandlers[user.id]);
 			else
 			{
-				auto newHandle = new User::Handle(std::move(user), this);
+				auto newHandle = getFreeHandle();
+				newHandle->extractFromData(std::move(user));
 				_userHandlers[newHandle->id()] = newHandle;
 				_handles.push_back(newHandle);
 			}
@@ -99,25 +122,29 @@ QFuture<Model*> CallerController::find(const QString& pattern, int limit)
 }
 QFuture<Handle*> CallerController::get()
 {
-	return Api::Get().exec(_manager).then(this,[this](User::Data&& res) {
-
-		auto handler = new Handle(std::move(res),this);
+	return Api::Get().exec(_manager).then([this](User::Data&& res) {
+		std::lock_guard g(_handleMutex);
+		auto handler = getFreeHandle();
+		handler->extractFromData(std::move(res));
 		return handler;
-		});
+	});
 }
 QFuture<Handle*>CallerController::get(int userID)
 {
+	std::lock_guard g(_handleMutex);
 	if (_userHandlers.contains(userID))
 		return QtFuture::makeReadyValueFuture(_userHandlers[userID]);
 	if (_pendingRequests.contains(userID))
 		return _pendingRequests[userID];
 	Api::Get req;
 	req.id = userID;
-	_pendingRequests[userID] = req.exec(_manager).then(this,[this,userID](User::Data&& res) {
-		auto handler = new Handle(std::move(res),this);
-		_userHandlers.emplace(userID, handler);
-		return handler;
-	//_pendingRequests.remove(userID);
+	_pendingRequests[userID] = req.exec(_manager).then([this,userID](User::Data&& res) {
+		std::lock_guard g(_handleMutex);
+		auto handle = getFreeHandle();
+		handle->extractFromData(std::move(res));
+		_userHandlers.emplace(userID, handle);
+		_pendingRequests.remove(userID);
+		return handle;
 	});
 	return _pendingRequests[userID];
 }
@@ -140,4 +167,21 @@ QFuture<void> CallerController::create(const QString& password, const QString& l
 QFuture<void> CallerController::initialize()
 {
 	return QtFuture::makeReadyVoidFuture();
+}
+void CallerController::reset()
+{
+	_userHandlers.clear();
+	_usersInRooms.clear();
+}
+void CallerController::growHandlePool(size_t size)
+{
+	//run on controller`s thread
+	auto future = QtFuture::makeReadyVoidFuture().then(this,[this, size]() {
+		std::lock_guard g(_handleMutex);
+		for (size_t i = 0; i < size; i++)
+		{
+			_freeHandlePool.emplace(new Handle(this));
+		}
+	});
+	future.waitForFinished();
 }

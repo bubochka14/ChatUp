@@ -8,23 +8,12 @@ import QuickFuture
 
 Rectangle {
     id: root
-    required property ControllerManager manager
     required property var roomID
     property var minimumHeight: 140
-    property CallHandler callHandler
+    property CallHandle callHandle
     property var participantCount: 0
     signal connect
     signal disconnect
-    // Component.onCompleted:
-    // {
-    //     root.participantCount = root.callHandler.participants.rowCount()
-    // }
-    // Connections {
-    //     target: callHandler
-    //     function onProfileClicked() {
-    //         root.userProfileClicked(userID)
-    //     }
-    // }
     states: [
         State {
             name: "disconnected"
@@ -41,7 +30,6 @@ Rectangle {
                 interactionBtn.source: Qt.resolvedUrl("pics/startcall")
                 mediaBtn.visible: false
                 voiceBtn.visible: false
-
             }
         },
         State {
@@ -52,28 +40,28 @@ Rectangle {
                 mediaBtn.visible: true
                 voiceBtn.visible: true
             }
-            StateChangeScript{
-                script:view.syncOutput()
+            StateChangeScript {
+                script: view.syncOutput()
             }
         }
     ]
     color: "black"
     state: {
-        if (root.callHandler.state == CallHandler.InsideTheCall)
+        if (root.callHandle.state == CallHandle.InsideTheCall)
             return "joined"
-        if (root.callHandler.participants.rowCount > 0)
+        if (root.callHandle.participants.rowCount > 0)
             return "notJoined"
         else
             return "disconnected"
     }
     Component.onCompleted: {
-        root.callHandler = manager.callController.handler(root.roomID)
-        view.model = root.callHandler.participants
+        root.callHandle = CallController.handle(root.roomID)
+        view.model = root.callHandle.participants
     }
     CallParticipantView {
         id: view
         anchors.fill: parent
-        callHandler: root.callHandler
+        callHandle: root.callHandle
     }
     Row {
         spacing: 5
@@ -88,43 +76,49 @@ Rectangle {
             width: 45
             onClicked: {
                 if (root.state == "joined") {
-                    root.callHandler.disconnect()
+                    root.callHandle.disconnect()
                 } else {
-                    root.callHandler.join()
+                    root.callHandle.join()
                 }
             }
         }
         IconButton {
-            id:mediaBtn
+            id: mediaBtn
             height: 45
             width: 45
-            source: root.callHandler.hasVideo ? Qt.resolvedUrl(
-                                                    "pics/cameraopen") : Qt.resolvedUrl(
-                                                    "pics/cameraclose")
+            source: root.callHandle.hasVideo ? Qt.resolvedUrl(
+                                                   "pics/cameraopen") : Qt.resolvedUrl(
+                                                   "pics/cameraclose")
             onClicked: {
-                if (root.callHandler.hasVideo) {
-                    root.callHandler.closeVideo()
+                if (root.callHandle.hasVideo) {
+                    root.callHandle.closeVideo()
                 } else {
                     CameraPipeline.currentDevice = ApplicationSettings.videoDevice
-                    root.callHandler.openVideo(CameraPipeline)
+                    root.callHandle.openVideo(CameraPipeline)
                 }
             }
         }
         IconButton {
-            id:voiceBtn
+            id: voiceBtn
             height: 45
             width: 45
-            source: root.callHandler.hasAudio ? Qt.resolvedUrl(
-                                                    "pics/micround") : Qt.resolvedUrl(
-                                                    "pics/nomicround")
+            source: root.callHandle.hasAudio ? Qt.resolvedUrl(
+                                                   "pics/micround") : Qt.resolvedUrl(
+                                                   "pics/nomicround")
             onClicked: {
-                if (root.callHandler.hasAudio) {
-                    root.callHandler.closeAudio()
+                if (root.callHandle.hasAudio) {
+                    root.callHandle.closeAudio()
                 } else {
                     MicrophonePipeline.currentDevice = ApplicationSettings.audioDevice
-                    root.callHandler.openAudio(MicrophonePipeline)
+                    root.callHandle.openAudio(MicrophonePipeline)
                 }
             }
+        }
+    }
+    Menu {
+        id: partMenu
+        Slider {
+            anchors.fill: parent
         }
     }
 }

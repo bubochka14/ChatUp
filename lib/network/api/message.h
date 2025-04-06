@@ -1,6 +1,6 @@
 #pragma once
 #include "data.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include <string>
 #include <qfuture>
 namespace Message::Api

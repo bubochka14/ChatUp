@@ -5,7 +5,7 @@
 #include <qfuture.h>
 #include "api/message.h"
 #include "messagemodel.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "abstractcontroller.h"
 #include <QStringBuilder>
 
@@ -20,11 +20,9 @@ namespace Message {
 		explicit Controller(QObject* parent = nullptr);
 		Q_INVOKABLE virtual Model* model(int roomID) = 0;
 		Q_INVOKABLE virtual QFuture<void> updateMessageBody(const QString& body, int roomID) = 0;
-		Q_INVOKABLE virtual QFuture<void> create(const QString& body, int roomID) = 0;
+		Q_INVOKABLE virtual QFuture<int> create(const QString& body, int roomID) = 0;
 		Q_INVOKABLE virtual QFuture<void> remove(int roomid, int messId) = 0;
-		Q_INVOKABLE virtual QFuture<void> markAsRead(int roomID, size_t count) = 0;
 		Q_INVOKABLE virtual QFuture<void> load(int roomID, int row, int fromIndex, int  toIndex) =0;
-
 
 	};
 	class CC_NETWORK_EXPORT CallerController : public Controller
@@ -36,15 +34,13 @@ namespace Message {
 		Model* model(int roomID) override;
 		QFuture<void> load(int roomID,int row, int fromIndex, int  toIndex) override;
 		QFuture<void> updateMessageBody(const QString& body, int roomID) override;
-		QFuture<void> create(const QString& body, int roomId) override;
-		QFuture<void> remove(int roomid, int messId) override;
-		QFuture<void> markAsRead(int roomID, size_t count) override;
+		QFuture<int> create(const QString& body, int roomID) override;
+		QFuture<void> remove(int roomID, int messID) override;
 		QFuture<void> initialize() override;
-	protected:
-		void connectToDispatcher();
+		void reset() override;
 	private:
 		std::shared_ptr<NetworkCoordinator> _manager;
-		QMap<int, Model*> _history;
+		std::unordered_map<int, Model*> _history;
 		int _tempMessageCounter;
 
 	};

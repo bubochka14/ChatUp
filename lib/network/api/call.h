@@ -1,7 +1,7 @@
 #pragma once
 #include <qstring.h>
 #include "data.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include <qfuture>
 #include <qloggingcategory.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_API);

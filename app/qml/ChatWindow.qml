@@ -16,7 +16,6 @@ ApplicationWindow {
     signal languageSet(string language)
     signal logout
     color: "transparent"
-    required property ControllerManager manager
     WindowAgent {
         id: windowAgent
     }
@@ -39,11 +38,11 @@ ApplicationWindow {
             spacing: 0
             MenuPanel {
                 Layout.fillHeight: true
-                width: 75
+                width: 66
                 onLogoutClicked: root.logout()
                 onProfileClicked: {
 
-                    profileViewer.show(CurrentUser)
+                    ProfileViewer.showProfile(CurrentUser)
                 }
                 onRoomsClicked: stack.currentIndex = 0
                 onDirectClicked: stack.currentIndex = 1
@@ -53,7 +52,6 @@ ApplicationWindow {
                 id: stack
                 RoomsPage {
                     id: roomsPage
-                    manager: root.manager
                 }
                 Page {
                     Label {
@@ -68,20 +66,20 @@ ApplicationWindow {
             }
         }
     }
-    function toggleMaximized() {
-        if (root.visibility === Window.Maximized) {
-            root.showNormal()
-        } else {
-            root.showMaximized()
-        }
+    ProfileDialog {
+        id: profileDialog
+        anchors.fill: parent
     }
+    Rectangle
+    {
+        anchors.fill:parent
+        z:-1000
+        color: Material.background
 
-    ProfileViewer {
-        id: profileViewer
-        anchors.centerIn: parent
     }
 
     Component.onCompleted: {
+        ProfileViewer.view =profileDialog
         windowAgent.setup(root)
         windowAgent.setTitleBar(titleBar)
     }

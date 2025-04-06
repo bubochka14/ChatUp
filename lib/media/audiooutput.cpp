@@ -46,6 +46,7 @@ void Output::close()
 		if (_sink)
 			_sink->deleteLater();
 		_io = nullptr;
+		_sink = nullptr;
 		_isStarted = false;
 	}
 }
@@ -56,6 +57,12 @@ QAudioSink* Output::sink()
 bool Output::isStarted()
 {
 	return _isStarted;
+}
+void Output::setVolume(qreal other)
+{
+	if (_sink)
+		_sink->setVolume(other);
+
 }
 bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 {
@@ -68,13 +75,11 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 	_device = device.value();
 	_input = pipe;
 	_listenerIndex = pipe->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index) {
-		_emp->emplaceTask([this,frame,index]() {
-			std::lock_guard gm(_mutex);
+
 			if (!_sink)
 			{
 				QAudioFormat format;
-				//Qt и FFMPEG по разному считают семпл рейт
-				format.setSampleRate(frame->sample_rate/frame->ch_layout.nb_channels);
+				format.setSampleRate(frame->sample_rate);
 				format.setChannelCount(frame->ch_layout.nb_channels);
 				format.setSampleFormat(Media::Audio::toQtFormat((AVSampleFormat)frame->format));
 				if (!_device.isFormatSupported(format)) {
@@ -92,7 +97,10 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 			_io->write((char*)*frame->extended_data, frame->linesize[0]);
 			_input->unmapReading(index);
 		});
-		});
 	_isStarted = true;
 	return true;
+}
+Output::~Output()
+{
+	close();
 }

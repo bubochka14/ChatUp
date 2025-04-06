@@ -51,7 +51,7 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 	_input = input;
 	if (requiredFormat != config.format)
 	{
-		_sws = std::shared_ptr<SwsContext>(sws_getContext(config.width, config.width, config.format,
+		_sws = std::shared_ptr<SwsContext>(sws_getContext(config.width, config.height, config.format,
 			config.width, config.height, requiredFormat,
 			SWS_BILINEAR, NULL, NULL, NULL), [](SwsContext* p) {sws_freeContext(p); });
 		_rescaledFrame = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* p) {av_frame_free(&p); });
@@ -79,33 +79,29 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 		if (response < 0)
 			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
 		while (response >= 0 /*|| response == AVERROR(EAGAIN)*/) {
-			auto outPacket = _out->holdForWriting();
-			//if (!outPacket.has_value())
-			//{
-			//	qCWarning(LC_ENCODER) << "Output pipe overflow";
-			//	return;
-			//}
-			//qCDebug(LC_ENCODER) << "Writing to" << outPacket->subpipe;
-
-			response = avcodec_receive_packet(_cCtx.get(), outPacket.ptr.get());
+			auto outPacket = _out->tryHoldForWriting();
+			if (!outPacket.has_value())
+			{
+				qCWarning(LC_ENCODER) << "Output pipe overflow";
+				return;
+			}
+			response = avcodec_receive_packet(_cCtx.get(), outPacket->ptr.get());
 			if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-				//qCDebug(LC_ENCODER) << "Finish writing widthout notify" << outPacket->subpipe;
-				_out->unmapWriting(outPacket.subpipe, false);
+				_out->unmapWriting(outPacket->subpipe, false);
 				break;
 			}
 			else if (response < 0) {
 				printf("Error while receiving packet from encoder: %d", response);
 				//qCDebug(LC_ENCODER) << "Finish writing widthout notify" << outPacket->subpipe;
-				_out->unmapWriting(outPacket.subpipe, false);
+				_out->unmapWriting(outPacket->subpipe, false);
 				break;
 			}
-			outPacket.ptr->stream_index = 0;
-			outPacket.ptr->pts = ++_pts;
-			outPacket.ptr->dts = ++_dts;
-			outPacket.ptr->time_base.num = 1;
-			outPacket.ptr->time_base.den = 30;
-			//qCDebug(LC_ENCODER) << "Finish writing width notify" << outPacket->subpipe;
-			_out->unmapWriting(outPacket.subpipe, true);
+			outPacket->ptr->stream_index = 0;
+			outPacket->ptr->pts = ++_pts;
+			outPacket->ptr->dts = ++_dts;
+			outPacket->ptr->time_base.num = 1;
+			outPacket->ptr->time_base.den = 30;
+			_out->unmapWriting(outPacket->subpipe, true);
 		}
 		//});
 		});
@@ -207,13 +203,11 @@ bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 {
 	//_pts = 0;
 	//_dts = 0;
-	//viewing frame properties, not data
 	int requiredSampleRate = config.par->sample_rate;
 	AVChannelLayout requiredLayout;
-	av_channel_layout_from_string(&requiredLayout, "stereo");
+	av_channel_layout_from_string(&requiredLayout, "mono");
 	AVSampleFormat requiredFormat = (AVSampleFormat)config.par->format;
-	if (!checkSampleRate(config.par->sample_rate))
-		requiredSampleRate = 24000;
+	requiredSampleRate = 24000;
 	if (!checkSampleFormat((AVSampleFormat)config.par->format))
 		requiredFormat = _cdc->sample_fmts[0];			
 	if ((AVSampleFormat)config.par->format != requiredFormat || config.par->sample_rate != requiredSampleRate)
@@ -272,8 +266,8 @@ bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 			if (!_cCtx)
 				return;
 			int response = 0;
-			response = swr_convert(_swr.get(), chunk->extended_data, _cCtx->frame_size,
-				frame->extended_data, frame->nb_samples);
+			response = swr_convert(_swr.get(), chunk->data, _cCtx->frame_size,
+				frame->data, frame->nb_samples);
 			input->unmapReading(index);
 
 			int samplesEncoded = _cCtx->frame_size;
@@ -281,39 +275,46 @@ bool Audio::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 			while (samplesEncoded < frame->nb_samples)
 			{
 				response = avcodec_send_frame(_cCtx.get(), chunk);
+				samplesEncoded += convertSamples;
+
 				if (response < 0)
 					qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
 				while (response >= 0) {
-					auto outPacket = _out->holdForWriting();
-					response = avcodec_receive_packet(_cCtx.get(), outPacket.ptr.get());
+					auto outPacket = _out->tryHoldForWriting();
+					if (!outPacket.has_value())
+					{
+						qCWarning(LC_ENCODER) << "Output pipe overflow";
+						return;
+					}
+					response = avcodec_receive_packet(_cCtx.get(), outPacket->ptr.get());
 					if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-						_out->unmapWriting(outPacket.subpipe, false);
+						_out->unmapWriting(outPacket->subpipe, false);
 						break;
 					}
 					else if (response < 0) {
 						printf("Error while receiving packet from encoder: %d", response);
-						_out->unmapWriting(outPacket.subpipe, false);
+						_out->unmapWriting(outPacket->subpipe, false);
 						break;
 					}
-					outPacket.ptr->stream_index = 0;
-					outPacket.ptr->pts = ++_pts;
-					outPacket.ptr->dts = ++_dts;
-					outPacket.ptr->time_base.num = 1;
-					outPacket.ptr->time_base.den = 30;
-					_out->unmapWriting(outPacket.subpipe, true);
-
+					outPacket->ptr->stream_index = 0;
+					outPacket->ptr->pts = ++_pts;
+					outPacket->ptr->dts = ++_dts;
+					outPacket->ptr->time_base.num = 1;
+					outPacket->ptr->time_base.den = 30;
+					_out->unmapWriting(outPacket->subpipe, true);
 				}
 				convertSamples = std::min(_cCtx->frame_size, frame->nb_samples - samplesEncoded);
-				response = swr_convert(_swr.get(), chunk->extended_data, convertSamples, nullptr, 0);
-				samplesEncoded += _cCtx->frame_size;
+
+				response = swr_convert(_swr.get(), chunk->data, convertSamples, nullptr,0);
+
 				if (response < 0) {
 					qCWarning(LC_ENCODER) << "Failed to convert audio frame:" << Media::av_err2string(response);
 					input->unmapReading(index);//????
 					return;
 				}
 			}
-			});
-	//});
+			
+	});
 	return true;
 }
 bool Video::AbstractEncoder::isStarted()
@@ -342,7 +343,7 @@ Video::H264Encoder::H264Encoder()
 	//ctx->level = 13;               // уровень качества
 
 	av_opt_set(ctx->priv_data, "profile", "high422", 0);
-	av_opt_set(ctx->priv_data, "preset", "superfast", 0);           // скорость кодирования. обратна пропорциональна качеству
+	av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);           // скорость кодирования. обратна пропорциональна качеству
 	av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
 	ctx->time_base = av_make_q(1, 30);
 	//ctx->gop_size = 10;
@@ -366,9 +367,9 @@ Audio::AACEncoder::AACEncoder()
 		return;
 	}
 	ctx->time_base = av_make_q(1, 30);
-	ctx->bit_rate = 5 * 1000 * 1000;
-	ctx->rc_buffer_size = 4 * 1000 * 1000;
-	ctx->rc_max_rate = 5 * 1000 * 1000;
+	ctx->bit_rate = 20 * 1000 * 1000;
+	//ctx->rc_buffer_size = 4 * 1000 * 1000;
+	//ctx->rc_max_rate = 5 * 1000 * 1000;
 	initialize(ctx, cdc);
 }
 Audio::OpusEncoder::OpusEncoder()
@@ -387,8 +388,6 @@ Audio::OpusEncoder::OpusEncoder()
 	}
 	av_opt_set(ctx->priv_data, "application", "voip", 0);
 	//av_opt_set(ctx->priv_data, "frame_duration", "60", 0);
-	ctx->bit_rate = 80000;
-	ctx->rc_buffer_size = 4 * 256000;
-	ctx->rc_max_rate = 256000;
+	//ctx->bit_rate = 256000;
 	initialize(ctx, cdc);
 }

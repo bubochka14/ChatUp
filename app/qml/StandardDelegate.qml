@@ -11,7 +11,7 @@ Rectangle {
     signal clicked()
     height: 70
     radius: 10
-    color: hovered ? "#3e3c62" : "transparent"
+    color: hovered ? "#303552" : "transparent"
     RowLayout {
         anchors.verticalCenter: parent.verticalCenter
         anchors.left: parent.left
@@ -28,11 +28,11 @@ Rectangle {
         Column {
             Label {
                 id: label
-                font.pixelSize: 16
+                font.pointSize: 14
             }
             Label {
                 id:subLabel
-                font.pixelSize: 12
+                font.pointSize: 12
             }
         }
     }

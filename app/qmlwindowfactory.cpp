@@ -4,6 +4,7 @@ QmlWindowFactory::QmlWindowFactory(QObject* parent)
 	:AbstractWindowFactory(parent)
 	, _engine(new QQmlApplicationEngine)
 {
+	qputenv("QML_XHR_ALLOW_FILE_READ", QString("1").toUtf8());
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
         //QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
@@ -17,12 +18,14 @@ QmlWindowFactory::QmlWindowFactory(QObject* parent)
 #else
 	const bool curveRenderingAvailable = false;
 #endif
+
 	_engine->rootContext()->setContextProperty(QStringLiteral("$curveRenderingAvailable"), QVariant(curveRenderingAvailable));
     qmlRegisterType<QWK::QuickWindowAgent>("QWindowKit", 1, 0, "WindowAgent");
     qmlRegisterModule("QWindowKit", 1, 0);
 	// Registering types available via Future in QML
 	//QuickFuture::registerType<UserInfo*>();
 	QuickFuture::registerType<Group::Model*>();
+	QuickFuture::registerType<int>();
 	QuickFuture::registerType<void>();
 	QuickFuture::registerType<Message::Model*>();
 	QuickFuture::registerType<User::Model*>();

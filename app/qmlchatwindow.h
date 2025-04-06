@@ -8,11 +8,9 @@
 #include <qqmlapplicationengine.h>
 #include <qqmlcomponent.h>
 #include "controllers/controllermanager.h"
-#include "streamsource.h"
 #include <Qtimer>
 #include "pipelines.h"
 #include <qloggingcategory.h>
-#include "standarderror.h"
 #include "audiooutput.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_QML_CHAT_WINDOW);
 struct MessageControllerWrapper

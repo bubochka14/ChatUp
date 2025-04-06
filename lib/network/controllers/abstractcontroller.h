@@ -8,6 +8,7 @@ class CC_NETWORK_EXPORT AbstractController : public QObject
 public:
 	virtual QFuture<void> initialize() { return QtFuture::makeReadyVoidFuture(); };
 	virtual void reset(){}
+	~AbstractController() override { reset(); }
 protected:
 	AbstractController(QObject* parent = nullptr) : QObject(parent) {};
 

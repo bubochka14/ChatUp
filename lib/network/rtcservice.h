@@ -6,7 +6,7 @@
 #include <qloggingcategory.h>
 #include "network_include.h"
 #include "network.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "api/sdp.h"
 #include "encoder.h"
 #include "media.h"
@@ -18,23 +18,13 @@
 Q_DECLARE_LOGGING_CATEGORY(LC_RTC_SERVICE);
 namespace rtc
 {
-	struct LocalVideoDescription
-	{
-		enum VideoCodec
-		{
-			H264,
-			H265
-		};
-		std::shared_ptr<Media::FramePipe> input;
-		Media::Video::SourceConfig config;
-		VideoCodec codec;
-	};
+
 	class CC_NETWORK_EXPORT Service
 	{
 	public:
 		explicit Service(std::shared_ptr<NetworkCoordinator>, rtc::Configuration config);
-		QFuture<void> openLocalVideo(int userID,std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config);
-		QFuture<void> openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config);
+		void openLocalVideo(int userID,std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config);
+		void openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config);
 		std::shared_ptr<Media::FramePipe> getRemoteVideo(int userID);
 		std::shared_ptr<Media::FramePipe> getRemoteAudio(int userID);
 		void closeLocalVideo(int userID);
@@ -42,25 +32,50 @@ namespace rtc
 		void flushRemoteVideo(int userID);
 		void flushRemoteAudio(int userID);
 		void closeUserConnection(int userID);
+
+		//closes all peer connections and reset codecs
 		void closeAllConnections();
-		
-		//void onPeerConnection(std::function<void(std::shared_ptr<PeerConnectionHandle>)> cb);
 	protected:
+		struct RemoteAudioContext
+		{
+			std::shared_ptr<rtc::Track> track;
+			std::shared_ptr<Media::AbstractDecoder> decoder;
+			std::array<std::vector<std::byte>, Media::PacketPipe::getSize()> packets;
+			std::shared_ptr<Media::PacketPipe> packetPipe;
+			std::shared_ptr<rtc::RtcpSrReporter> rtcp;
+			///std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
+			std::optional<int> encoderListener;
+			std::mutex mutex;
+		};
+		struct RemoteVideoContext
+		{
+			std::shared_ptr<rtc::Track> track;
+			std::array<std::vector<std::byte>, Media::PacketPipe::getSize()> packets;
+			std::shared_ptr<Media::AbstractDecoder> decoder;
+			std::shared_ptr<Media::PacketPipe> packetPipe;
+			std::optional<int> packetizerListener;
+			std::mutex mutex;
+
+		};
+		struct LocalVideoContext
+		{
+			std::shared_ptr<Media::Video::AbstractEncoder> encoder;
+			std::shared_ptr<Media::RtpPacketizer> packetizer;
+			std::mutex mutex;
+
+		};
+		struct LocalAudioContext
+		{
+			std::shared_ptr<Media::Audio::AbstractEncoder> encoder;
+			std::mutex mutex;
+
+		};
 		struct PeerContext
 		{
-			std::shared_ptr<rtc::Track> audioTrack;
-			std::shared_ptr<rtc::Track> videoTrack;
-			std::shared_ptr<Media::AbstractDecoder> videoDecoder;
-			std::shared_ptr<Media::AbstractDecoder> audioDecoder;
-			std::shared_ptr<Media::PacketPipe> audioPackets;
-			std::shared_ptr<Media::PacketPipe> videoPackets;
+			RemoteAudioContext audio;
+			RemoteVideoContext video;
 			std::shared_ptr<rtc::PeerConnection> pc;
-			std::shared_ptr<rtc::RtcpSrReporter> rtcp;
-			std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
-			std::optional<int> videoPacketizerListener;
-			std::optional<int> audioEncoderListener;
-			uint64_t auidioTimestamp =0;
-			std::mutex mutex;
+
 			~PeerContext();
 		};
 		void createPeerContext(int id);
@@ -72,14 +87,9 @@ namespace rtc
 		std::mutex _peerMutex;
 		rtc::Configuration _config;
 		std::shared_ptr<NetworkCoordinator> _coordinator;
-		std::optional<std::function<void(int)>> _closeVideoCb;
-		std::shared_ptr<Media::Video::AbstractEncoder> _videoEncoder;
-		std::shared_ptr<Media::Audio::AbstractEncoder> _audioEncoder;
-		std::shared_ptr<Media::RtpPacketizer> _videoPacketizer;
+		LocalAudioContext _localAudio;
+		LocalVideoContext _localVideo;
 		std::optional<int> _packetizerListener;
-		bool _isClosingConnections = false;
-		//std::shared_ptr<Media::RtpPacketizer> _audioPacketizer;
-
 
 	};
 }

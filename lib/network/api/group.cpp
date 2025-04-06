@@ -1,5 +1,6 @@
 #pragma once
 #include "group.h"
+Q_LOGGING_CATEGORY(LC_GROUP_API,"GroupApi")
 using namespace Group::Api;
 void Create::handle(std::shared_ptr<NetworkCoordinator> net,
 	std::function<void(ExtendedData&&)> h)
@@ -92,4 +93,52 @@ QFuture<std::vector<User::Data>> GetUsers::exec(std::shared_ptr<NetworkCoordinat
 		}
 		return out;
 		});
+}
+void Update::handle(std::shared_ptr<NetworkCoordinator> net, std::function<void(GroupUpdate&&)> h)
+{
+	net->addClientHandler(methodName, [handler = std::move(h)](json&& res) {
+		if (!res.contains("id"))
+		{
+			qCWarning(LC_GROUP_API) << "Update call does not contain an room ID";
+			return;
+		}
+		GroupUpdate out;
+		try {
+			out.id = res["id"];
+			if (res.contains("tag"))
+				out.tag.emplace(std::move(res["tag"]));
+			if (res.contains("name"))
+				out.name.emplace(std::move(res["name"]));
+			if (res.contains("localReadings"))
+				out.localReadings.emplace(std::move(res["localReadings"]));
+			if (res.contains("foreignReadings"))
+				out.foreignReadings.emplace(std::move(res["foreignReadings"]));
+			if (res.contains("messageCount"))
+				out.messageCount.emplace(std::move(res["messageCount"]));
+			handler((std::move(out)));
+		}
+		catch (nlohmann::json::exception& e)
+		{
+			qCWarning(LC_GROUP_API) << "Update call parsing error"<<e.what();
+		}
+	});
+}
+void Update::GroupUpdate::extractTo(ExtendedData& data)
+{
+	if (data.id != id)
+	{
+		qCWarning(LC_GROUP_API) << "Extract to group data, id mismatch";
+		data.id = id;
+	}
+	if (tag.has_value())
+		data.tag = QString::fromStdString(std::move(*tag));
+	if (name.has_value())
+		data.name = QString::fromStdString(std::move(*name));
+	if (foreignReadings.has_value())
+		data.foreignReadings = foreignReadings.value();
+	if (localReadings.has_value())
+		data.localReadings = localReadings.value();
+	if (messageCount.has_value())
+		data.messageCount = messageCount.value();
+
 }

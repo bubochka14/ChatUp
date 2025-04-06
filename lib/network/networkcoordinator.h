@@ -1,8 +1,9 @@
 #pragma once
 #include "network_include.h"
-#include "serverhandler.h"
+#include "serverrpcwrapper.h"
 #include "userhandle.h"
 #include <deque>
+#include "data.h"
 class NetworkCoordinator;
 struct CC_NETWORK_EXPORT Credentials
 {
@@ -31,6 +32,8 @@ public:
 	void setCredentials(Credentials other);
 	int  currentUser() const;
 	void setReconnectionCount(int other);
+	void disconnect();
+	bool isActive();
 	void onDisconnected(std::function<void()> cb);
 	QFuture<void> initialize();
 
@@ -44,7 +47,7 @@ public:
 		json args,
 		Priority priority = AuthorizedCall);
 	explicit NetworkCoordinator(std::string host, int port);
-	//~NetworkCoordinator();
+	~NetworkCoordinator();
 private:
 
 	struct MethodInfo
@@ -62,8 +65,8 @@ private:
 	std::deque<MethodInfo> _directCalls;
 	std::atomic<int> _active;
 	std::condition_variable _condvar;
-	std::mutex _mutex;
-	std::shared_ptr<ServerHandler> _handler;
+	mutable std::mutex _mutex ;
+	std::shared_ptr<ServerRPCWrapper> _rpc;
 	std::optional<std::function<void()>> _disconnectedCb;
 	int _reconnectionCount;
 	int _user;

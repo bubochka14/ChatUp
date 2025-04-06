@@ -3,7 +3,44 @@
 #include <unordered_map>
 #include <deque>
 #include <qloggingcategory.h>
+#include <mutex>
 #include "core_include.h"
+struct NoLock
+{
+	void lock() {}
+	void unlock() {}
+};
+template<class T>
+struct MyLocker
+{
+	MyLocker(T& p)
+		:_p(p)
+	{
+		_p.lock();
+	}
+	~MyLocker()
+	{
+		_p.unlock();
+	}
+private:
+	T& _p;
+};
+struct MutexLock
+{
+public:
+	void lock()
+	{
+		_mutex.lock();
+	}
+	void unlock()
+	{
+		_mutex.unlock();
+
+	}
+private:
+	std::recursive_mutex _mutex;
+};
+
 class CC_CORE_EXPORT IdentifyingModelBase : public QAbstractListModel
 {
 	Q_OBJECT;
@@ -14,39 +51,47 @@ public:
 signals:
 	void rowCountChanged();
 };
-template<class T, template<class>class C = std::deque>
+template<class T, template<class>class C = std::deque, class LockPolicy = NoLock>
 class IdentifyingModel : public IdentifyingModelBase
 {
 public:
 	explicit IdentifyingModel(const QHash<int,QByteArray> & roles,QObject* parent)
 		:IdentifyingModelBase(parent)
+		,_ref(_pol)
 	{
 		_roles.insert(roles);
 	}
-	QVariant data(const QModelIndex& index, int role) const override final
+	QVariant data(const QModelIndex& index, int role) const override 
 	{
-		if (!index.isValid() || index.row() >= rowCount() || index.row() < 0)
+		MyLocker<LockPolicy> g(_ref);
+		if (!index.isValid() || index.row() >= _data.size() || index.row() < 0)
 			return QVariant();
 		return read(_data[index.row()], index.row(), role);
 
 	}
-	void reset(C<T> data)
+	void reset()
 	{
+		MyLocker<LockPolicy> g(_ref);
+
 		beginResetModel();
-		_data = std::move(data);
+		_data.clear();
+		_index.clear();
 		endResetModel();
 	}
-	QVariant data(int id, int role) const 
+	std::optional<T> data(const QModelIndex& index)
 	{
-		if (!_index.contains(id))
-			return QVariant();
-		return read(_data[id], _index.at(id), role);
+		MyLocker<LockPolicy> g(_ref);
 
+		if (!index.isValid() || index.row() >= _data.size() || index.row() < 0)
+			return std::nullopt;
+		return _data[index.row()];
 	}
-	bool setData(const QModelIndex& index, const QVariant& value, int role) override final
+	bool setData(const QModelIndex& index, const QVariant& value, int role) override 
 	{
+		MyLocker<LockPolicy> g(_ref);
+
 		if (!index.isValid() || !value.isValid() || 
-			index.row() >= rowCount() || index.row() < 0)
+			index.row() >= _data.size() || index.row() < 0)
 		{
 			return false;
 		}
@@ -73,6 +118,7 @@ public:
 	}
 	QModelIndex idToIndex(int id) const
 	{
+		MyLocker<LockPolicy> g(_ref);
 		if (!_index.contains(id))
 			return QModelIndex();
 		return index(_index.at(id));
@@ -80,23 +126,32 @@ public:
 	template<class Iter>
 	bool insertRange(int row, Iter begin, Iter end)
 	{
-		int distance = std::distance(begin, end) - 1;
-		if (row > rowCount() || row < 0 || distance <0)
+		MyLocker<LockPolicy> g(_ref);
+
+		const auto [first, last] = std::ranges::remove_if(std::ranges::subrange(begin, end), [this](const T& val) {
+			if (_index.contains(read(val, 0, IDRole()).toInt()))
+				return false;
+			return true;
+			});
+		int distance = std::distance(first, last) - 1;
+		if (row > _data.size() || row < 0 || distance < 0)
 		{
 			return false;
 		}
-		beginInsertRows(QModelIndex(), row, row+distance);
-		_data.insert(_data.begin()+row, begin, end);
+		beginInsertRows(QModelIndex(), row, row + distance);
+		_data.insert(_data.begin() + row, first, last);
 		for (size_t i = row; i <= row + distance; i++)
 		{
-			_index.insert({read( _data[i],i,IDRole()).toInt(), i });
+			_index.insert({ read(_data[i],i,IDRole()).toInt(), i });
 		}
 		endInsertRows();
 
 	}
 	bool setData(const QModelIndex& index, T val)
 	{
-		if (!index.isValid() || index.row() >= rowCount() || index.row() < 0)
+		MyLocker<LockPolicy> g(_ref);
+
+		if (!index.isValid() || index.row() >= _data.size() || index.row() < 0)
 		{
 			return false;
 		}
@@ -108,11 +163,14 @@ public:
 			if (_index.contains(oldID))
 				_index.erase(oldID);
 		}
-		_data.emplace(_data.begin() + index.row(), std::move(val));
+		_data[index.row()] = std::move(val);
+		emit dataChanged(index, index);
 		return true;
 	}
 	bool setData(int id, const QVariant& value, int role)
 	{
+		MyLocker<LockPolicy> g(_ref);
+
 		if (!_index.contains(id))
 		{
 			return false;
@@ -133,31 +191,40 @@ public:
 		}
 		return false;
 	}
-	int rowCount(const QModelIndex& parent = QModelIndex()) const override final
+	int rowCount(const QModelIndex& parent = QModelIndex()) const override 
 	{
+		MyLocker<LockPolicy&> g(_ref);
 		return _data.size();
 	}
-	bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override final
+	bool insertRows(int row, int count, const QModelIndex& parent = QModelIndex()) override 
 	{
 		Q_UNUSED(parent);
-		if (row < 0 || row >rowCount() || count <= 0)
+		MyLocker<LockPolicy> g(_ref);
+
+		if (row < 0 || row >_data.size() || count <= 0)
 			return false;
 		beginInsertRows(parent, row, row + count - 1);
 		if (row + count < _data.size())
 		{
-			for (auto i = _data.begin() + row + 1; i < _data.end(); ++i)
+			for (auto i = _data.begin() + row; i < _data.end(); ++i)
 			{
 				_index[read(*i,0,IDRole()).toInt()] += count;
 			}
 		}
 		_data.insert(_data.begin() + row, count, std::move(create()));
+		for (size_t i = row; i < count; i++)
+		{
+			_index[read(_data[i], i, IDRole()).toInt()] = i;
+		}
 		endInsertRows();
 		return true;
 	}
 
 	bool insertDataList(int row, QList<T> in)
 	{
-		if (row < 0 || row >rowCount() || in.size() <= 0)
+		MyLocker<LockPolicy> g(_ref);
+
+		if (row < 0 || row >_data.size() || in.size() <= 0)
 			return false;
 		beginInsertRows(QModelIndex(), row, row + in.size() - 1);
 		if (row < _data.size())
@@ -180,10 +247,11 @@ public:
 	{
 		return insertDataList(row, { std::move(data) });
 	}
-	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override final
+	bool removeRows(int row, int count, const QModelIndex& parent = QModelIndex()) override 
 	{
 		Q_UNUSED(parent);
-		if (row<0 || row + count > rowCount() || count <= 0)
+		MyLocker<LockPolicy> g(_ref);
+		if (row<0 || row + count > _data.size() || count <= 0)
 			return false;
 		beginRemoveRows(parent, row, row + count - 1);
 		_index.erase(read(_data[row], row, IDRole()).toInt());
@@ -200,6 +268,14 @@ public:
 	{
 		return _roles;
 	}
+	void lock()
+	{
+		_pol.lock();
+	}
+	void unlock()
+	{
+		_pol.unlock();
+	}
 	static constexpr int IDRole() { return 0; }
 protected:
 	virtual bool edit(T&,const QVariant&, int row, int role) = 0;
@@ -211,4 +287,6 @@ private:
 	std::unordered_map<int, int> _index;
 	QHash<int, QByteArray> _roles;
 	C<T> _data;
+	LockPolicy _pol;
+	LockPolicy& _ref;
 };

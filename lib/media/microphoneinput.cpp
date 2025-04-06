@@ -118,10 +118,11 @@ void Microphone::threadFunc()
             return;
         }
         av_packet_unref(packet->ptr.get());
-        if (av_read_frame(ctx, packet->ptr.get()) < 0)
+        if (int ret = av_read_frame(ctx, packet->ptr.get()) < 0)
         {
             out->unmapWriting(packet->subpipe, false);
-            qCWarning(LC_MICROPHONE) << ("mic error");
+            qCWarning(LC_MICROPHONE) << "Packet read error:" << Media::av_err2string(ret);
+
             return;
         }
         out->unmapWriting(packet->subpipe, true);

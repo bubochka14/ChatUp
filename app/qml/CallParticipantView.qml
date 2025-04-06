@@ -8,45 +8,57 @@ import QtMultimedia
 Rectangle {
     id: root
     color: "black"
-    readonly property var aspectRatio: 1.77778
+    readonly property var aspectRatio: 1.77778 //16:9
     property var minimumCellWidth: 128
-    property var minimumCellHeight: 72
     property alias model: view.model
-    required property CallHandler callHandler
-
+    required property CallHandle callHandle
     GridView {
         id: view
         property var spacing: 15
         property bool outputSyncNeeded: false
         anchors.centerIn: parent
-        cellWidth: caclWidth(root.width - 25, root.height - 25, model.rowCount)
+        property var selectedDistribution: caclWidth(root.width, root.height,
+                                                     model.rowCount)
+        cellWidth: Math.max(
+                       Math.min(
+                           root.width / view.selectedDistribution.rows,
+                           root.height / view.selectedDistribution.columns * root.aspectRatio),
+                       root.minimumCellWidth)
         cellHeight: cellWidth / root.aspectRatio
+        width: Math.min(selectedDistribution.rows * cellWidth, root.width)
+        height: Math.min(selectedDistribution.columns * cellHeight, root.height)
+
         clip: true
         delegate: Item {
-            id: root
+            id: delegate
             required property var hasAudio
             required property var hasVideo
             required property var userID
             property var isMaximized: false
-            height: GridView.view.cellHeight
-            width: GridView.view.cellWidth
+            height: view.cellHeight
+            width: view.cellWidth
+
             MyAudioOutput {
                 id: audioOutput
             }
 
             onHasAudioChanged: if (hasAudio && userID != CurrentUser.id)
-                                   callHandler.connectAudioOutput(root.userID,
-                                                                  audioOutput)
+                                   callHandle.connectAudioOutput(
+                                               delegate.userID, audioOutput)
 
             Component.onCompleted: {
                 syncOutput()
             }
             Rectangle {
-                id: delegate
-                anchors.centerIn: parent
-                height: parent.height - view.spacing
-                width: parent.width - view.spacing
+                id: participateBox
+                width: Math.max(
+                           Math.min(
+                               view.width / view.selectedDistribution.rows,
+                               view.height / view.selectedDistribution.columns * root.aspectRatio),
+                           root.minimumCellWidth) - 8
+                height: width / root.aspectRatio - 8
 
+                anchors.centerIn: parent
                 color: "#19182a"
                 property UserHandle user: UserController.empty
                 states: [
@@ -75,7 +87,7 @@ Rectangle {
                         }
                         StateChangeScript {
                             name: "sinkConnectScript"
-                            script: callHandler.connectVideoSink(
+                            script: callHandle.connectVideoSink(
                                         userID, videoOutput.videoSink)
                         }
                     }
@@ -88,9 +100,9 @@ Rectangle {
                 }
                 radius: 15
                 Component.onCompleted: {
-                    Future.onFinished(UserController.get(root.userID),
+                    Future.onFinished(UserController.get(delegate.userID),
                                       function (user) {
-                                          delegate.user = user
+                                          participateBox.user = user
                                       })
                 }
                 Image {
@@ -113,10 +125,10 @@ Rectangle {
                     id: videoOutput
                     anchors {
                         fill: parent
-                        topMargin:5
-                        bottomMargin:5
-                        rightMargin:10
-                        leftMargin: 10
+                        topMargin: 5
+                        bottomMargin: 5
+                        //rightMargin: 5
+                        //leftMargin: 5
                     }
                 }
 
@@ -127,10 +139,44 @@ Rectangle {
                         bottom: parent.bottom
                         left: parent.left
                         leftMargin: 10
-                        bottomMargin: 2
+                        bottomMargin: 4
                     }
 
-                    text: delegate.user.name
+                    text: participateBox.user.name
+                }
+                Menu {
+                    id: partMenu
+                    MenuItem {
+                        text: qsTr("Profile")
+                        onTriggered: ProfileViewer.showProfile(
+                                         participateBox.user)
+                    }
+                    MenuSeparator {}
+                    Column {
+                        Label {
+                            anchors.left: parent.left
+                            anchors.leftMargin: 5
+                            text: qsTr("Volume:")
+                        }
+                        Slider {
+                            from: 0
+                            to: 1
+                            value: 1
+                            onPositionChanged: {
+                                audioOutput.setVolume(position)
+                            }
+                        }
+                    }
+                }
+                MouseArea {
+                    id: partMouseArea
+                    anchors.fill: parent
+                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+                    onClicked: mouse => {
+                                   if (mouse.button === Qt.RightButton)
+                                   partMenu.popup()
+                               }
+                    cursorShape: Qt.PointingHandCursor
                 }
                 Image {
                     id: noMicLbl
@@ -150,10 +196,10 @@ Rectangle {
             //for delegate
             function syncOutput() {
                 if (hasAudio && userID != CurrentUser.id)
-                    callHandler.connectAudioOutput(root.userID, audioOutput)
+                    callHandle.connectAudioOutput(delegate.userID, audioOutput)
                 if (hasVideo)
-                    callHandler.connectVideoSink(root.userID,
-                                                 videoOutput.videoSink)
+                    callHandle.connectVideoSink(delegate.userID,
+                                                videoOutput.videoSink)
             }
         }
         function isPrime(num) {
@@ -164,44 +210,45 @@ Rectangle {
             return num > 2
         }
         function caclWidth(boxWidth, boxHeight, n) {
+
             let boxRatio = boxWidth / boxHeight
+            let maxInRow = Math.min(n, Math.floor(
+                                        boxWidth / root.minimumCellWidth))
             let m = [1, 1]
             let minDelta = Number.MAX_SAFE_INTEGER
-            for (var i = 1; i <= n; i++) {
+            for (var i = 1; i <= maxInRow; i++) {
                 if (n % i == 0) {
                     var delta = Math.abs(
-                                i * i / n - boxRatio / root.aspectRatio)
+                                (i / (n / i) - boxRatio) / root.aspectRatio)
                     if (minDelta > delta) {
                         m = [i, n / i]
                         minDelta = delta
                     }
                 }
             }
-            let newWidth = Math.max(Math.min(
-                                        boxWidth / m[0],
-                                        boxHeight / m[1] * root.aspectRatio),
-                                    minimumCellWidth)
-            let newHeight = Math.max(Math.min(
-                                         boxWidth / m[1],
-                                         boxHeight / m[0] / root.aspectRatio),
-                                     minimumCellHeight)
-            view.width = Math.min(newWidth * m[0], boxWidth)
-            view.height = Math.min(newWidth * m[1], boxHeight)
-
-            return newWidth
+            if (isPrime(n)) {
+                n++
+                maxInRow = Math.min(n, Math.floor(
+                                        boxWidth / root.minimumCellWidth))
+                for (var i = 1; i < maxInRow; i++) {
+                    if (n % i == 0) {
+                        var delta = Math.abs(
+                                    (i / (n / i) - boxRatio) / root.aspectRatio)
+                        if (minDelta > delta) {
+                            m = [i, n / i]
+                            minDelta = delta
+                        }
+                    }
+                }
+            }
+            return {
+                "rows": m[0],
+                "columns": m[1]
+            }
         }
-
-        // onModelChanged: resetSize()
-        // function resetSize()
-        // {
-        //     view.width = Math.min(parent.width/baseWidth, root.model.rowCount()) * idealWidth
-        //     view.height = Math.min(parent.height/baseHeight, root.model.rowCount()) * idealHeight
-
-        // }
     }
     //for view
     function syncOutput() {
-        console.log("SYNC")
         for (var i = 0; i < view.count; i++) {
             console.log(view.itemAtIndex(i))
             view.itemAtIndex(i).syncOutput()

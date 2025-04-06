@@ -23,28 +23,63 @@ void Group::from_json(const json& j, ExtendedData& p)
 {
 	try {
 		p.id = j.value("id", Group::invalidID);
-		//delete this
 		if(j.contains("messageCount"))
 		{
 			auto mc = j["messageCount"];
 			if (!mc.is_null())
 				mc.get_to(p.messageCount);
 		}
-		else
-			p.messageCount = 0;
 		std::string temp;
 		if (j.contains("name"))
 		{
 			j.at("name").get_to(temp);
-			p.name = QString::fromStdString(temp);
+			p.name = QString::fromStdString(std::move(temp));
 		}
 		if (j.contains("tag"))
 		{
 			j.at("tag").get_to(temp);
-			p.tag = QString::fromStdString(temp);
+			p.tag = QString::fromStdString(std::move(temp));
+		}
+		if (j.contains("foreignReadings"))
+		{
+			auto mc = j["foreignReadings"];
+			if (!mc.is_null())
+				mc.get_to(p.foreignReadings);
+		}
+		if (j.contains("localReadings"))
+		{
+			auto mc = j["localReadings"];
+			if (!mc.is_null())
+				mc.get_to(p.localReadings);
+		}
+		if (j.contains("lastSender"))
+		{
+			auto mc = j["lastSender"];
+			if (!mc.is_null())
+			{
+				mc.get_to(p.lastSender);
+			}
+		}
+		if (j.contains("lastMessageTime"))
+		{
+			auto mc = j["lastMessageTime"];
+			if (!mc.is_null())
+			{
+				mc.get_to(temp);
+				p.lastMessageTime = QDateTime::fromString(QString::fromStdString(std::move(temp)), Qt::ISODate);
+			}
+		}
+		if (j.contains("lastBody"))
+		{
+			auto mc = j["lastBody"];
+			if (!mc.is_null())
+			{
+				mc.get_to(temp);
+				p.lastBody = QString::fromStdString(std::move(temp));
+			}
 		}
 	}
-	catch (std::exception ex)
+	catch (nlohmann::json::exception& ex)
 	{
 		qCWarning(LC_DATA) << "Group parsing error: " << ex.what();
 	}
@@ -136,7 +171,7 @@ void User::from_json(const json& j, User::Data& p)
 {
 	try {
 		p.id = j.value("id",User::invalidID);
-		p.status - j.value("status", User::Offline);
+		//p.status - j.value("status", User::Offline);
 		std::string temp;
 		if (j.contains("name"))
 		{
@@ -148,6 +183,12 @@ void User::from_json(const json& j, User::Data& p)
 			j.at("tag").get_to(temp);
 			p.tag = QString::fromStdString(temp);
 		}
+		if (j.contains("status"))
+		{
+			j.at("status").get_to(temp);
+			p.status = temp == "online" ? Online : Offline;
+		}
+
 	}
 	catch (std::exception ex)
 	{

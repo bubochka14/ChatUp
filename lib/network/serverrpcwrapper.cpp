@@ -1,14 +1,14 @@
-#include "serverhandler.h"
+#include "serverrpcwrapper.h"
 using namespace Qt::Literals::StringLiterals;
-Q_LOGGING_CATEGORY(LC_SERVER_HANDLER, "ServerHandler");
-bool ServerHandler::isConnected() const
+Q_LOGGING_CATEGORY(LC_SERVER_HANDLER, "ServerRPCWrapper");
+bool ServerRPCWrapper::isConnected() const
 {
 	return _isConnected;
 }
-QFuture<void> ServerHandler::connect()
+QFuture<void> ServerRPCWrapper::connect()
 {
 	{
-		std::lock_guard g(_connectionMutex);
+		std::lock_guard g(_mutex);
 		if (!_connectionPromise)
 		{
 			_connectionPromise = std::make_shared<QPromise<void>>();
@@ -27,7 +27,12 @@ QFuture<void> ServerHandler::connect()
 	return _connectionPromise->future();
 
 }
-void ServerHandler::handleConnectionError(std::string desc)
+void ServerRPCWrapper::disconnect()
+{
+	std::lock_guard g(_mutex);
+	_transport->close();
+}
+void ServerRPCWrapper::handleConnectionError(std::string desc)
 {
 	if (!_connectionPromise)
 		return;
@@ -38,7 +43,7 @@ void ServerHandler::handleConnectionError(std::string desc)
 	_connectionPromise->setException(std::make_exception_ptr(out));
 	_connectionPromise.reset();
 }
-void ServerHandler::handleTextMessage(std::string msg)
+void ServerRPCWrapper::handleTextMessage(std::string msg)
 {
 	auto parsed = json::parse(std::move(msg));
 	if (parsed.value("type","") == "response")
@@ -78,49 +83,52 @@ void ServerHandler::handleTextMessage(std::string msg)
 		qCWarning(LC_SERVER_HANDLER) << "Unknown message type received";
 	}
 }
-void ServerHandler::onClosed(std::function<void()> cb)
+void ServerRPCWrapper::onClosed(std::function<void()> cb)
 {
 	_closedCb = std::move(cb);
 }
 
-ServerHandler::ServerHandler(std::string url, std::shared_ptr<rtc::WebSocket> transport)
+ServerRPCWrapper::ServerRPCWrapper(std::string url, std::shared_ptr<rtc::WebSocket> transport)
 	:_isConnected(false)
 	,_url(std::move(url))
 	,_transport(transport)
 {
 	_transport->onError([this](std::string err) {
 		_taskQueue.enqueue([this, err = std::move(err)]() {
+			std::lock_guard g(_mutex);
 			handleConnectionError(std::move(err));
 			});
 		});
 	_transport->onClosed([this]() {
-		if (!_isConnected)
-			return;
-		_isConnected = false;
-		if (_closedCb.has_value())
-			_closedCb.value()();
+		_taskQueue.enqueue([this]() {
+			std::lock_guard g(_mutex);
+			if (!_isConnected)
+				return;
+			_isConnected = false;
+			if (_closedCb.has_value())
+				_closedCb.value()();
+			});
 		});
 	_transport->onMessage([this](auto msg) {
 		if (!std::holds_alternative<std::string>(msg))
 			return;
+		std::lock_guard g(_mutex);
 		handleTextMessage((std::get<std::string>(msg)));
 		});
 	_transport->onOpen([this]() {
-		_taskQueue.enqueue([this]() {
-			qCDebug(LC_SERVER_HANDLER) << "server open";
-			std::lock_guard g(_connectionMutex);
-			if (_connectionPromise)
-			{
-				_isConnected = true;
-				_connectionPromise->finish();
-				_connectionPromise = nullptr;
-			}
-			else
-				qCCritical(LC_SERVER_HANDLER) << "Error: server open, but no connection request";
-			});
+		qCDebug(LC_SERVER_HANDLER) << "server open";
+		std::lock_guard g(_mutex);
+		if (_connectionPromise)
+		{
+			_isConnected = true;
+			_connectionPromise->finish();
+			_connectionPromise = nullptr;
+		}
+		else
+			qCCritical(LC_SERVER_HANDLER) << "Error: server open, but no connection request";
 		});
 }
-void ServerHandler::handleError(std::string desc, std::shared_ptr<JsonPromise> prom)
+void ServerRPCWrapper::handleError(std::string desc, std::shared_ptr<JsonPromise> prom)
 {
 	MethodCallFailure out;
 	out.message = std::move(desc);
@@ -129,7 +137,7 @@ void ServerHandler::handleError(std::string desc, std::shared_ptr<JsonPromise> p
 	prom.reset();
 }
 
-void ServerHandler::serverMethod(std::string method, json args, std::shared_ptr<JsonPromise> output)
+void ServerRPCWrapper::serverMethod(std::string method, json args, std::shared_ptr<JsonPromise> output)
 {
 	output->start();
 	QFuture<json> outFuture = output->future();
@@ -137,7 +145,7 @@ void ServerHandler::serverMethod(std::string method, json args, std::shared_ptr<
 		std::move(method), std::move(args)
 	);
 	int messageID = outMsg.id;
-	_requests.emplace(messageID, std::move(output));
+	_requests.emplace(messageID, output);
 	try {
 		_transport->send(json(std::move(outMsg)).dump());
 	}
@@ -146,8 +154,9 @@ void ServerHandler::serverMethod(std::string method, json args, std::shared_ptr<
 		handleError(ex.what(),output);
 	}
 }
-void ServerHandler::addClientHandler(Callback&& h, std::string method)
+void ServerRPCWrapper::addClientHandler(Callback&& h, std::string method)
 {
+	std::lock_guard g(_mutex);
 	_clientHandlers[method].emplace_back(std::move(h));
 
 }

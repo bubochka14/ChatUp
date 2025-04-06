@@ -6,7 +6,7 @@
 #include "participatemodel.h"
 #include "abstractcontroller.h"
 #include "api/call.h"
-#include "networkmanager.h"
+#include "networkcoordinator.h"
 #include "rtcservice.h"
 #include "rtppacketizer.h"
 #include "encoder.h"
@@ -17,19 +17,20 @@
 #include <qmediadevices.h>
 #include "media.h"
 #include "audiooutput.h"
+#include "stack"
 #include <qtimer>
-//#include "audiooutput.h"
+#include <QObject>
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
 
 namespace Call {
 
 	class Controller;
-	class Handler;
+	class Handle;
 
-	class CC_NETWORK_EXPORT Handler : public QObject
+	class CC_NETWORK_EXPORT Handle : public QObject
 	{
 		Q_OBJECT;
-		QML_NAMED_ELEMENT(CallHandler);
+		QML_NAMED_ELEMENT(CallHandle);
 		QML_UNCREATABLE("");
 	public:
 		enum State
@@ -37,7 +38,7 @@ namespace Call {
 			Disconnected,
 			InsideTheCall
 		};Q_ENUM(State)
-		explicit Handler(Controller* controller, int roomID);
+		explicit Handle(Controller* controller, int roomID = Group::invalidID);
 		State state() const;
 		Participate::Model* participants();
 		int roomID() const;
@@ -46,8 +47,6 @@ namespace Call {
 		Q_INVOKABLE QFuture<void> openVideo(Media::Video::StreamSource* source);
 		Q_INVOKABLE QFuture<void> openAudio(Media::Audio::StreamSource* source);
 		Q_INVOKABLE void connectAudioOutput(int userID, Media::Audio::Output*);
-
-		//Q_INVOKABLE QFuture<void> connectAudioSink(int userID, QAudioSi);
 		Q_INVOKABLE QFuture<void> disconnect();
 		Q_INVOKABLE void closeVideo();
 		Q_INVOKABLE void closeAudio();
@@ -65,6 +64,8 @@ namespace Call {
 		void setState(State other);
 		void setHasAudio(bool);
 		void setHasVideo(bool);
+		//must be called before passing to qml
+		void setRoomID(int other);
 	private:
 		Q_PROPERTY(Participate::Model* participants READ participants NOTIFY participantsChanged);
 		Q_PROPERTY(State state READ state NOTIFY stateChanged);
@@ -74,7 +75,7 @@ namespace Call {
 
 		Controller* _controller;
 		Participate::Model* _prt;
-		const int _roomID;
+		int _roomID;
 		bool _isMuted;
 		State _state;
 		friend class Controller;
@@ -88,9 +89,10 @@ namespace Call {
 	struct VideoStreamContext
 	{
 		Media::Video::StreamSource* src = nullptr;
-		//std::shared_ptr<Media::Video::SinkConnector> videoSinkConnector = nullptr;
 		std::mutex mutex;
 		Media::Video::SourceConfig config;
+		std::unordered_map<int, std::shared_ptr<Media::Video::SinkConnector>> connectors;
+
 
 	};
 
@@ -103,31 +105,33 @@ namespace Call {
 	public:
 		explicit Controller(std::shared_ptr<NetworkCoordinator> manager,
 			QObject* parent = nullptr);
-		Q_INVOKABLE Handler* handler(int roomID);
+		Q_INVOKABLE Handle* handle(int roomID);
 
-		QFuture<void> disconnect(Handler* h);
-		QFuture<void> join(Handler* h);
-		QFuture<void> openVideo(Handler* h, Media::Video::StreamSource* st);
-		QFuture<void> openAudio(Handler* h, Media::Audio::StreamSource* st);
-		void closeVideo(Handler* h);
-		void closeAudio(Handler* h);
-		void connectVideoSink(Handler* h,int userID, QVideoSink*);
-		void connectAudioOutput(Handler* h,int userID, Media::Audio::Output*);
-		void setAudio(bool st, Handler* h);
-		void setVideo(bool st, Handler* h);
-		bool hasAudio(Handler* h);
-		bool hasVideo(Handler* h);
-		void release(Handler* h);
+		QFuture<void> disconnect(Handle* h);
+		QFuture<void> join(Handle* h);
+		QFuture<void> openVideo(Handle* h, Media::Video::StreamSource* st);
+		QFuture<void> openAudio(Handle* h, Media::Audio::StreamSource* st);
+		void closeVideo(Handle* h);
+		void closeAudio(Handle* h);
+		void connectVideoSink(Handle* h,int userID, QVideoSink*);
+		void connectAudioOutput(Handle* h,int userID, Media::Audio::Output*);
+		void setAudio(bool st, Handle* h);
+		void setVideo(bool st, Handle* h);
+		bool hasAudio(Handle* h);
+		bool hasVideo(Handle* h);
+		void release(Handle* h);
+		void reset() override;
 
 	private:
 		void clearMedia();
-		std::unordered_map<int, Handler*> _handlers;
-		std::unordered_map<int, std::shared_ptr<Media::Video::SinkConnector>> _connectors;
+		void growHandlePool(size_t size);
+		std::unordered_map<int, Handle*> _handles;
+		std::stack<Handle*> _freeHandlePool;
 		std::shared_ptr<NetworkCoordinator> _manager;
 		std::shared_ptr<rtc::Service> _rtc;
 		AudioStreamContext _localAudioStream;
 		VideoStreamContext _localVideoStream;
-		std::mutex _handlersMutex;
+		std::mutex _handlesMutex;
 		std::optional<int> _activeCallRoomID;
 
 	};
