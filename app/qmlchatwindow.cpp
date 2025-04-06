@@ -75,7 +75,7 @@ QFuture<void> QmlChatWindow::initialize()
 		MessageControllerWrapper::singletonInstance			= _manager->messageController();
 
 		if(!CameraPipelineWrapper::singletonInstance)
-			CameraPipelineWrapper::singletonInstance		= new Media::Video::TestCameraPipeline();
+			CameraPipelineWrapper::singletonInstance		= new Media::Video::CameraPipeline();
 
 		if(!MicrophonePipelineWrapper::singletonInstance)
 			MicrophonePipelineWrapper::singletonInstance	= new Media::Audio::MicrophonePipeline;

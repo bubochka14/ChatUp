@@ -60,10 +60,6 @@ add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME})
 target_include_directories(${LIB_NAME} PUBLIC 
     "${CMAKE_CURRENT_SOURCE_DIR}"
 )
-set_target_properties(app PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED YES
-)
 target_compile_definitions(${LIB_NAME} PRIVATE 	
 	CC_NETWORK_SHARED
 )

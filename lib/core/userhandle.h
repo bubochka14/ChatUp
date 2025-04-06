@@ -27,9 +27,6 @@ namespace User {
 		void setStatus(Status other);
 		void copy(Handle* other);
 		void extractFromData(User::Data other);
-		~Handle() {
-			qDebug() << "test";
-		}
 	signals:
 		void statusChanged();
 		void nameChanged();

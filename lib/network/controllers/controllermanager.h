@@ -9,8 +9,6 @@
 class CC_NETWORK_EXPORT ControllerManager : public QObject
 {
 	Q_OBJECT;
-	QML_ELEMENT;
-	QML_UNCREATABLE("");
 	Q_PROPERTY(Group::Controller* groupController READ groupController);
 	Q_PROPERTY(Message::Controller* messageController READ messageController);
 	Q_PROPERTY(User::Controller* userController READ userController);

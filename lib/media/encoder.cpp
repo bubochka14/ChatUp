@@ -51,7 +51,7 @@ bool Video::AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input, Medi
 	_input = input;
 	if (requiredFormat != config.format)
 	{
-		_sws = std::shared_ptr<SwsContext>(sws_getContext(config.width, config.width, config.format,
+		_sws = std::shared_ptr<SwsContext>(sws_getContext(config.width, config.height, config.format,
 			config.width, config.height, requiredFormat,
 			SWS_BILINEAR, NULL, NULL, NULL), [](SwsContext* p) {sws_freeContext(p); });
 		_rescaledFrame = std::shared_ptr<AVFrame>(av_frame_alloc(), [](AVFrame* p) {av_frame_free(&p); });
@@ -343,7 +343,7 @@ Video::H264Encoder::H264Encoder()
 	//ctx->level = 13;               // уровень качества
 
 	av_opt_set(ctx->priv_data, "profile", "high422", 0);
-	av_opt_set(ctx->priv_data, "preset", "superfast", 0);           // скорость кодирования. обратна пропорциональна качеству
+	av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);           // скорость кодирования. обратна пропорциональна качеству
 	av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
 	ctx->time_base = av_make_q(1, 30);
 	//ctx->gop_size = 10;
