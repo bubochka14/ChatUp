@@ -58,6 +58,12 @@ bool Output::isStarted()
 {
 	return _isStarted;
 }
+void Output::setVolume(qreal other)
+{
+	if (_sink)
+		_sink->setVolume(other);
+
+}
 bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 {
 	if (isStarted())
