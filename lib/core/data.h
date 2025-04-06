@@ -42,7 +42,12 @@ namespace Group
 		void fromHash(QVariantHash other);
 		QVariantHash toHash() const;
 		int id = invalidID;
-		int messageCount = 0;
+		int messageCount	= 0;
+		int foreignReadings = 0;
+		int localReadings	= 0;
+		int lastSender;
+		QDateTime lastMessageTime;
+		QString lastBody;
 		QString name;
 		QString tag;
 
