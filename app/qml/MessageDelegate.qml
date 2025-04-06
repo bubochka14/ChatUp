@@ -8,20 +8,27 @@ import ChatClient.Core
 RowLayout {
     id: root
     property alias statusIcon: statusIcon
-    signal profileClicked
-    layoutDirection:Qt.RightToLeft
-    Text{
-        text:messageIndex
-    }
-
+    required property int foreignReadings
+    layoutDirection: Qt.RightToLeft
     Column {
         id: column
 
-        RoundedFrame {
+        ColoredFrame {
             id: messageCloud
-            radius: 15
-            Material.elevation: 50
-            Material.background: "#3193ec"
+            background: Rectangle {
+                radius: 16
+                color:"#6482f0"
+                // gradient: Gradient {
+                //     GradientStop {
+                //         position: 0
+                //         color: "#6482f0"
+                //     }
+                //     GradientStop {
+                //         position: 1
+                //         color: "#3193ec"
+                //     }
+                // }
+            }
             width: Math.max(messageBody.contentWidth + 24,
                             messageTime.contentWidth)
             height: messageBody.height + 16
@@ -29,12 +36,12 @@ RowLayout {
             TextEdit {
                 id: messageBody
                 text: body
-
                 selectByMouse: true
                 width: root.width * 0.5
                 color: "white"
                 readOnly: true
                 font.pointSize: 10
+                anchors.verticalCenter:parent.verticalCenter
                 font.hintingPreference: Font.PreferNoHinting
                 wrapMode: TextEdit.Wrap
             }
@@ -48,27 +55,23 @@ RowLayout {
             x: messageCloud.x + messageCloud.width - contentWidth
             color: "white"
             readOnly: true
-            text: time.toLocaleString(Qt.locale(Qt.uiLanguage), "MM-dd hh:mm")
+            text: time.toLocaleString(Qt.locale(Qt.uiLanguage), "MM.dd hh:mm")
             font.pointSize: 8
         }
     }
     AnimatedImage {
         id: statusIcon
         mipmap: true
-        height: 20
-        width: 20
+        sourceSize.width: 20
+        sourceSize.height: 20
         Layout.bottomMargin: 14
         Layout.alignment: Qt.AlignLeft | Qt.AlignBottom
         fillMode: Image.PreserveAspectFit
+        visible: messageIndex >= 0
         source: {
-            if (messageStatus === MessageModel.Loading)
-                return Qt.resolvedUrl("gif/duck.gif")
-            if (messageStatus === MessageModel.Read)
-                return Qt.resolvedUrl("pics/read.svg")
-            if (messageStatus === MessageModel.Error)
-                return Qt.resolvedUrl("pics/error.svg")
-            if (messageStatus === MessageModel.Sent)
-                return Qt.resolvedUrl("pics/sent.svg")
+            if (foreignReadings > messageIndex)
+                return Qt.resolvedUrl("pics/readmsg.svg")
+            return Qt.resolvedUrl("pics/sent.svg")
         }
     }
     Item {

@@ -12,9 +12,9 @@ Frame {
         color: control.Material.backgroundColor
         radius: control.radius
 
-        layer.enabled: control.enabled && control.Material.elevation > 0
-        layer.effect: ElevationEffect {
-            elevation: control.Material.elevation
-        }
+        // layer.enabled: control.enabled && control.Material.elevation > 0
+        // layer.effect: ElevationEffect {
+        //     elevation: control.Material.elevation
+        // }
     }
 }

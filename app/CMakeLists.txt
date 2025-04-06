@@ -21,7 +21,6 @@ foreach(qml IN LISTS qml_files)
         QT_RESOURCE_ALIAS ${qml_name}
     )
 endforeach()
-
 list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
 set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")
 set(APP_SOURCES
@@ -31,6 +30,8 @@ set(APP_SOURCES
     abstractwindowfactory.h
     abstractwindowfactory.cpp
     qmlchatwindow.cpp
+    qmlprofileviewer.cpp
+    qmlprofileviewer.h
     qmlchatwindow.h
     qmlstartupwindow.h
     qmlstartupwindow.cpp
@@ -40,8 +41,6 @@ set(APP_SOURCES
     abstractchatwindow.cpp
     app.h
     qmlobjectconverter.h
-    qml/qml.qrc
-    resources/resources.qrc
     )
 qt_add_executable (app  ${APP_SOURCES}
 )
@@ -54,10 +53,9 @@ set_target_properties(
     app
     PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
                LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
-)
-set_target_properties(app PROPERTIES
-    CXX_STANDARD 20
-    CXX_STANDARD_REQUIRED YES
+               OUTPUT_NAME "ChatUp"
+               CXX_STANDARD 20
+               CXX_STANDARD_REQUIRED YES
 )
 
 #file(REAL_PATH "../components" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
@@ -94,7 +92,6 @@ target_link_libraries(app PRIVATE
     ChatClient::Network
     ChatClient::Media
     LibDataChannel::LibDataChannel
-
     Qt6::Core
     Qt6::QuickControls2
     Qt6::Qml

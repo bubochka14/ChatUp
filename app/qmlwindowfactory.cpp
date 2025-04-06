@@ -23,6 +23,7 @@ QmlWindowFactory::QmlWindowFactory(QObject* parent)
 	// Registering types available via Future in QML
 	//QuickFuture::registerType<UserInfo*>();
 	QuickFuture::registerType<Group::Model*>();
+	QuickFuture::registerType<int>();
 	QuickFuture::registerType<void>();
 	QuickFuture::registerType<Message::Model*>();
 	QuickFuture::registerType<User::Model*>();

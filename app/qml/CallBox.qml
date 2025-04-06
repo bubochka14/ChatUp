@@ -30,7 +30,6 @@ Rectangle {
                 interactionBtn.source: Qt.resolvedUrl("pics/startcall")
                 mediaBtn.visible: false
                 voiceBtn.visible: false
-
             }
         },
         State {
@@ -41,8 +40,8 @@ Rectangle {
                 mediaBtn.visible: true
                 voiceBtn.visible: true
             }
-            StateChangeScript{
-                script:view.syncOutput()
+            StateChangeScript {
+                script: view.syncOutput()
             }
         }
     ]
@@ -84,12 +83,12 @@ Rectangle {
             }
         }
         IconButton {
-            id:mediaBtn
+            id: mediaBtn
             height: 45
             width: 45
             source: root.callHandle.hasVideo ? Qt.resolvedUrl(
-                                                    "pics/cameraopen") : Qt.resolvedUrl(
-                                                    "pics/cameraclose")
+                                                   "pics/cameraopen") : Qt.resolvedUrl(
+                                                   "pics/cameraclose")
             onClicked: {
                 if (root.callHandle.hasVideo) {
                     root.callHandle.closeVideo()
@@ -100,12 +99,12 @@ Rectangle {
             }
         }
         IconButton {
-            id:voiceBtn
+            id: voiceBtn
             height: 45
             width: 45
             source: root.callHandle.hasAudio ? Qt.resolvedUrl(
-                                                    "pics/micround") : Qt.resolvedUrl(
-                                                    "pics/nomicround")
+                                                   "pics/micround") : Qt.resolvedUrl(
+                                                   "pics/nomicround")
             onClicked: {
                 if (root.callHandle.hasAudio) {
                     root.callHandle.closeAudio()
@@ -114,6 +113,12 @@ Rectangle {
                     root.callHandle.openAudio(MicrophonePipeline)
                 }
             }
+        }
+    }
+    Menu {
+        id: partMenu
+        Slider {
+            anchors.fill: parent
         }
     }
 }

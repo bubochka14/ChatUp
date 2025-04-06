@@ -15,7 +15,6 @@ Button {
     bottomInset: 0
     height: 50
     text: "🗕"
-    onClicked: window.showMinimized()
     background: Rectangle {
         color: {
             if (!root.enabled) {

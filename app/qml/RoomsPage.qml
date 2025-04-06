@@ -11,45 +11,61 @@ SplitView {
     id: root
     spacing: 0
     property bool roomSelected: false
-    property alias selectedRoomID: chatBox.roomID
     Component.onCompleted: {
         GroupController.load()
     }
-
-    RoomList {
-        id: roomList
-        //SplitView.minimumWidth: 120
+    handle: Rectangle {
+        implicitWidth: 5
+        color: Material.background
+    }
+    ColumnLayout {
         SplitView.maximumWidth: root.width / 2
-
         SplitView.fillHeight: true
         SplitView.preferredWidth: Math.max(220, parent.width / 4)
-        Layout.maximumWidth: 420
-        roomModel: GroupController.model
-        onSelectedRoomChanged: {
-            if (!roomSelected)
-                roomSelected = true
-            chatBox.roomID = roomList.selectedRoom.id
-            roomHeader.title = roomList.selectedRoom.name
-        }
-        listView.footer: StandardDelegate {
-            id: createRoomFooter
-            label.text: qsTr("Create")
-            icon: Rectangle {
-                height: 50
-                width: 50
-                radius: 20
-                color: "#19182a"
-                Label {
-                    text: "+"
-                    color: "white"
-                    font.pixelSize: 40
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: 3
+        spacing: 0
+
+        ColoredFrame {
+            color: "#2a2e3f"
+            Layout.preferredHeight: 50
+            Layout.fillWidth: true
+            Label {
+                text: qsTr("Your rooms")
+                font.pixelSize: 19
+                anchors.verticalCenter: parent.verticalCenter
+                font.bold: true
+            }
+            Label {
+                text: "+"
+                font.pixelSize: 30
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
+                MouseArea {
+                    anchors.fill: parent
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: createRoomDialog.open()
                 }
             }
-            width: roomList.listView.width
-            onClicked: createRoomDialog.open()
+        }
+        ColoredFrame {
+            color: "#262a39"
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            topPadding: 0
+            RoomList {
+                id: roomList
+                anchors.fill: parent
+                model: GroupController.model
+                onCurrentItemChanged: {
+                    if (!roomSelected)
+                        roomSelected = true
+                    chatBox.room = roomList.currentItem
+                }
+                header:Item{
+                    id:spacer
+                    height:5
+                    width:roomList.width
+                }
+            }
         }
     }
     ColumnLayout {
@@ -60,14 +76,21 @@ SplitView {
         ColoredFrame {
             id: roomHeader
             property alias title: titleLabel.text
-            leftInset: -1
             visible: roomSelected
             implicitHeight: 50
+            color: "#2a2e3f"
             Layout.fillWidth: true
             Label {
                 anchors.centerIn: parent
                 font.bold: true
                 id: titleLabel
+                text: roomList.currentItem.name
+                MouseArea {
+                    cursorShape: Qt.PointingHandCursor
+                    anchors.fill:parent
+                    onClicked: drawer.open()
+
+                }
             }
             Row {
                 anchors.right: parent.right
@@ -78,8 +101,7 @@ SplitView {
                     source: Qt.resolvedUrl("pics/call")
                     height: 20
                     width: 20
-                    onClicked: CallController.handle(
-                                   root.selectedRoomID).join()
+                    onClicked: CallController.handle(chatBox.room.id).join()
                 }
                 MouseArea {
                     id: addUserBtn
@@ -103,7 +125,6 @@ SplitView {
         ChatBox {
             id: chatBox
             focus: true
-            leftInset: -1
             initalMessage: qsTr("Select ChatRoom to start messaging")
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -118,25 +139,55 @@ SplitView {
     Drawer {
         id: drawer
         property alias model: view.model
-        width: 300
+        property int lastID: -1
+        width: root.width*0.4
         padding: 20
         height: root.height
         edge: Qt.RightEdge
         y: 31 // sysbar + border
+        background: Rectangle {
+            color: "#262a39"
+        }
+
+        onAboutToShow: {
+            if (drawer.lastID != roomList.currentItem.id) {
+                drawer.model = undefined
+                drawer.lastID = roomList.currentItem.id
+                Future.onFinished(UserController.getGroupUsers(
+                                      roomList.currentItem.id),
+                                  function (users) {
+                                      drawer.model = users
+                                  })
+            }
+        }
+
         ColumnLayout {
             anchors.fill: parent
-            Label {
-                text: qsTr("Users:")
-                font.pointSize: 20
-            }
-            Button {
-                text: "Add user"
-                onClicked: selectUserDialog.open()
+            RowLayout {
+                Layout.fillWidth:true
+                Label {
+                    text: qsTr("Users in this room")
+                    Layout.fillWidth: true
+                    font.pixelSize: 20
+                    font.bold: true
+
+                }
+                Label {
+                    text: "+"
+                    font.pixelSize: 35
+                    Layout.alignment: Qt.AlignBottom
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: selectUserDialog.open()
+                    }
+                }
             }
             UsersView {
                 id: view
                 Layout.fillWidth: true
                 Layout.fillHeight: true
+                onUserClicked: handle => ProfileViewer.showProfile(handle)
             }
         }
     }
@@ -151,12 +202,6 @@ SplitView {
             })
         }
         onUserSelected: id => GroupController.addUser(id,
-                                                      roomList.selectedRoom.id)
-    }
-    onSelectedRoomIDChanged: {
-        Future.onFinished(UserController.getGroupUsers(root.selectedRoomID),
-                          function (users) {
-                              drawer.model = users
-                          })
+                                                      roomList.currentItem.id)
     }
 }

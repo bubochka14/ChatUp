@@ -18,7 +18,8 @@ namespace User {
 			IDRole = IdentifyingModel<Data>::IDRole(),
 			NameRole,
 			TagRole,
-			StatusRole
+			StatusRole,
+			HandleRole
 		};
 		explicit Model(QObject* parent = nullptr);
 		QVariant data(const QModelIndex& index, int role) const override final
@@ -36,6 +37,8 @@ namespace User {
 				return d->tag();
 			case StatusRole:
 				return d->status();
+			case HandleRole:
+				return QVariant::fromValue(d);
 			}
 			return QVariant();
 
@@ -45,23 +48,42 @@ namespace User {
 			return QHash<int, QByteArray>{
 				{ Model::NameRole, "name" },
 				{ Model::IDRole,"id" },
-				{ Model::StatusRole,"status" }
+				{ Model::StatusRole,"status" },
+				{ Model::TagRole,"tag" },
+				{ Model::HandleRole,"handle" }
 			};
 		}
 		int rowCount(const QModelIndex& parent = QModelIndex()) const override
 		{
 			return _data.size();
 		}
-		void reset(std::vector<User::Handle*> other)
+		void reset(std::vector<User::Handle*> list)
 		{
 			beginResetModel();
-			_data = other;
+			_data = list;
+			for(int i =0; i< _data.size(); i++)
+			{
+				connect(_data[i], &User::Handle::idChanged, this, [=]()
+					{emit dataChanged(index(i), index(i)); });
+				connect(_data[i], &User::Handle::nameChanged, this, [=]()
+					{emit dataChanged(index(i), index(i)); });
+				connect(_data[i], &User::Handle::statusChanged, this, [=]()
+					{emit dataChanged(index(i), index(i)); });
+			}
 			endResetModel();
 		}
 		void insertHandler(User::Handle* u)
 		{
+
 			beginInsertRows(QModelIndex(), _data.size(), _data.size());
+			connect(u, &User::Handle::idChanged, this, [=]()
+				{emit dataChanged(index(_data.size()), index(_data.size())); });
+			connect(u, &User::Handle::nameChanged, this, [=]()
+				{emit dataChanged(index(_data.size()), index(_data.size())); });
+			connect(u, &User::Handle::statusChanged, this, [=]()
+				{emit dataChanged(index(_data.size()), index(_data.size())); });
 			_data.push_back(u);
+
 			endInsertRows();
 		}
 	private:

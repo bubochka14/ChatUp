@@ -8,10 +8,6 @@ import ChatClient.Core
 RowLayout {
     id: root
     required property UserHandle user
-    signal profileClicked
-    Text{
-        text:messageIndex
-    }
     Image {
         id: icon
         source: "pics/profile.svg"
@@ -22,14 +18,14 @@ RowLayout {
         MouseArea {
             anchors.fill: parent
             cursorShape: Qt.PointingHandCursor
-            onClicked: root.profileClicked()
+            onClicked: ProfileViewer.showProfile(root.user)
         }
     }
     Column {
         id: column
         RoundedFrame {
             id: messageCloud
-            radius: 15
+            radius: 16
             Material.elevation: 50
             Material.background: "#19182a"
             width: Math.max(messageBody.contentWidth + 24,
@@ -48,7 +44,7 @@ RowLayout {
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: root.profileClicked()
+                        onClicked: ProfileViewer.showProfile(root.user)
                     }
                 }
 
@@ -74,7 +70,7 @@ RowLayout {
             x: messageCloud.x
             color: "white"
             readOnly: true
-            text: time.toLocaleString(Qt.locale(Qt.uiLanguage), "MM-dd hh:mm")
+            text: time.toLocaleString(Qt.locale(Qt.uiLanguage), "MM.dd hh:mm")
             font.pointSize: 8
         }
     }
