@@ -3,6 +3,8 @@
 #include <QString>
 #include <QFuture>
 #include "networkmanager.h"
+#include <QLoggingCategory>
+Q_DECLARE_LOGGING_CATEGORY(LC_USER_API);
 namespace User::Api
 {
 	struct Get
@@ -29,11 +31,17 @@ namespace User::Api
 	};
 	struct Update 
 	{
+		struct UserUpdate{
+			std::optional<std::string> name;
+			std::optional<std::string> tag;
+			std::optional<Status> status;
+			int id;
+		};
 		Update() = default;
 		std::optional<std::string> name;
 		std::optional<std::string> tag;
-		//std::optional<Data::Status> status;
 		QFuture<Data> exec(std::shared_ptr<NetworkCoordinator> handler);
+		static void handle(std::shared_ptr<NetworkCoordinator> coord, std::function<void(UserUpdate)>);
 	private:
 		static constexpr char methodName[] = "updateUser";
 	};

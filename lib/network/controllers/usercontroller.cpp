@@ -10,6 +10,16 @@ CallerController::CallerController(std::shared_ptr<NetworkCoordinator> manager,Q
 	_empty = new User::Handle(this);
 	_empty->extractFromData(std::move(dumbUser));
 	growHandlePool(256);
+	Api::Update::handle(_manager,[this](Api::Update::UserUpdate upd) {
+		if (!_userHandlers.contains(upd.id))
+			return;
+		if (upd.name.has_value())
+			_userHandlers[upd.id]->setName(QString::fromStdString(std::move(*upd.name)));
+		if (upd.tag.has_value())
+			_userHandlers[upd.id]->setTag(QString::fromStdString(std::move(*upd.name)));
+		if (upd.status.has_value())
+			_userHandlers[upd.id]->setStatus(*upd.status);
+		});
 	Group::Api::AddUser::handle(_manager, [this](Group::Api::AddUser::Desc req) {
 		if (_usersInRooms.contains(req.roomID))
 		{ 
@@ -44,7 +54,7 @@ bool CallerController::parseSearchString(const QString& pattern, Api::Find& req)
 	if(!pattern.size())
 		return false;
 	if (pattern[0] == "@")
-		req.tag = "^"+pattern.right(1).toStdString();
+		req.tag = "^"+pattern.right(pattern.size()-1).toStdString();
 	else
 		req.name = "^" + pattern.toStdString();
 	return true;

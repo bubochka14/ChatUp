@@ -1,7 +1,32 @@
 #include "user.h"
+Q_LOGGING_CATEGORY(LC_USER_API, "UserApi");
+
 using namespace User;
 using namespace User::Api;
 using namespace Qt::Literals::StringLiterals;
+void Update::handle(std::shared_ptr<NetworkCoordinator> coord, std::function<void(UserUpdate)> cb)
+{
+	coord->addClientHandler(methodName, [h = std::move(cb)](json&& res) {
+		UserUpdate out;
+		try {
+			out.id = res["id"];
+			if (res.contains("tag"))
+				out.tag.emplace(std::move(res["tag"]));
+			if (res.contains("name"))
+				out.name.emplace(std::move(res["name"]));
+			if (res.contains("status"))
+			
+				out.status = res["status"]=="online" ? User::Online : User::Offline;
+		}
+		catch (nlohmann::json::exception& e)
+		{
+			qCWarning(LC_USER_API) << "Update call parsing error" << e.what();
+		}
+		h(std::move(out));
+
+		});
+
+}
 QFuture<void> Create::exec(std::shared_ptr<NetworkCoordinator> h)
 {
 	return h->serverMethod(std::string(methodName),{ 
