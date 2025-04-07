@@ -28,7 +28,7 @@ QmlChatWindow::QmlChatWindow(QQmlEngine* eng, std::shared_ptr<ControllerManager>
 			{
 				_creationChecker.stop();
 				qCCritical(LC_QML_CHAT_WINDOW) << "QQmlComponent creation error:" << _comp.errorString();
-				_initPromise->setException(std::make_exception_ptr(StandardError(0, "QQmlComponent creation error:" + _comp.errorString())));
+				_initPromise->setException(std::make_exception_ptr(std::string("QQmlComponent creation error:" + _comp.errorString().toStdString())));
 				_initPromise.reset();
 			}
 		});
@@ -84,7 +84,7 @@ QFuture<void> QmlChatWindow::initialize()
 			_comp.loadFromModule("app", "ChatWindow", QQmlComponent::Asynchronous);
 		}).onFailed([this]() {
 			qCCritical(LC_QML_CHAT_WINDOW) << "Cannot receive current user info";
-			_initPromise->setException(std::make_exception_ptr(StandardError(0, "Cannot receive current user info")));
+			_initPromise->setException(std::make_exception_ptr(std::string("Cannot receive current user info")));
 			_initPromise.reset();
 		});
 		return _initPromise->future();
