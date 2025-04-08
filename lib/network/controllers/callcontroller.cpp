@@ -157,6 +157,11 @@ void Handle::connectAudioOutput(int userID, Media::Audio::Output*out)
 void Controller::connectAudioOutput(Handle* h, int userID, Media::Audio::Output* out)
 {
 	using namespace Media::Audio;
+	if (out->availableDevices().isEmpty())
+	{
+		qCWarning(LC_RTC_SERVICE) << "Cannot connect audio output, no available devices.";
+		return;
+	}
 	out->start(out->availableDevices().first(), _rtc->getRemoteAudio(userID));
 }
 void Controller::connectVideoSink(Handle* h, int userID, QVideoSink* s)
