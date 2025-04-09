@@ -12,9 +12,7 @@ SplitView {
     spacing: 0
     property bool roomSelected: false
     Component.onCompleted: {
-        Future.onFinished(GroupController.load(), function (){
-            console.log("HGI")
-        })
+        GroupController.load()
     }
     handle: Rectangle {
         implicitWidth: 5

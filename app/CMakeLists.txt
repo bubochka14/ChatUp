@@ -1,19 +1,6 @@
 
 find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Gui QuickControls2 Multimedia)
 find_package(nlohmann_json CONFIG REQUIRED)
-include(FindPkgConfig)
-find_package(PkgConfig)
-set(ENV{PKG_CONFIG_PATH} /home/istomin/ffmpeg_build/lib/pkgconfig)
-
-pkg_check_modules(FFmpeg REQUIRED
-    libavcodec
-    libavdevice
-    libswscale
-    libavfilter
-    libpostproc
-    libavutil
-    libswresample
-)
 qt_standard_project_setup(REQUIRES 6.8)
 set(QWINDOWKIT_BUILD_QUICK ON)
 set(APP_BINARY ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
@@ -75,13 +62,7 @@ if(MSVC)
         PROPERTIES   LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
         LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
 endif()
-#file(REAL_PATH "../components" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
-#list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
-#set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")
 
-target_link_directories(app PRIVATE ${FFmpeg_LIBRARY_DIRS})
-
-add_custom_command(TARGET app PRE_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory ${APP_QM_DIR})
 set_target_properties(app PROPERTIES CXX_STANDARD 17)
 if ((MSVC) AND (MSVC_VERSION GREATER_EQUAL 1914))
         target_compile_options(app PUBLIC "/Zc:__cplusplus")
@@ -109,7 +90,6 @@ target_link_libraries(app PRIVATE
     ChatClient::Core
     ChatClient::Network
     ChatClient::Media
-    LibDataChannel::LibDataChannel
     nlohmann_json::nlohmann_json
     Qt6::Core
     Qt6::QuickControls2
@@ -120,14 +100,4 @@ target_link_libraries(app PRIVATE
     quickfuture
     QWindowKit::Quick
     QWindowKit::Core
-    ${FFmpeg_LIBRARIES}
-
 )
-
-#qt_add_lupdate(components TS_FILES "${APP_SOURCC_DIR}/translations/comp_ru.ts" "${APP_SOURCC_DIR}/translations/comp_en.ts")
-#set_source_files_properties(comp_ru.ts comp_en.ts
-#    PROPERTIES OUTPUT_LOCATION "${APP_BINARY_DIR}/translations")
-#qt_add_lrelease(components TS_FILES "${APP_SOURCC_DIR}/translations/comp_ru.ts" "${APP_SOURCC_DIR}/translations/comp_en.ts")
-
-
-#qt_add_lrelease(${APP_NAME} TS_FILES app_ru.ts arr_en.ts)

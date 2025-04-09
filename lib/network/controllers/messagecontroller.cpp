@@ -92,10 +92,10 @@ QFuture<void> CallerController::load(int roomID,int row, int from, int to)
 	req.roomID = roomID;
 	req.startIndex = from;
 	req.endIndex = to;
-    return req.exec(_manager).then([this,roomID,row](std::vector<Message::Data> res) {
+    return req.exec(_manager).then([this,roomID,row](std::vector<Message::Data>&& res) {
 		auto model = _history[roomID];
 
-        model->insertRange(row,std::make_move_iterator(res.rbegin()),
+        model->insertRange(row, std::make_move_iterator(res.rbegin()),
             std::make_move_iterator(res.rend()));
 		});
 
