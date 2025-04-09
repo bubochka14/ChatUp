@@ -1,8 +1,21 @@
 
-find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick LinguistTools QuickControls2 Multimedia)
+find_package(Qt6 REQUIRED COMPONENTS Core Qml Quick Gui QuickControls2 Multimedia)
+find_package(nlohmann_json CONFIG REQUIRED)
+include(FindPkgConfig)
+find_package(PkgConfig)
+set(ENV{PKG_CONFIG_PATH} /home/istomin/ffmpeg_build/lib/pkgconfig)
 
+pkg_check_modules(FFmpeg REQUIRED
+    libavcodec
+    libavdevice
+    libswscale
+    libavfilter
+    libpostproc
+    libavutil
+    libswresample
+)
 qt_standard_project_setup(REQUIRES 6.8)
-
+set(QWINDOWKIT_BUILD_QUICK ON)
 set(APP_BINARY ${CMAKE_CURRENT_BINARY_DIR} CACHE INTERNAL "")
 set(APP_SOURCE ${CMAKE_CURRENT_SOURCE_DIR} CACHE INTERNAL "")
 set(APP_QM_DIR "${CMAKE_BINARY_DIR}/translations" CACHE INTERNAL "")
@@ -46,22 +59,27 @@ qt_add_executable (app  ${APP_SOURCES}
 )
 qt_add_qml_module(app 
     URI app 
+    VERSION 1.0
     QML_FILES ${qml_files}
     RESOURCES ${app_resources}
 )
 set_target_properties(
     app
-    PROPERTIES LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
-               LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup"
-               OUTPUT_NAME "ChatUp"
+    PROPERTIES OUTPUT_NAME "ChatUp"
                CXX_STANDARD 20
                CXX_STANDARD_REQUIRED YES
 )
-
+if(MSVC)
+    set_target_properties(
+        app
+        PROPERTIES   LINK_FLAGS_DEBUG "/SUBSYSTEM:CONSOLE"
+        LINK_FLAGS_RELEASE "/SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup")
+endif()
 #file(REAL_PATH "../components" LIB_PATH BASE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 #list(APPEND QML_IMPORT_PATHS "${LIB_PATH}")
 #set(QML_IMPORT_PATH "${QML_IMPORT_PATHS}" CACHE STRING "Qt Creator QML import paths")
 
+target_link_directories(app PRIVATE ${FFmpeg_LIBRARY_DIRS})
 
 add_custom_command(TARGET app PRE_BUILD COMMAND ${CMAKE_COMMAND} -E make_directory ${APP_QM_DIR})
 set_target_properties(app PROPERTIES CXX_STANDARD 17)
@@ -69,7 +87,7 @@ if ((MSVC) AND (MSVC_VERSION GREATER_EQUAL 1914))
         target_compile_options(app PUBLIC "/Zc:__cplusplus")
 endif()
 set_target_properties(app PROPERTIES
-#    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.appuntitled8
+    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.ChatUp
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -82,24 +100,28 @@ install(TARGETS app
 )
 
 target_compile_definitions(app
-        PRIVATE APP_NAME="${CMAKE_PROJECT_NAME}"
-        ORG_NAME="${ORG_NAME}"
-        APP_VERSION="${CMAKE_PROJECT_VERSION}"
-        QM_DIR="${APP_QM_DIR}"
+    PRIVATE APP_NAME="${CMAKE_PROJECT_NAME}"
+    ORG_NAME="${ORG_NAME}"
+    APP_VERSION="${CMAKE_PROJECT_VERSION}"
+    QM_DIR="${APP_QM_DIR}"
 )
 target_link_libraries(app PRIVATE
     ChatClient::Core
     ChatClient::Network
     ChatClient::Media
     LibDataChannel::LibDataChannel
+    nlohmann_json::nlohmann_json
     Qt6::Core
     Qt6::QuickControls2
     Qt6::Qml
     Qt6::Quick
+    Qt6::Gui
     Qt6::Multimedia
     quickfuture
     QWindowKit::Quick
     QWindowKit::Core
+    ${FFmpeg_LIBRARIES}
+
 )
 
 #qt_add_lupdate(components TS_FILES "${APP_SOURCC_DIR}/translations/comp_ru.ts" "${APP_SOURCC_DIR}/translations/comp_en.ts")

@@ -76,27 +76,27 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 	_input = pipe;
 	_listenerIndex = pipe->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index) {
 
-			if (!_sink)
-			{
-				QAudioFormat format;
-				format.setSampleRate(frame->sample_rate);
-				format.setChannelCount(frame->ch_layout.nb_channels);
-				format.setSampleFormat(Media::Audio::toQtFormat((AVSampleFormat)frame->format));
-				if (!_device.isFormatSupported(format)) {
-					qCWarning(LC_AUDIO_OUTPUT) << "Raw audio format not supported by backend, cannot play audio.";
-					_input->unmapReading(index);
-					return;
-				}
-				_sink = new QAudioSink(_device, format);
-				//connect(_sink, &QAudioSink::stateChanged, this, [=](QAudio::State st) {
-				//	qCDebug(LC_AUDIO_OUTPUT) << "New audio state " << st;
-				//	});
+		if (!_sink)
+		{
+			QAudioFormat format;
+			format.setSampleRate(frame->sample_rate);
+			format.setChannelCount(frame->ch_layout.nb_channels);
+			format.setSampleFormat(Media::Audio::toQtFormat((AVSampleFormat)frame->format));
+			if (!_device.isFormatSupported(format)) {
+				qCWarning(LC_AUDIO_OUTPUT) << "Raw audio format not supported by backend, cannot play audio.";
+				_input->unmapReading(index);
+				return;
 			}
-			if (_sink->state() != QAudio::ActiveState)
-				_io= _sink->start();
-			_io->write((char*)*frame->extended_data, frame->linesize[0]);
-			_input->unmapReading(index);
-		});
+			_sink = new QAudioSink(_device, format);
+			//connect(_sink, &QAudioSink::stateChanged, this, [=](QAudio::State st) {
+			//	qCDebug(LC_AUDIO_OUTPUT) << "New audio state " << st;
+			//	});
+		}
+		if (_sink->state() != QAudio::ActiveState)
+			_io= _sink->start();
+		_io->write((char*)*frame->extended_data, frame->linesize[0]);
+		_input->unmapReading(index);
+	});
 	_isStarted = true;
 	return true;
 }

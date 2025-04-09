@@ -1,11 +1,11 @@
 #pragma once
-#include <qobject>
+#include <QObject>
 #include <queue>
 #include <atomic>
 #include <mutex>
 #include "datapipe.h"
 #include "taskqueue.h"
-#include <qstack>
+#include <QStack>
 #include "media.h"
 extern "C" 
 {

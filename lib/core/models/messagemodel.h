@@ -18,7 +18,7 @@ namespace Message {
 		Q_ENUM(MessageStatus);
 		enum RoleNames
 		{
-			IdRole = IdentifyingModel<Data>::IDRole(),
+            IdRole = IdentifyingModel<Message::Data,std::deque,MutexLock>::IDRole(),
 			UserIdRole,
 			BodyRole,
 			TimeRole,

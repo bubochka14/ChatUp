@@ -2,7 +2,7 @@
 #include <qstring.h>
 #include "data.h"
 #include "networkcoordinator.h"
-#include <qfuture>
+#include <QFuture>
 #include <qloggingcategory.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_API);
 namespace Call::Api

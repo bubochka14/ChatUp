@@ -18,8 +18,9 @@
 #include "media.h"
 #include "audiooutput.h"
 #include "stack"
-#include <qtimer>
+#include <QTimer>
 #include <QObject>
+#include <algorithm>
 Q_DECLARE_LOGGING_CATEGORY(LC_CALL_CONTROLLER);
 
 namespace Call {
