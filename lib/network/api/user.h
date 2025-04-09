@@ -1,5 +1,5 @@
 #pragma once
-#include "data.h";
+#include "data.h"
 #include <QString>
 #include <QFuture>
 #include "networkcoordinator.h"

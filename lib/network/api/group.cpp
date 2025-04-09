@@ -1,4 +1,3 @@
-#pragma once
 #include "group.h"
 Q_LOGGING_CATEGORY(LC_GROUP_API,"GroupApi")
 using namespace Group::Api;

@@ -1,6 +1,4 @@
 #pragma once
-
-#include <WinSock2.h>
 #include <QFuture>
 #include <rtc/rtc.hpp>
 #include <qloggingcategory.h>

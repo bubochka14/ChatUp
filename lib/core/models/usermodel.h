@@ -4,7 +4,6 @@
 #include "identifyingmodel.h"
 #include <qqmlengine.h>
 #include <userhandle.h>
-#include <qhash>
 #include <qbytearray.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_ROOM_MODEL)
 namespace User {
@@ -63,11 +62,11 @@ namespace User {
 			_data = list;
 			for(int i =0; i< _data.size(); i++)
 			{
-				connect(_data[i], &User::Handle::idChanged, this, [=]()
+                connect(_data[i], &User::Handle::idChanged, this, [this,i]()
 					{emit dataChanged(index(i), index(i)); });
-				connect(_data[i], &User::Handle::nameChanged, this, [=]()
+                connect(_data[i], &User::Handle::nameChanged, this, [this,i]()
 					{emit dataChanged(index(i), index(i)); });
-				connect(_data[i], &User::Handle::statusChanged, this, [=]()
+                connect(_data[i], &User::Handle::statusChanged, this, [this,i]()
 					{emit dataChanged(index(i), index(i)); });
 			}
 			endResetModel();
@@ -76,11 +75,11 @@ namespace User {
 		{
 
 			beginInsertRows(QModelIndex(), _data.size(), _data.size());
-			connect(u, &User::Handle::idChanged, this, [=]()
+            connect(u, &User::Handle::idChanged, this, [this]()
 				{emit dataChanged(index(_data.size()), index(_data.size())); });
-			connect(u, &User::Handle::nameChanged, this, [=]()
+            connect(u, &User::Handle::nameChanged, this, [this]()
 				{emit dataChanged(index(_data.size()), index(_data.size())); });
-			connect(u, &User::Handle::statusChanged, this, [=]()
+            connect(u, &User::Handle::statusChanged, this, [this]()
 				{emit dataChanged(index(_data.size()), index(_data.size())); });
 			_data.push_back(u);
 

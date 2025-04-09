@@ -119,9 +119,13 @@ void Video::AbstractEncoder::close()
 		_listenerIndex = std::nullopt;
 	}
 	//std::lock_guard g(_contextMutex);
-	if (_cCtx)
-		avcodec_close(_cCtx.get());
-	_isStarted = false;
+    if (_cCtx)
+    {
+        auto cCtx = _cCtx.get();
+        avcodec_free_context(&cCtx);
+        _cCtx.reset();
+    }
+    _isStarted = false;
 }
 Audio::AbstractEncoder::AbstractEncoder()
 	:_out(Media::createPacketPipe())
@@ -179,7 +183,11 @@ void Audio::AbstractEncoder::close()
 		_input.reset();
 	}
 	if (_cCtx)
-		avcodec_close(_cCtx.get());
+    {
+        auto cCtx = _cCtx.get();
+        avcodec_free_context(&cCtx);
+        _cCtx.reset();
+    }
 	_isStarted = false;
 }
 Audio::AbstractEncoder::~AbstractEncoder()

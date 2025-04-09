@@ -152,6 +152,11 @@ QFuture<void> Handle::openVideo(Media::Video::StreamSource* source)
 //}
 void Handle::connectAudioOutput(int userID, Media::Audio::Output*out)
 {
+    if (out->availableDevices().isEmpty())
+    {
+        qCWarning(LC_RTC_SERVICE) << "Cannot connect audio output, no available devices.";
+        return;
+    }
 	_controller->connectAudioOutput(this, userID, out);
 }
 void Controller::connectAudioOutput(Handle* h, int userID, Media::Audio::Output* out)
@@ -326,7 +331,7 @@ Handle* Controller::handle(int roomID)
 	if (_handles.contains(roomID))
 		return _handles[roomID];
 	if(_freeHandlePool.empty())
-		growHandlePool(max(_handles.size(),10));
+        growHandlePool(std::max(_handles.size(),(size_t)10));
 	auto newHandle = _freeHandlePool.top();
 	_freeHandlePool.pop();
 	newHandle->setRoomID(roomID);
