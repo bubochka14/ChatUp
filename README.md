@@ -1,5 +1,5 @@
 # ChatUp
- ChatUp is a desktop messager available for Linux, Windows and Mac.
+ ChatUp is a desktop messager available for Linux and Windows.
 In ChatUp you can: 
 * Сreate groups and add users to them
 * Send text messages to group chats
@@ -21,7 +21,7 @@ Qt version >= 6.8.0
 ## Server setup
 Communication with the [server](https://github.com/bubochka14/ChatUp_server) is performed using the webscoket protocol,address and port of the server can be set via the command line:
 ```sh
-$ ChatUp -h "host" -p "port"
+$ chatup -h "host" -p "port"
 ```
 Default address is wss://5.35.124.43:8000
 ## Building
@@ -31,6 +31,7 @@ git clone https://github.com/bubochka14/ChatUp.git && cd ChatUp
 git submodule update --init --recursive
 mkdir build && cd build
 cmake build .. -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg
+cmake --build .
 ```
 ## To do
 * Group and user icons
