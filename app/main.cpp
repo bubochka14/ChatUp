@@ -1,6 +1,5 @@
 ﻿#include <QGuiApplication>
-#include <QCommandlineparser>
-#include <QProcessEnvironment>
+#include <QCommandLineParser>
 #include "qtranslator.h"
 #include <qdiriterator.h>
 #include "app.h"

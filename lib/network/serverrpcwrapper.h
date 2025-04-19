@@ -7,7 +7,7 @@
 #include <qloggingcategory.h>
 #include <rtc/rtc.hpp>
 #include <unordered_map>
-#include <qfuture>
+#include <QFuture>
 Q_DECLARE_LOGGING_CATEGORY(LC_SERVER_HANDLER);
 using NetworkError = QNetworkReply::NetworkError;
 using JsonPromise = QPromise<json>;

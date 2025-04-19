@@ -152,6 +152,8 @@ ListView {
     }
 
     function loadMessages() {
+        if(!room.messageCount)
+            return
         console.log("loading messages", Math.max(0, topLoaded - uploadCount),
                     topLoaded, model.rowCount)
         Future.onFinished(MessageController.load(

@@ -13,7 +13,7 @@ extern "C" {
 #include <qvideosink.h>
 #include <qaudiosink.h>
 #include <QFuture>
-#include <qdebug>
+#include <QDebug>
 namespace Media
 {
     static bool Inited = false;

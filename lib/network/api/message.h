@@ -2,7 +2,7 @@
 #include "data.h"
 #include "networkcoordinator.h"
 #include <string>
-#include <qfuture>
+#include <QFuture>
 namespace Message::Api
 {
 	struct Create 

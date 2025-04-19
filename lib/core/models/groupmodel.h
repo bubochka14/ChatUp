@@ -8,14 +8,14 @@ Q_DECLARE_LOGGING_CATEGORY(LC_ROOM_MODEL)
 namespace Group {
 	//Q_NAMESPACE_EXPORT(CC_CORE_EXPORT);
 	;
-	class CC_CORE_EXPORT Model : public IdentifyingModel < Group::ExtendedData, std::deque, MutexLock >
+class CC_CORE_EXPORT Model : public IdentifyingModel < Group::ExtendedData, std::deque, MutexLock >
 	{
 		Q_OBJECT;
 		QML_NAMED_ELEMENT(GroupModel);
 	public:
 		enum RoleNames
 		{
-			IDRole = IdentifyingModel<Group::ExtendedData>::IDRole(),
+            IDRole = IdentifyingModel<Message::Data,std::deque,MutexLock>::IDRole(),
 			NameRole,
 			TagRole,
 			HashRole,

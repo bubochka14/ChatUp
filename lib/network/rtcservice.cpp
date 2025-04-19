@@ -28,10 +28,10 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 	std::scoped_lock lck{ _localVideo.mutex, ctx->video.mutex};
 	if(!_localVideo.encoder)
 	{
-		_localVideo.encoder = std::make_shared<Media::Video::H264Encoder>();
+		_localVideo.encoder = std::make_shared<Media::Video::H264Encoder>(std::move(config));
 	}
 	if(_localVideo.encoder->input() != input)
-		_localVideo.encoder->start(input, std::move(config));
+		_localVideo.encoder->start(input);
 
 	PacketizationConfig pConfig;
 	pConfig.ecnCtx = _localVideo.encoder->codecContext();
@@ -261,11 +261,9 @@ void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input
 	std::scoped_lock lck{ _localAudio.mutex, ctx->audio.mutex };
 	if(!_localAudio.encoder)
 	{
-		_localAudio.encoder = std::make_shared<Media::Audio::OpusEncoder>();
+		_localAudio.encoder = std::make_shared<Media::Audio::OpusEncoder>(std::move(config));
 	}
-	if (_localAudio.encoder->input() != input)
-		_localAudio.encoder->start(input, std::move(config));
-
+	_localAudio.encoder->start(input);
 	auto encHandler = [this, userID,wCtx = std::weak_ptr(ctx)](std::shared_ptr<AVPacket> packet, size_t index) {
 		auto ctx = wCtx.lock();
 		if (!ctx)

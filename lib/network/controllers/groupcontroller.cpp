@@ -17,7 +17,7 @@ bool CallerController::incrementMessageCount(int roomID,size_t count)
 	if (!index.isValid())
 		return false;
 	int messageCount = roomModel->data(index, Group::Model::MessageCountRole).toInt();
-	return roomModel->setData(index, count+ messageCount, Group::Model::MessageCountRole);
+    return roomModel->setData(index, qint32(count+ messageCount), Group::Model::MessageCountRole);
 }
 void Controller::reset()
 {
@@ -154,10 +154,10 @@ QFuture<void> CallerController::update(const QVariantHash& data)
 QFuture<void> CallerController::load()
 {
 	Api::GetAll req;
-	return req.exec(_manager).then([this](std::vector<Group::ExtendedData> res){
-		model()->insertRange(0, std::make_move_iterator(res.begin()), 
-			std::make_move_iterator(res.end()));
-	});
+    return req.exec(_manager).then([this](std::vector<Group::ExtendedData> res){
+        model()->insertRange(0, std::make_move_iterator(res.begin()),
+                                       std::make_move_iterator(res.end()));
+    });
 }
 QFuture<void> CallerController::setLocalReadings(int roomID, size_t count)
 {
@@ -173,7 +173,7 @@ QFuture<void> CallerController::setLocalReadings(int roomID, size_t count)
 	{
 		return QtFuture::makeReadyVoidFuture();
 	}
-	roomModel->setData(index, count, Group::Model::LocalReadings);
+    roomModel->setData(index, quint32(count), Group::Model::LocalReadings);
 	_readingsUpdateQueue.push(roomID);
 	if (!_updateReadingsTimer->isActive())
 		_updateReadingsTimer->start();

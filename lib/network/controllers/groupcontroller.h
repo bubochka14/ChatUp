@@ -7,7 +7,7 @@
 #include "api/group.h"
 #include "api/message.h"
 #include "networkcoordinator.h"
-#include <qtimer>
+#include <QTimer>
 #include <queue>
 #include "abstractcontroller.h"
 namespace Group {

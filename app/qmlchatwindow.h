@@ -8,7 +8,7 @@
 #include <qqmlapplicationengine.h>
 #include <qqmlcomponent.h>
 #include "controllers/controllermanager.h"
-#include <Qtimer>
+#include <QTimer>
 #include "pipelines.h"
 #include <qloggingcategory.h>
 #include "audiooutput.h"

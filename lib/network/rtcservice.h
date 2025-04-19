@@ -59,14 +59,14 @@ namespace rtc
 		};
 		struct LocalVideoContext
 		{
-			std::shared_ptr<Media::Video::AbstractEncoder> encoder;
+			std::shared_ptr<Media::Video::Encoder> encoder;
 			std::shared_ptr<Media::RtpPacketizer> packetizer;
 			std::mutex mutex;
 
 		};
 		struct LocalAudioContext
 		{
-			std::shared_ptr<Media::Audio::AbstractEncoder> encoder;
+			std::shared_ptr<Media::Audio::Encoder> encoder;
 			std::mutex mutex;
 
 		};

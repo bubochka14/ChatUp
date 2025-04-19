@@ -1,7 +1,7 @@
 #pragma once
 #include "vector"
 #include <string>
-#include <qstring>
+#include <QString>
 #include <memory>
 #include <media.h>
 #include <camerainput.h>
