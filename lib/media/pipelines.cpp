@@ -48,7 +48,7 @@ QFuture<Video::SourceConfig> Video::CameraPipeline::open()
 			if (!config.has_value())
 				throw std::string("Cannot open camera");
 			_decoder.reset(new Decoder(config.value()));
-			_decoder->start(_cam->output());
+			_decoder->open(_cam->output());
 			_isOpen = true;
 			return config.value();
 		});
@@ -60,7 +60,7 @@ void Video::CameraPipeline::close()
 	if (_cam)
 		_cam->close();
 	if (_decoder)
-		_decoder->stop();
+		_decoder->close();
 	_isOpen = false;
 }
 bool Video::CameraPipeline::isOpen()
@@ -123,6 +123,8 @@ Audio::MicrophonePipeline::MicrophonePipeline()
 	:_decoder(nullptr)
 	,_mic(nullptr)
 	,_dev(unknownDevice)
+	, _out (Media::createFramePipe())
+
 {
 }
 QStringList Audio::MicrophonePipeline::availableDevices() const
@@ -149,24 +151,63 @@ void Audio::MicrophonePipeline::setCurrentDevice(const QString& dev)
 	_dev = dev;
 	emit currentDeviceChanged();
 }
+void Audio::MicrophonePipeline::setFilterFactory(std::shared_ptr<FilterFactory> other)
+{
+	_filterFactory = other;
+}
 QFuture<Audio::SourceConfig> Audio::MicrophonePipeline::open()
 {
 	if (!_openingFuture.has_value())
 		_openingFuture = QtConcurrent::run([this]() ->SourceConfig {
-			scope_guard g([this]() {	_openingFuture = std::nullopt; });
+			scope_guard g([this]() {_openingFuture = std::nullopt; });
 			if (_dev == unknownDevice)
-				throw std::string("Device is not set");
+			{
+				auto devList = availableDevices();
+				if(devList.isEmpty())
+					throw std::string("No audio devices");
+				_dev = devList.first();
+			} 
+
 			if (_isOpen)
 				close();
 			auto newMic = std::make_unique<Microphone>(_dev.toStdString());
 			auto source = newMic->open();
 			if (!source.has_value())
-				throw std::string("Cannot open microphone");
+				throw std::string("Can not open the microphone");
 			_mic = std::move(newMic);
 			_decoder.reset(new Decoder(source.value()));
-			_decoder->start(_mic->output());
-			_isOpen = true;
-			return source.value();
+			_decoder->open(_mic->output());
+			if (_filterFactory)
+				_filter = _filterFactory->createFilter(source.value());
+			if (_filter)
+			{
+				auto outConfig = _filter->open(_decoder->output());
+				if(!outConfig.has_value())
+					throw std::string("Cannot open the filter");
+				_filter->output()->onDataChanged([this](auto frame, size_t index) {
+					auto data = _out->holdForWriting();
+					data.ptr = frame;
+					_filter->output()->unmapReading(index);
+					_out->unmapWriting(data.subpipe, true);
+			
+				});
+				_isOpen = true;
+				return outConfig.value();
+			}
+			//else
+			//{
+			//	_decoder->output()->onDataChanged([this](auto frame, size_t index) {
+			//		FramePipe::PipeData data = _out->holdForWriting();
+			//		_out->setStoredData(index, frame);
+			//		_out->unmapWriting(data.subpipe, true);
+			//		_decoder->output()->unmapReading(index);
+
+			//		});
+			//	_isOpen = true;
+			//	return source.value();
+			//}
+				_isOpen = true;
+				return source.value();
 		});
 	return _openingFuture.value();
 
@@ -176,7 +217,7 @@ void Audio::MicrophonePipeline::close()
 	if (_mic)
 		_mic->close();
 	if (_decoder)
-		_decoder->stop();
+		_decoder->close();
 	_isOpen = false;
 }
 bool Audio::MicrophonePipeline::isOpen()

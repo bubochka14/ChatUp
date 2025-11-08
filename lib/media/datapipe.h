@@ -65,6 +65,12 @@ namespace Media
 			std::lock_guard guard(reader_mutex);
 			return subpipes[index].ptr;
 		}
+		//unsafe
+		void setStoredData(size_t index, std::shared_ptr<T> ptr)
+		{
+			std::lock_guard guard(reader_mutex);
+			subpipes[index].ptr = ptr;
+		}
 		void lock()
 		{
 			reader_mutex.unlock();

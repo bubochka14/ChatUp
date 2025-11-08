@@ -1,4 +1,11 @@
 #pragma once
+extern "C"
+{
+#include <libavdevice/avdevice.h>
+#include "libavfilter/avfilter.h"
+#include "libavfilter/buffersink.h"
+#include "libavfilter/buffersrc.h"
+}
 #include "vector"
 #include <string>
 #include <QString>
@@ -12,6 +19,7 @@
 #include "media_include.h"
 #include <QtConcurrent/qtconcurrentrun.h>
 #include "scopeguard.h"
+#include "filters.h"
 namespace Media::Video {
     class CC_MEDIA_EXPORT CameraPipeline : public  StreamSource
     {
@@ -23,6 +31,7 @@ namespace Media::Video {
         virtual QStringList availableDevices() const;
         std::shared_ptr<Media::FramePipe> frameOutput() override;
         QFuture<SourceConfig> open() override;
+
         QString currentDevice();
         void setCurrentDevice(const QString& dev);
         void close() override;
@@ -71,6 +80,7 @@ namespace Media::Audio {
         virtual QStringList availableDevices() const;
         std::shared_ptr<Media::FramePipe> frameOutput() override;
         QFuture<SourceConfig> open() override;
+        void setFilterFactory(std::shared_ptr<FilterFactory> other);
         QString currentDevice();
         void setCurrentDevice(const QString& dev);
         void close() override;
@@ -84,11 +94,13 @@ namespace Media::Audio {
         std::unique_ptr<Decoder> _decoder;
         std::unique_ptr<Microphone>  _mic;
         std::atomic<bool> _isOpen;
+        std::shared_ptr<FilterFactory> _filterFactory;
+        std::shared_ptr<Filter> _filter;
         std::mutex mutex;
         std::optional<SourceConfig> config;
         std::optional<QFuture<SourceConfig>> _openingFuture;
-
+        std::shared_ptr<Media::FramePipe> _out;
         QString _dev;
-
+       
     };
 }

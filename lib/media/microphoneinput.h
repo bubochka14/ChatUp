@@ -2,6 +2,7 @@
 extern "C"
 {
 #include <libavdevice/avdevice.h>
+
 }
 #include <string>
 #include <memory>
@@ -9,6 +10,7 @@ extern "C"
 #include <optional>
 #include "media_include.h"
 #include <qloggingcategory.h>
+
 Q_DECLARE_LOGGING_CATEGORY(LC_MICROPHONE);
 
 namespace Media::Audio 
@@ -33,5 +35,6 @@ namespace Media::Audio
         void threadFunc();
         std::mutex mutex;
         std::atomic<bool> active;
+
     };
 }

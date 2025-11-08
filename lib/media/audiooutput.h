@@ -24,10 +24,8 @@ namespace Media::Audio {
 	public:
 		PipeAudioBuffer(std::shared_ptr<FramePipe> p);
 	public:
-		qint64 readLineData(char* data, qint64 maxSize) override
-			;
-		qint64 bytesAvailable() const override
-			;
+		qint64 readLineData(char* data, qint64 maxSize) override;
+		qint64 bytesAvailable() const override;
 		qint64 readData(char* data, qint64 maxSize) override;
 
 		/* Only readable, not writable */

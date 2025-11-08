@@ -1,2 +1,2 @@
-#add_subdirectory(unit)
-#add_subdirectory(googletest)
+add_subdirectory(unit)
+add_subdirectory(manual)

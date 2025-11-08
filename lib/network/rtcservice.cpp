@@ -106,8 +106,9 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 				ctx->video.packetPipe = createNullBufferPacketPipe();
 			if (!ctx->video.decoder)
 			{
-				ctx->video.decoder.reset(new Video::H264Decoder());
-				ctx->video.decoder->start(ctx->video.packetPipe);
+				auto newDecoder = std::make_shared<Video::H264Decoder>();
+				newDecoder->open(ctx->video.packetPipe);
+				ctx->video.decoder = newDecoder;
 			}
 			auto pipeData = ctx->video.packetPipe->tryHoldForWriting();
 			if (!pipeData.has_value())
@@ -246,8 +247,10 @@ std::shared_ptr<Media::FramePipe> Service::getRemoteAudio(int userID)
 		ctx->audio.packetPipe = createNullBufferPacketPipe();
 	if (!ctx->audio.decoder)
 	{
-		ctx->audio.decoder = std::make_shared<Media::Audio::OpusDecoder>();
-		ctx->audio.decoder->start(ctx->audio.packetPipe);
+		auto newDecoder = std::make_shared<Audio::OpusDecoder>();
+		newDecoder->open(ctx->audio.packetPipe);
+
+		ctx->audio.decoder = newDecoder;
 	}
 	return ctx->audio.decoder->output();
 }
@@ -343,8 +346,10 @@ void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input
 				ctx->audio.packetPipe = createNullBufferPacketPipe();
 			if (!ctx->audio.decoder)
 			{
-				ctx->audio.decoder.reset(new Audio::OpusDecoder());
-				ctx->audio.decoder->start(ctx->audio.packetPipe);
+				auto newDecoder = std::make_shared<Audio::OpusDecoder>();
+				newDecoder->open(ctx->audio.packetPipe);
+
+				ctx->audio.decoder = newDecoder;
 			}
 			auto pipeData = ctx->audio.packetPipe->tryHoldForWriting();
 			if (!pipeData.has_value())
@@ -512,12 +517,18 @@ void Service::createPeerContext(int id)
 			std::shared_ptr<PeerContext> ctx = getPeerContext(id);
 			ctx->audio.rtcp = rtcp;
 			ctx->audio.track = track;
-			if (!ctx->audio.decoder)
-				ctx->audio.decoder.reset(new Audio::OpusDecoder());
-			if(!ctx->audio.packetPipe)
+
+			if (!ctx->audio.packetPipe)
 			{
 				ctx->audio.packetPipe = createNullBufferPacketPipe();
-				ctx->audio.decoder->start(ctx->audio.packetPipe);
+			}
+			if (!ctx->audio.decoder)
+			{
+				auto newDecoder = std::make_shared<Audio::OpusDecoder>();
+				newDecoder->open(ctx->audio.packetPipe);
+
+				ctx->audio.decoder= newDecoder;
+
 			}
 			track->onClosed([id]() {
 				qCDebug(LC_RTC_SERVICE) << "Audio track width" << id << "closed";
@@ -562,8 +573,9 @@ std::shared_ptr<Media::FramePipe> Service::getRemoteVideo(int userID)
 		ctx->video.packetPipe = createNullBufferPacketPipe();
 	if (!ctx->video.decoder)
 	{
-		ctx->video.decoder.reset(new Video::H264Decoder());
-		ctx->video.decoder->start(ctx->video.packetPipe);
+		auto newDecoder = std::make_shared<Video::H264Decoder>();
+		newDecoder->open(ctx->video.packetPipe);
+		ctx->video.decoder = newDecoder;
 	}
 	return ctx->video.decoder->output();
 }

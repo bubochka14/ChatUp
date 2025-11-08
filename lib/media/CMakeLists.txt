@@ -6,6 +6,8 @@ set(LIB_SOURCES
     "decoder.cpp"
     "decoder.h"
     "encoder.h"
+    "filters.h"
+    "filters.cpp"
     "encoder.cpp"
     "media.h"
     "media.cpp"
@@ -21,6 +23,10 @@ set(LIB_SOURCES
     "media_include.h"
     "rtppacketizer.h"
     "rtppacketizer.cpp"
+    "mediacontext.h"
+    "mediacontext.cpp"
+    "demuxer.h"
+    "demuxer.cpp"
 )
 add_library(${LIB_NAME} SHARED ${LIB_SOURCES})
 add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME}) 
@@ -29,10 +35,10 @@ target_compile_definitions(${LIB_NAME} PRIVATE
 )
 target_include_directories(${LIB_NAME} PUBLIC 
     ${CMAKE_CURRENT_SOURCE_DIR}
-    PRIVATE ${FFMPEG_INCLUDE_DIRS}
+    ${FFMPEG_INCLUDE_DIRS}
 
 )
-target_link_directories(${LIB_NAME} PRIVATE ${FFMPEG_LIBRARY_DIRS})
+target_link_directories(${LIB_NAME} PUBLIC ${FFMPEG_LIBRARY_DIRS})
 set_target_properties(app PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED YES
@@ -47,9 +53,10 @@ list(APPEND FFMPEG_LIBRARIES
     avdevice
     swresample
 	swscale
+    avfilter
 )
 
-target_link_libraries(${LIB_NAME} PRIVATE 
+target_link_libraries(${LIB_NAME} PUBLIC 
     ChatClient::Core
     Qt6::Core
     Qt6::Qml

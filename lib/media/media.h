@@ -19,7 +19,6 @@ namespace Media
     static bool Inited = false;
 #ifdef av_err2str
 #undef av_err2str
-#include <string>
     av_always_inline std::string av_err2string(int errnum) {
         char str[AV_ERROR_MAX_STRING_SIZE];
         return av_make_error_string(str, AV_ERROR_MAX_STRING_SIZE, errnum);
@@ -67,9 +66,9 @@ namespace Media
         }
     };
     using PacketPipe = DataPipe<128, AVPacket>;
-    using FramePipe = DataPipe<128, AVFrame>;
-    using BytePipe = DataPipe<2, std::vector<std::byte>>;
-    using RawPipe = DataPipe<2, Raw>;
+    using FramePipe  = DataPipe<128, AVFrame>;
+    using BytePipe   = DataPipe<2, std::vector<std::byte>>;
+    using RawPipe    = DataPipe<2, Raw>;
     using VectorPacketPipe = DataPipe<32, VectorPacket>;
     static std::shared_ptr<VectorPacketPipe> createVectorPacketPipe()
     {
@@ -121,6 +120,14 @@ namespace Media
         }, [](AVFrame* p) {
             av_frame_free(&p);
         });
+    }
+    static std::shared_ptr<FramePipe> createFramePipe()
+    {
+        return std::make_shared<FramePipe>([]() {
+            return  av_frame_alloc();
+            }, [](AVFrame* p) {
+                av_frame_free(&p);
+            });
     }
     CC_MEDIA_EXPORT std::shared_ptr<PacketPipe> createPacketPipe();
     CC_MEDIA_EXPORT bool fillPacket(

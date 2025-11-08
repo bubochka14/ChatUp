@@ -94,7 +94,7 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 		}
 		if (_sink->state() != QAudio::ActiveState)
 			_io= _sink->start();
-		_io->write((char*)*frame->extended_data, frame->linesize[0]);
+		_io->write((char*)*frame->extended_data, frame->nb_samples* av_get_bytes_per_sample((AVSampleFormat)frame->format)* frame->ch_layout.nb_channels);
 		_input->unmapReading(index);
 	});
 	_isStarted = true;

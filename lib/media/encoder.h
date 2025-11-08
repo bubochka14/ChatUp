@@ -22,28 +22,29 @@ namespace Media {
 	{
 	public:
 		std::shared_ptr<Media::PacketPipe> output();
-		std::shared_ptr<AVCodecContext> codecContext();
-		virtual void close();
+		std::shared_ptr<AVCodecContext> codecContext();//need to remove
 		bool isStarted();
 		virtual bool start(std::shared_ptr<Media::FramePipe> input);
+		virtual void close();
 		virtual ~AbstractEncoder();
 	protected:
-		const AVCodec* codec();
-		void setPTS(uint64_t other);
-		void setDTS(uint64_t other);
-		void setCodecContext(std::shared_ptr<AVCodecContext> other);
+		AbstractEncoder(const AVCodec* cdc);
+
 		uint64_t dts();
 		uint64_t pts();
-		AbstractEncoder(const AVCodec* cdc);
+		void setPTS(uint64_t other);
+		void setDTS(uint64_t other);
+		const AVCodec* codec();
+		void setCodecContext(std::shared_ptr<AVCodecContext> other);
 		virtual void fillContext(std::shared_ptr<AVCodecContext> ctx);
 
 	private:
+		std::atomic<bool> _isStarted = { false };
 		std::shared_ptr<Media::PacketPipe> _out;
 		std::shared_ptr<AVCodecContext> _cCtx;
 		const AVCodec* _cdc;
 		uint64_t _pts;
 		uint64_t _dts;
-		std::atomic<bool> _isStarted = { false };
 
 	};
 }
@@ -88,14 +89,17 @@ namespace Media::Audio {
 	protected:
 		bool checkSampleFormat(AVSampleFormat fmt);
 		bool checkSampleRate(int rate);
-		AVFrame makeFrameChunk(std::shared_ptr<AVFrame> src, size_t offset, size_t samples);
 		void fillContext(std::shared_ptr<AVCodecContext> ctx) override;
 	private:
+		bool encodeFrame(AVFrame* fr);
 		Media::Audio::SourceConfig _config;
 		std::shared_ptr<FramePipe> _converted;
 		std::shared_ptr<SwrContext> _swr;
 		std::shared_ptr<FramePipe> _input;
 		std::optional<int> _listenerIndex;
+		int _samplesConverted;
+		uint8_t* _chunkBegin;
+		int chunkOffset;
 	};
 	class CC_MEDIA_EXPORT AACEncoder final : public Encoder
 	{
