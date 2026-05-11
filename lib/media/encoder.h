@@ -9,6 +9,9 @@
 #include <condition_variable>
 #include <qloggingcategory.h>
 #include <QtConcurrent/qtconcurrentrun.h>
+
+#include "Processing.h"
+
 extern "C"
 {
 #include <libswresample/swresample.h>
@@ -16,19 +19,23 @@ extern "C"
 #include "libavutil/audio_fifo.h"
 #include <libswscale/swscale.h>
 }
+#include "CodecSpecificInfo.h"
 Q_DECLARE_LOGGING_CATEGORY(LC_ENCODER);
-namespace Media {
-	class CC_MEDIA_EXPORT AbstractEncoder
+struct EncodedImage
+{
+	
+};
+namespace chatup {
+	class CC_MEDIA_EXPORT FFmpegEncoder
 	{
 	public:
-		std::shared_ptr<Media::PacketPipe> output();
-		std::shared_ptr<AVCodecContext> codecContext();//need to remove
-		bool isStarted();
-		virtual bool start(std::shared_ptr<Media::FramePipe> input);
-		virtual void close();
-		virtual ~AbstractEncoder();
+		explicit FFmpegEncoder(const AVCodec* codec);
+		std::shared_ptr<PacketPipe> EncodedOutput();
+		bool IsEncoding() const;
+		virtual bool Encode(std::shared_ptr<AVCodecParameters> codecParameters, std::shared_ptr<FramePipe> input);
+		virtual void Close();
+		virtual ~FFmpegEncoder();
 	protected:
-		AbstractEncoder(const AVCodec* cdc);
 
 		uint64_t dts();
 		uint64_t pts();
@@ -39,24 +46,27 @@ namespace Media {
 		virtual void fillContext(std::shared_ptr<AVCodecContext> ctx);
 
 	private:
-		std::atomic<bool> _isStarted = { false };
-		std::shared_ptr<Media::PacketPipe> _out;
-		std::shared_ptr<AVCodecContext> _cCtx;
-		const AVCodec* _cdc;
+		const AVCodec* m_codec;
+
+		std::atomic<bool> m_isEncoding = { false };
+		std::shared_ptr<PacketPipe> m_encodedOutput;
+		std::shared_ptr<AVCodecContext> m_codecContext;
+		FFmpegProcessing m_processing;
+		std::shared_ptr<AVFrame> m_transformedFrame;
+
 		uint64_t _pts;
 		uint64_t _dts;
+		FrameListener m_frameLister;
 
 	};
-}
-namespace Media::Video {
-	class CC_MEDIA_EXPORT Encoder : public AbstractEncoder
+	class CC_MEDIA_EXPORT VideoEncoder : public FFmpegEncoder
 	{
 	public:
-		bool start(std::shared_ptr<Media::FramePipe> input);
-		std::shared_ptr<Media::FramePipe> input();
-		void close();
+		bool start(std::shared_ptr<FramePipe> input);
+		std::shared_ptr<FramePipe> input();
+		void Close();
 		SourceConfig config();
-		Encoder(SourceConfig config,const AVCodec* cdc);
+		VideoEncoder(SourceConfig config,const AVCodec* cdc);
 	protected:
 		void fillContext(std::shared_ptr<AVCodecContext> ctx) override;
 
@@ -68,31 +78,20 @@ namespace Media::Video {
 		std::shared_ptr<AVFrame> _rescaledFrame;
 		std::optional<int> _listenerIndex;
 	};
-
-	class CC_MEDIA_EXPORT H264Encoder final : public Encoder
+	class CC_MEDIA_EXPORT AudioEncoder : public FFmpegEncoder
 	{
 	public:
-		H264Encoder(Media::Video::SourceConfig config);
-	protected:
-		void fillContext(std::shared_ptr<AVCodecContext> ctx) override;
-
-	};
-}
-namespace Media::Audio {
-	class CC_MEDIA_EXPORT Encoder : public AbstractEncoder
-	{
-	public:
-		bool start(std::shared_ptr<Media::FramePipe> input);
-		void close() override;
+		bool start(std::shared_ptr<FramePipe> input);
+		void Close() override;
 		SourceConfig config();
-		Encoder(SourceConfig config, const AVCodec* cdc);
+		AudioEncoder(SourceConfig config, const AVCodec* cdc);
 	protected:
 		bool checkSampleFormat(AVSampleFormat fmt);
 		bool checkSampleRate(int rate);
 		void fillContext(std::shared_ptr<AVCodecContext> ctx) override;
 	private:
 		bool encodeFrame(AVFrame* fr);
-		Media::Audio::SourceConfig _config;
+		Audio::SourceConfig _config;
 		std::shared_ptr<FramePipe> _converted;
 		std::shared_ptr<SwrContext> _swr;
 		std::shared_ptr<FramePipe> _input;
@@ -101,14 +100,7 @@ namespace Media::Audio {
 		uint8_t* _chunkBegin;
 		int chunkOffset;
 	};
-	class CC_MEDIA_EXPORT AACEncoder final : public Encoder
-	{
-	public:
-		AACEncoder(SourceConfig config);
-		void fillContext(std::shared_ptr<AVCodecContext> ctx) override;
-
-	};
-	class CC_MEDIA_EXPORT OpusEncoder final : public Encoder
+	class CC_MEDIA_EXPORT OpusEncoder final : public AudioEncoder
 	{
 	public:
 		OpusEncoder(SourceConfig config);

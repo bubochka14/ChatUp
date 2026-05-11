@@ -1,5 +1,6 @@
 find_package(Qt6 REQUIRED COMPONENTS Core Multimedia MultimediaWidgets Concurrent)
 find_package(FFMPEG REQUIRED)
+find_package(Boost REQUIRED COMPONENTS Asio)
 set(LIB_NAME Media)
 set(LIB_SOURCES
     "datapipe.h"
@@ -14,9 +15,17 @@ set(LIB_SOURCES
     "microphoneinput.h"
     "audiooutput.h"
     "audiooutput.cpp"
+    "ffmpeg/ffmpegcameracapture.h"
+    "ffmpeg/ffmpegcameracapture.cpp"
+    "VideoFrameType.h"
     "microphoneinput.cpp"
-    "camerainput.h"
-    "camerainput.cpp"
+    "CodecSpecificInfo.h"
+    "Processing.h"
+    "Processing.cpp"
+    "VP9Globals.h"
+    "CommonConstraints.h"
+    "MediaCaptureBase.h"
+    "MediaCaptureBase.cpp"
     "audiooutput.h"
     "pipelines.h"
     "pipelines.cpp"
@@ -28,7 +37,7 @@ set(LIB_SOURCES
     "demuxer.h"
     "demuxer.cpp"
 )
-add_library(${LIB_NAME} SHARED ${LIB_SOURCES})
+add_library(${LIB_NAME} SHARED ${LIB_SOURCES} "H264Globals.h")
 add_library(${LIB_PREFIX}::${LIB_NAME} ALIAS ${LIB_NAME}) 
 target_compile_definitions(${LIB_NAME} PRIVATE 	
     CC_MEDIA_SHARED
@@ -63,6 +72,7 @@ target_link_libraries(${LIB_NAME} PUBLIC
     Qt6::Quick
     Qt6::Concurrent
     Qt6::Multimedia Qt6::MultimediaWidgets
+    Boost::asio
     ${FFMPEG_LIBRARIES}
 )
 

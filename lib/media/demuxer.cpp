@@ -1,7 +1,7 @@
 #include "demuxer.h"
 Q_LOGGING_CATEGORY(LC_H264DEMUXER, "H264Demuxer");
 
-using namespace Media;
+using namespace chatup;
 static int h264_read(void* opaque, uint8_t* buf, int size) noexcept
 {
 	using namespace Video;
@@ -22,9 +22,9 @@ static int h264_read(void* opaque, uint8_t* buf, int size) noexcept
 		return written;
 	}
 }
-Video::H264Demuxer::H264Demuxer()
+H264Demuxer::H264Demuxer()
 	:_ctx(avformat_alloc_context())
-	, _out(Media::createPacketPipe())
+	, _out(createPacketPipe())
 {
 	if (!_ctx) {
 		qCCritical(LC_H264DEMUXER) << "Cannot alloc input context";
@@ -50,13 +50,13 @@ Video::H264Demuxer::H264Demuxer()
 	_ctx->pb = avio_ctx;
 	int ret = avformat_open_input(&_ctx, "test", infmt, 0);
 	if (!_ctx || ret < 0) {
-		qCCritical(LC_H264DEMUXER) << "Cannot open input context:" << Media::av_err2string(ret);
+		qCCritical(LC_H264DEMUXER) << "Cannot open input context:" << av_err2string(ret);
 		return;
 	}
 }
-void Video::H264Demuxer::start(std::shared_ptr<Media::RawPipe> in)
+void H264Demuxer::start(std::shared_ptr<RawPipe> in)
 {
-	in->onDataChanged([this, wInput = std::weak_ptr<RawPipe>(in)](std::weak_ptr<Raw> wRaw, size_t index) {
+	in->AddUploadListener([this, wInput = std::weak_ptr<RawPipe>(in)](std::weak_ptr<Raw> wRaw, size_t index) {
 		auto raw = wRaw.lock();
 		auto input = wInput.lock();
 		if (!raw || !input)
@@ -64,15 +64,15 @@ void Video::H264Demuxer::start(std::shared_ptr<Media::RawPipe> in)
 		_readingOpaque.data = raw->raw;
 		_readingOpaque.size = raw->size;
 		_readingOpaque.totalWritten = 0;
-		auto packet = _out->holdForWriting();
+		auto packet = _out->HoldForUploading();
 		av_packet_unref(packet.ptr.get());
 		do {
 			int ret = av_read_frame(_ctx, packet.ptr.get());
-			input->unmapReading(index);
+			input->UnmapReading(index);
 			if (ret < 0)
 			{
 				_out->unmapWriting(packet.subpipe, false);
-				qCWarning(LC_H264DEMUXER) << "read packet error" << Media::av_err2string(ret);
+				qCWarning(LC_H264DEMUXER) << "read packet error" << av_err2string(ret);
 				return;
 			}
 		} while (_readingOpaque.totalWritten != _readingOpaque.size);
@@ -80,7 +80,7 @@ void Video::H264Demuxer::start(std::shared_ptr<Media::RawPipe> in)
 
 		});
 }
-std::shared_ptr<Media::PacketPipe> Video::H264Demuxer::output()
+std::shared_ptr<PacketPipe> H264Demuxer::output()
 {
 	return _out;
 }
@@ -106,7 +106,7 @@ static int opus_read(void* opaque, uint8_t* buf, int size) noexcept
 }
 Audio::OpusDemuxer::OpusDemuxer()
 	:_ctx(avformat_alloc_context())
-	, _out(Media::createPacketPipe())
+	, _out(createPacketPipe())
 {
 	if (!_ctx) {
 		qCCritical(LC_H264DEMUXER) << "Cannot alloc input context";
@@ -132,13 +132,13 @@ Audio::OpusDemuxer::OpusDemuxer()
 	_ctx->pb = avio_ctx;
 	int ret = avformat_open_input(&_ctx, "test", infmt, 0);
 	if (!_ctx || ret < 0) {
-		qCCritical(LC_H264DEMUXER) << "Cannot open input context:" << Media::av_err2string(ret);
+		qCCritical(LC_H264DEMUXER) << "Cannot open input context:" << av_err2string(ret);
 		return;
 	}
 }
-void Audio::OpusDemuxer::start(std::shared_ptr<Media::RawPipe> in)
+void Audio::OpusDemuxer::start(std::shared_ptr<RawPipe> in)
 {
-	in->onDataChanged([this, wInput = std::weak_ptr<RawPipe>(in)](std::weak_ptr<Raw> wRaw, size_t index) {
+	in->AddUploadListener([this, wInput = std::weak_ptr<RawPipe>(in)](std::weak_ptr<Raw> wRaw, size_t index) {
 		auto raw = wRaw.lock();
 		auto input = wInput.lock();
 		if (!raw || !input)
@@ -150,11 +150,11 @@ void Audio::OpusDemuxer::start(std::shared_ptr<Media::RawPipe> in)
 		av_packet_unref(packet.ptr.get());
 		do {
 			int ret = av_read_frame(_ctx, packet.ptr.get());
-			input->unmapReading(index);
+			input->UnmapReading(index);
 			if (ret < 0)
 			{
 				_out->unmapWriting(packet.subpipe, false);
-				qCWarning(LC_H264DEMUXER) << "read packet error" << Media::av_err2string(ret);
+				qCWarning(LC_H264DEMUXER) << "read packet error" << av_err2string(ret);
 				return;
 			}
 		} while (_readingOpaque.totalWritten != _readingOpaque.size);
@@ -162,7 +162,7 @@ void Audio::OpusDemuxer::start(std::shared_ptr<Media::RawPipe> in)
 
 		});
 }
-std::shared_ptr<Media::PacketPipe> Audio::OpusDemuxer::output()
+std::shared_ptr<PacketPipe> Audio::OpusDemuxer::output()
 {
 	return _out;
 }

@@ -1,13 +1,13 @@
 #include "pipelines.h"
 static const char unknownDevice[] = "unknown";
-using namespace Media;
-Video::CameraPipeline::CameraPipeline()
+using namespace chatup;
+CameraPipeline::CameraPipeline()
 	:_decoder(nullptr)
 	,_cam(nullptr)
 	,_dev(unknownDevice)
 {
 }
-QStringList Video::CameraPipeline::availableDevices() const
+QStringList CameraPipeline::availableDevices() const
 {
 	std::vector<std::string> vec = Camera::availableDevices();
 	QStringList out;
@@ -16,25 +16,25 @@ QStringList Video::CameraPipeline::availableDevices() const
 		out.emplaceBack(QString::fromStdString(i));
 	}return out;
 }
-QString Video::CameraPipeline::currentDevice()
+QString CameraPipeline::currentDevice()
 {
 	return _dev;
 }
-std::shared_ptr<Media::FramePipe> Video::CameraPipeline::frameOutput()
+std::shared_ptr<FramePipe> CameraPipeline::frameOutput()
 {
 	return _decoder->output();
 }
-void Video::CameraPipeline::setCurrentDevice(const QString& dev)
+void CameraPipeline::setCurrentDevice(const QString& dev)
 {
 	if (dev == _dev)
 		return;
 	_dev = dev;
 	emit currentDeviceChanged();
 }
-QFuture<Video::SourceConfig> Video::CameraPipeline::open()
+QFuture<SourceConfig> CameraPipeline::open()
 {
 	if (!_openingFuture.has_value())
-		_openingFuture = QtConcurrent::run([this]() -> Video::SourceConfig {
+		_openingFuture = QtConcurrent::run([this]() -> SourceConfig {
 		scope_guard g([this]() {	_openingFuture = std::nullopt; });
 			if (_dev == unknownDevice)
 				throw std::string("Device is not set");
@@ -55,7 +55,7 @@ QFuture<Video::SourceConfig> Video::CameraPipeline::open()
 	return _openingFuture.value();
 
 }
-void Video::CameraPipeline::close()
+void CameraPipeline::close()
 {
 	if (_cam)
 		_cam->close();
@@ -63,27 +63,27 @@ void Video::CameraPipeline::close()
 		_decoder->close();
 	_isOpen = false;
 }
-bool Video::CameraPipeline::isOpen()
+bool CameraPipeline::isOpen()
 {
 	return _isOpen;
 }
-void Video::CameraPipeline::setIsOpen(bool other)
+void CameraPipeline::setIsOpen(bool other)
 {
 	_isOpen = other;
 }
-QStringList Video::TestCameraPipeline::availableDevices() const
+QStringList TestCameraPipeline::availableDevices() const
 {
 	QStringList cameraDevices = CameraPipeline::availableDevices();
 	cameraDevices.push_front(TestDeviceName);
 	return cameraDevices;
 }
-std::shared_ptr<Media::FramePipe>  Video::TestCameraPipeline::frameOutput()
+std::shared_ptr<FramePipe>  TestCameraPipeline::frameOutput()
 {
 	if (currentDevice() == TestDeviceName)
 		return _framePipe;
 	return CameraPipeline::frameOutput();
 }
-QFuture<Video::SourceConfig> Video::TestCameraPipeline::open()
+QFuture<SourceConfig> TestCameraPipeline::open()
 {
 	if (currentDevice() == TestDeviceName)
 	{
@@ -92,21 +92,21 @@ QFuture<Video::SourceConfig> Video::TestCameraPipeline::open()
 	}
 	return CameraPipeline::open();
 }
-Video::TestCameraPipeline::TestCameraPipeline()
+TestCameraPipeline::TestCameraPipeline()
 {
 	_sourceConfig.format = AV_PIX_FMT_YUV420P;
 	_sourceConfig.width = 1280;
 	_sourceConfig.height = 720;
-	_framePipe = Media::createFramePipe(_sourceConfig.width, _sourceConfig.height, _sourceConfig.format);
+	_framePipe = createFramePipe(_sourceConfig.width, _sourceConfig.height, _sourceConfig.format);
 
 }
-Video::TestCameraPipeline::TestCameraPipeline(Video::SourceConfig sr)
+TestCameraPipeline::TestCameraPipeline(SourceConfig sr)
 	:_sourceConfig(std::move(sr))
 {
-	_framePipe = Media::createFramePipe(_sourceConfig.width, _sourceConfig.height, _sourceConfig.format);
+	_framePipe = createFramePipe(_sourceConfig.width, _sourceConfig.height, _sourceConfig.format);
 
 }
-void Video::TestCameraPipeline::close()
+void TestCameraPipeline::close()
 {
 	if (currentDevice() == TestDeviceName)
 	{
@@ -115,7 +115,7 @@ void Video::TestCameraPipeline::close()
 	}
 	return CameraPipeline::close();
 }
-bool Video::TestCameraPipeline::isOpen()
+bool TestCameraPipeline::isOpen()
 {
 	return CameraPipeline::isOpen();
 }
@@ -123,7 +123,7 @@ Audio::MicrophonePipeline::MicrophonePipeline()
 	:_decoder(nullptr)
 	,_mic(nullptr)
 	,_dev(unknownDevice)
-	, _out (Media::createFramePipe())
+	, _out (createFramePipe())
 
 {
 }
@@ -140,7 +140,7 @@ QString Audio::MicrophonePipeline::currentDevice()
 {
 	return _dev;
 }
-std::shared_ptr<Media::FramePipe> Audio::MicrophonePipeline::frameOutput()
+std::shared_ptr<FramePipe> Audio::MicrophonePipeline::frameOutput()
 {
 	return _decoder->output();
 }
@@ -197,7 +197,7 @@ QFuture<Audio::SourceConfig> Audio::MicrophonePipeline::open()
 			//else
 			//{
 			//	_decoder->output()->onDataChanged([this](auto frame, size_t index) {
-			//		FramePipe::PipeData data = _out->holdForWriting();
+			//		FramePipe::SubpipeHandle data = _out->holdForWriting();
 			//		_out->setStoredData(index, frame);
 			//		_out->unmapWriting(data.subpipe, true);
 			//		_decoder->output()->unmapReading(index);

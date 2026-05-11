@@ -1,19 +1,19 @@
 #include "media.h"
 using namespace Media;
-Video::QtVideoBuffer::QtVideoBuffer()
+QtVideoBuffer::QtVideoBuffer()
     :frame(nullptr)
 {}
-void Video::QtVideoBuffer::setFrame(std::shared_ptr<AVFrame> fr)
+void QtVideoBuffer::setFrame(std::shared_ptr<AVFrame> fr)
 {
     frame = fr;
 }
-QVideoFrameFormat Video::QtVideoBuffer::format() const
+QVideoFrameFormat QtVideoBuffer::format() const
 {
     return frame? QVideoFrameFormat({ frame->width,frame->height }, toQtPixel((AVPixelFormat)frame->format))
         : QVideoFrameFormat({ 0,0 }, QVideoFrameFormat::Format_Invalid);
 
 }
-std::shared_ptr<PacketPipe> Media::createPacketPipe()
+std::shared_ptr<PacketPipe> createPacketPipe()
 {
     return std::make_shared<PacketPipe>([]()
         {
@@ -25,7 +25,7 @@ std::shared_ptr<PacketPipe> Media::createPacketPipe()
         }
     );
 }
-QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode mapMode)
+QAbstractVideoBuffer::MapData QtVideoBuffer::map(QVideoFrame::MapMode mapMode)
 {
     MapData out;
     if (!frame)
@@ -40,7 +40,7 @@ QAbstractVideoBuffer::MapData Video::QtVideoBuffer::map(QVideoFrame::MapMode map
     return out;
 
 }
-bool Media::fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size)
+bool fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t size)
 {
     //if (!pack->buf || pack->buf->size < size)
     //{
@@ -56,7 +56,7 @@ bool Media::fillPacket(std::shared_ptr<AVPacket> pack, uint8_t* data, size_t siz
     return true;
 
 }
-QVideoFrameFormat::PixelFormat Media::Video::toQtPixel(AVPixelFormat avPixelFormat)
+QVideoFrameFormat::PixelFormat toQtPixel(AVPixelFormat avPixelFormat)
 {
     if (avPixelFormat < 0)
         return QVideoFrameFormat::Format_Invalid;
@@ -118,7 +118,7 @@ QVideoFrameFormat::PixelFormat Media::Video::toQtPixel(AVPixelFormat avPixelForm
         return QVideoFrameFormat::Format_P016;
     return QVideoFrameFormat::Format_YUV420P;
 }
-std::shared_ptr<PacketPipe> Media::createNullBufferPacketPipe()
+std::shared_ptr<PacketPipe> createNullBufferPacketPipe()
 {
     return std::make_shared<PacketPipe>([]() {
         return av_packet_alloc();
@@ -130,11 +130,11 @@ std::shared_ptr<PacketPipe> Media::createNullBufferPacketPipe()
         }
     );
 }
-Video::SinkConnector::~SinkConnector()
+SinkConnector::~SinkConnector()
 {
     close();
 }
-void Video::SinkConnector::drain()
+void SinkConnector::drain()
 {
     sink->setVideoFrame(QVideoFrame());
     current = FrameData();
@@ -142,7 +142,7 @@ void Video::SinkConnector::drain()
     current.buf = new QtVideoBuffer();
     prev.buf = new QtVideoBuffer();
 }
-void Video::SinkConnector::close()
+void SinkConnector::close()
 {
     if (input && listenerIndex >= 0)
     {
@@ -152,7 +152,7 @@ void Video::SinkConnector::close()
     drain();
 
 }
-void Video::SinkConnector::connect(std::shared_ptr<FramePipe> fr)
+void SinkConnector::connect(std::shared_ptr<FramePipe> fr)
 {
     if (input == fr)
         return;
@@ -162,7 +162,7 @@ void Video::SinkConnector::connect(std::shared_ptr<FramePipe> fr)
     if (input && sink)
         establish();
 }
-void Video::SinkConnector::establish()
+void SinkConnector::establish()
 {
     listenerIndex = input->onDataChanged([this](std::shared_ptr<AVFrame> frame, size_t index)
         {
@@ -179,7 +179,7 @@ void Video::SinkConnector::establish()
 
         });
 }
-void Video::SinkConnector::connect(QVideoSink* s)
+void SinkConnector::connect(QVideoSink* s)
 {
     if (s == sink)
         return;
@@ -189,7 +189,7 @@ void Video::SinkConnector::connect(QVideoSink* s)
     if (input && sink)
         establish();
 }
-Video::SinkConnector::SinkConnector()
+SinkConnector::SinkConnector()
     :input(nullptr)
     ,sink(nullptr)
     ,listenerIndex(-1)
@@ -198,11 +198,11 @@ Video::SinkConnector::SinkConnector()
     current.buf = new QtVideoBuffer();
     prev.buf = new QtVideoBuffer();
 }
-//Video::SinkConnector::~SinkConnector()
+//SinkConnector::~SinkConnector()
 //{
 //    close();
 //}
-//void Video::SinkConnector::drain()
+//void SinkConnector::drain()
 //{
 //    sink->setVideoFrame(QVideoFrame());
 //    current = FrameData();
@@ -210,7 +210,7 @@ Video::SinkConnector::SinkConnector()
 //    current.buf = new QtVideoBuffer();
 //    prev.buf = new QtVideoBuffer();
 //}
-//void Video::SinkConnector::close()
+//void SinkConnector::close()
 //{
 //    drain();
 //    if (input && listenerIndex >= 0)
@@ -219,7 +219,7 @@ Video::SinkConnector::SinkConnector()
 //        input.reset();
 //    }
 //}
-//void Video::SinkConnector::connect(std::shared_ptr<FramePipe> fr)
+//void SinkConnector::connect(std::shared_ptr<FramePipe> fr)
 //{
 //    if (input == fr)
 //        return;

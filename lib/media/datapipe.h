@@ -1,136 +1,233 @@
 #pragma once
-#include <vector>
 #include <memory>
 #include <functional>
 #include <map>
-#include <shared_mutex>
 #include <mutex>
 #include <semaphore>
 #include <thread>
 #include <queue>
-#include <condition_variable>
-#include "media_include.h"
-namespace Media 
+
+namespace chatup 
 {
-	//threadsafe
-	template<int size, class T>
-	class DataPipe
+
+	template<size_t size, class T>
+	class DataPipe : public std::enable_shared_from_this<DataPipe<size,T>>
 	{
 
 	public:
-		using DataCallback = std::function<void(std::shared_ptr<T>,size_t index)>;
-		using Constructor = std::function<T*()>;
+		template<class DataType, bool ReadOnly>
+		class PipeDataHandle
+		{
+		public:
+			PipeDataHandle(std::shared_ptr<DataType> data, std::shared_ptr<DataPipe> pipe, size_t index)
+				: m_data(std::move(data))
+				, m_pipe(std::move(pipe))
+				, m_index(index)
+				, m_valid(true) {
+			}
+
+			PipeDataHandle(const PipeDataHandle& other) = delete;
+			PipeDataHandle& operator=(const PipeDataHandle& other) = delete;
+
+			PipeDataHandle(PipeDataHandle&& other) noexcept
+			{
+				m_data = std::move(other.m_data);
+				m_pipe = std::move(other.m_pipe);
+				m_index = other.m_index;
+
+				m_valid = other.m_valid;
+				other.m_valid = false;
+
+			}
+
+			PipeDataHandle& operator=(PipeDataHandle&& other) noexcept
+			{
+				m_data = std::move(other.m_data);
+				m_pipe = std::move(other.m_pipe);
+				m_index = other.m_index;
+
+				m_valid = other.m_valid;
+				other.m_valid = false;
+				return *this;
+
+			}
+
+			bool IsValid() const
+			{
+				return m_valid;
+			}
+
+			DataType* operator->() {
+				return m_data.get();
+			}
+
+			DataType* Get()
+			{
+				return m_data;
+			}
+
+			void Unmap()
+			{
+				if (m_valid) {
+					if (ReadOnly)
+						m_pipe->UnmapReading(m_index);
+					else
+						m_pipe->UnmapUploading(m_index);
+				}
+				m_data.reset();
+			}
+
+			~PipeDataHandle()
+			{
+				Unmap();
+			}
+
+		private:
+			std::shared_ptr<DataType> m_data;
+			std::shared_ptr<DataPipe> m_pipe;
+			size_t m_index;
+			bool m_valid;
+		};
+		class UploadListenerHandle
+		{
+		public:
+			UploadListenerHandle(const UploadListenerHandle& other) = delete;
+			UploadListenerHandle& operator=(const UploadListenerHandle& other) = delete;
+
+			UploadListenerHandle(std::shared_ptr<DataPipe> pipe, int listenerIndex) : m_pipe(std::move(pipe)),
+				m_listenerIndex(listenerIndex), m_isListening(true)
+			{
+			}
+			UploadListenerHandle(UploadListenerHandle&& other) noexcept
+			{
+				m_pipe = std::move(other.m_pipe);
+				m_listenerIndex = other.m_listenerIndex;
+				m_isListening = other.m_isListening;
+				other.m_isListening = false;
+			}
+			UploadListenerHandle& operator=(UploadListenerHandle&& other) noexcept
+			{
+				m_pipe = std::move(other.m_pipe);
+				m_listenerIndex = other.m_listenerIndex;
+				m_isListening = other.m_isListening;
+				other.m_isListening = false;
+				return *this;
+			}
+			~UploadListenerHandle()
+			{
+				Unsubscribe();
+			}
+
+			std::shared_ptr<DataPipe> GetPipe() { return m_pipe; }
+			bool IsListening() const { return m_isListening; }
+			void Unsubscribe() {
+				if (m_isListening)
+					m_pipe->RemoveListener(m_listenerIndex);
+			}
+		private:
+			std::shared_ptr<DataPipe> m_pipe;
+			int m_listenerIndex;
+			bool m_isListening;
+
+			
+		};
+		using WritableDataHandle = PipeDataHandle<T, false>;
+		using ReadonlyDataHandle = PipeDataHandle<const T, true>;
+		using DataCallback = std::function<void(ReadonlyDataHandle)>;
+		using Constructor = std::function<T* ()>;
 		using Deleter = std::function<void(T*)>;
 
-		struct PipeData
-		{
-			std::shared_ptr<T> ptr;
-			size_t subpipe;
-			T* operator->() {
-				return ptr.get();
-			}
-		};
 		DataPipe(const Constructor& constructor, const Deleter& deleter)
-			:sem(size)
-		{
+			:sem(size) {
+
 			for (size_t i = 0; i < size; i++)
 			{
-				auto temp = constructor();
+				auto* temp = constructor();
 				subpipes[i].ptr = std::shared_ptr<T>(temp, deleter);
 			}
 		}
-		DataPipe(bool constructSubpipes = true)
-			:sem(size)
-		{
-			if (constructSubpipes)
+
+		explicit DataPipe(bool constructSubPipes = true)
+			:sem(size) {
+
+			if (constructSubPipes)
 			{
 				for (size_t i = 0; i < size; i++)
 					subpipes[i].ptr = std::make_shared<T>();
 			}else 
 				for (size_t i = 0; i < size; i++)
 					subpipes[i].ptr = nullptr;
+		}
 
-		}
-		void reset(const Constructor& constructor, const Deleter& deleter)
-		{
-			std::lock_guard guard(reader_mutex);
-			for (size_t i = 0; i < size; i++)
-			{
-				subpipes[i].ptr = std::shared_ptr<T>(constructor(), [deleter](T* t) {deleter(t); });
-			}
-		}
 		//unsafe
-		std::shared_ptr<T> storedData(size_t index)
+		std::shared_ptr<T> ForceGetSubPipeData(size_t index) const
 		{
 			std::lock_guard guard(reader_mutex);
 			return subpipes[index].ptr;
 		}
+
 		//unsafe
-		void setStoredData(size_t index, std::shared_ptr<T> ptr)
+		void ForceSetSubPipeData(size_t index, std::shared_ptr<T> ptr)
 		{
 			std::lock_guard guard(reader_mutex);
 			subpipes[index].ptr = ptr;
 		}
-		void lock()
-		{
-			reader_mutex.unlock();
-		}
-		void unlock()
-		{
-			reader_mutex.lock();
-		}
-		PipeData holdForWriting(){
+
+		WritableDataHandle HoldForUploading(){
 			sem.acquire();
 			std::lock_guard guard(reader_mutex);
-			return getFree();
+			return GetFreeSubPipeForWriting();
 
 		}
-		std::optional<PipeData> tryHoldForWriting(std::chrono::duration<float> duration
+		WritableDataHandle TryHoldForUploading(std::chrono::duration<float> duration
 			= std::chrono::milliseconds(500))
 		{
 			if(sem.try_acquire_for(duration))
 			{
 				std::lock_guard guard(reader_mutex);
-				return getFree();
+				return GetFreeSubPipeForWriting();
 			}
-			return std::nullopt;
+			return ConstructEmptyUploadHandle();
 		}
-		int onDataChanged(DataCallback c)
+		UploadListenerHandle AddUploadListener(DataCallback c)
 		{
-			std::lock_guard guard (reader_mutex);
-			addListenerQueue.emplace(std::move(c), ++listenerFreeIndex);
-			//listeners[++listenerFreeIndex] = c;
-			return listenerFreeIndex;
+
+			UploadListenerHandle handle{this->shared_from_this(),++listenerFreeIndex };
+			{
+				std::lock_guard guard(reader_mutex);
+				listeners.emplace(handle.m_listenerIndex, std::move(c));
+			}
+			return handle;
 		}
-		int listenerCount()
+
+		static constexpr size_t getSize()
 		{
-			std::lock_guard guard(reader_mutex);
-			return listeners.size();
+			return size;
 		}
-		void removeListener(int index)
+	private:
+		void RemoveListener(int index)
 		{
-			std::lock_guard guard(reader_mutex);
+			std::lock_guard guard(reader_mutex); //!
 			removeListenerQueue.emplace(index);
 			//listeners.erase(index);
 
 		}
-		void unmapWriting(size_t index, bool notifyReaders)
-		{
+		void UnmapUploading(size_t index, bool notifyReaders){
 			{
 				std::lock_guard guard(reader_mutex);
-				while (addListenerQueue.size())
+				while (!addListenerQueue.empty())
 				{
 					std::pair<DataCallback, int> top = addListenerQueue.front();
 					addListenerQueue.pop();
 					listeners.emplace(top.second, std::move(top.first));
 				}
-				while (removeListenerQueue.size())
+				while (!removeListenerQueue.empty())
 				{
 					int top = removeListenerQueue.front();
 					removeListenerQueue.pop();
 					listeners.erase(top);
 				}
-				if (!notifyReaders || !listeners.size())
+				if (!notifyReaders || listeners.empty())
 				{
 					subpipes[index].isFree = true;
 					sem.release();
@@ -144,11 +241,9 @@ namespace Media
 			}
 
 		}
-		void unmapReading(size_t index)
+		void UnmapReading(size_t index)
 		{
-			std::lock_guard guard(reader_mutex);
-
-			if (--subpipes[index].readings ==0 && !subpipes[index].isFree)
+			if (--subpipes[index].readings == 0 && !subpipes[index].isFree)
 			{
 				subpipes[index].isFree = true;
 
@@ -156,12 +251,7 @@ namespace Media
 
 			}
 		}
-		static constexpr size_t getSize()
-		{
-			return size;
-		}
-	private:
-		PipeData getFree()
+		WritableDataHandle GetFreeSubPipeForWriting()
 		{
 			for (size_t i = 0; i < subpipes.size(); i++)
 			{
@@ -174,12 +264,19 @@ namespace Media
 			//should never happen
 			throw std::logic_error("Get free pipe error");
 		}
+
 		struct SubPipe
 		{
-			bool isFree = true;
-			std::shared_ptr<T> ptr;
-			size_t readings = 0;
+			bool m_isCapturedForWriting = true;
+			size_t m_currentReadings = 0;
+			std::shared_ptr<T> m_data;
 		};
+		WritableDataHandle ConstructEmptyUploadHandle()
+		{
+			return WritableDataHandle{ nullptr,this,0,false };
+
+		}
+
 		std::weak_ptr<T> make_weak_ptr(std::shared_ptr<T> ptr) { return ptr; }
 		std::map<int,DataCallback> listeners;
 		Constructor constructor;

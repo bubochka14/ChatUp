@@ -1,4 +1,6 @@
 {
+  "name": "my-application",
+  "version": "1.0.0",
   "dependencies": [
     {
       "name": "ffmpeg",
@@ -14,6 +16,7 @@
       ]
     },
     "nlohmann-json",
-    "openssl"
+    "openssl",
+    "boost"
   ]
 }

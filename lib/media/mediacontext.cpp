@@ -1,6 +1,6 @@
 #include <mediacontext.h>
 Q_LOGGING_CATEGORY(LC_ABSTRACT_CODEC, "AbstractCodec")
-using namespace Media;
+using namespace chatup;
 AbstractCodec::AbstractCodec(const AVCodec* codec)
 	:_codec(codec)
 {
@@ -22,7 +22,7 @@ bool AbstractCodec::initialize()
 {
 	if (isInitialized())
 		reset();
-	auto cCtx = Media::createCodecContext(codec());
+	auto cCtx = createCodecContext(codec());
 	if (!cCtx)
 	{
 		qCCritical(LC_ABSTRACT_CODEC) << "Cannot create codec context";

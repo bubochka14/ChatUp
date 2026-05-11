@@ -8,7 +8,7 @@
 #include "taskqueue.h"
 #include <QtConcurrent/qtconcurrentrun.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_RTP_PACKETIZER)
-namespace Media{
+namespace chatup{
 	struct PacketizationConfig
 	{
 		std::shared_ptr<AVCodecContext> ecnCtx = nullptr;

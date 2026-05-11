@@ -2,13 +2,13 @@
 #include "media.h"
 #include <qloggingcategory.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_H264DEMUXER)
-namespace Media::Audio {
+namespace chatup {
 	class CC_MEDIA_EXPORT OpusDemuxer
 	{
 	public:
 		OpusDemuxer();
-		void start(std::shared_ptr<Media::RawPipe>);
-		std::shared_ptr<Media::PacketPipe> output();
+		void start(std::shared_ptr<RawPipe>);
+		std::shared_ptr<PacketPipe> output();
 		struct ReadingOpaque
 		{
 			const uint8_t* data;
@@ -17,19 +17,16 @@ namespace Media::Audio {
 		};
 	private:
 		AVFormatContext* _ctx;
-		std::shared_ptr<Media::PacketPipe> _out;
+		std::shared_ptr<PacketPipe> _out;
 		ReadingOpaque _readingOpaque;
 
 	};
-}
-namespace Media::Video
-{
 	class CC_MEDIA_EXPORT H264Demuxer
 	{
 	public:
 		H264Demuxer();
-		void start(std::shared_ptr<Media::RawPipe>);
-		std::shared_ptr<Media::PacketPipe> output();
+		void start(std::shared_ptr<RawPipe>);
+		std::shared_ptr<PacketPipe> output();
 		struct ReadingOpaque
 		{
 			const  uint8_t* data;
@@ -38,7 +35,7 @@ namespace Media::Video
 		};
 	private:
 		AVFormatContext* _ctx;
-		std::shared_ptr<Media::PacketPipe> _out;
+		std::shared_ptr<PacketPipe> _out;
 		ReadingOpaque _readingOpaque;
 
 	};

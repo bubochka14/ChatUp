@@ -1,15 +1,15 @@
 #include "callcontroller.h"
 Q_LOGGING_CATEGORY(LC_CALL_CONTROLLER, "CallerCallController");
 using  namespace Call;
-struct DumpStreamSource : public Media::Video::StreamSource
+struct DumpStreamSource : public StreamSource
 {
-	std::shared_ptr<Media::FramePipe> frameOutput() override
+	std::shared_ptr<FramePipe> frameOutput() override
 	{
 		return pipe;
 	}
-	QFuture<Media::Video::SourceConfig> open() override
+	QFuture<SourceConfig> open() override
 	{
-		return QtFuture::makeReadyValueFuture(Media::Video::SourceConfig());
+		return QtFuture::makeReadyValueFuture(SourceConfig());
 	}
 	void close() override
 	{
@@ -19,7 +19,7 @@ struct DumpStreamSource : public Media::Video::StreamSource
 	{
 		return true;
 	}
-	std::shared_ptr<Media::FramePipe> pipe;
+	std::shared_ptr<FramePipe> pipe;
 };
 void Controller::reset()
 {
@@ -38,7 +38,7 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 	//config.disableAutoNegotiation = true;
 	growHandlePool(12);
 	_rtc = std::make_shared<rtc::Service>(_manager, std::move(config));
-	Media::Audio::Output* out = new Media::Audio::Output();
+	Audio::Output* out = new Audio::Output();
 	Api::Join::handle(m, [this](Participate::Data&& part) {
 		QtConcurrent::run([this,part = std::move(part)]() {
 			auto h = handle(part.roomID);
@@ -62,7 +62,7 @@ Controller::Controller(std::shared_ptr<NetworkCoordinator> m, QObject* parent)
 			}
 		});
 	});
-	Api::UpdateCallMedia::handle(m, [this](Api::UpdateCallMedia::MediaUpdate upd){
+	Api::UpdateCallhandle(m, [this](Api::UpdateCallMediaUpdate upd){
 
 		Call::Handle* callHandle = handle(upd.roomID);
 		std::lock_guard g(_handlesMutex);
@@ -142,15 +142,15 @@ void Handle::closeAudio()
 	return _controller->closeAudio(this);
 
 }
-QFuture<void> Handle::openVideo(Media::Video::StreamSource* source)
+QFuture<void> Handle::openVideo(StreamSource* source)
 {
 	return _controller->openVideo(this, source);
 }
-//QFuture<void> Handle::openAudio(Media::StreamSource* source)
+//QFuture<void> Handle::openAudio(StreamSource* source)
 //{
 //	return _controller->openAudio(this, source);
 //}
-void Handle::connectAudioOutput(int userID, Media::Audio::Output*out)
+void Handle::connectAudioOutput(int userID, Audio::Output*out)
 {
     if (out->availableDevices().isEmpty())
     {
@@ -159,9 +159,9 @@ void Handle::connectAudioOutput(int userID, Media::Audio::Output*out)
     }
 	_controller->connectAudioOutput(this, userID, out);
 }
-void Controller::connectAudioOutput(Handle* h, int userID, Media::Audio::Output* out)
+void Controller::connectAudioOutput(Handle* h, int userID, Audio::Output* out)
 {
-	using namespace Media::Audio;
+	using namespace Audio;
 	if (out->availableDevices().isEmpty())
 	{
 		qCWarning(LC_RTC_SERVICE) << "Cannot connect audio output, no available devices.";
@@ -171,7 +171,7 @@ void Controller::connectAudioOutput(Handle* h, int userID, Media::Audio::Output*
 }
 void Controller::connectVideoSink(Handle* h, int userID, QVideoSink* s)
 {
-	using namespace Media::Video;
+	using namespace Video;
 	std::shared_ptr<SinkConnector> connector;
 	{
 		std::lock_guard g(_localVideoStream.mutex);
@@ -193,7 +193,7 @@ void Controller::clearMedia()
 {
 	{
 		std::lock_guard g(_localAudioStream.mutex);
-		_localAudioStream.config = Media::Audio::SourceConfig();
+		_localAudioStream.config = Audio::SourceConfig();
 		if (_localAudioStream.src)
 			_localAudioStream.src->close();
 		_localAudioStream.src = nullptr;
@@ -203,7 +203,7 @@ void Controller::clearMedia()
 		if (_localVideoStream.src)
 			_localVideoStream.src->close();
 		_localVideoStream.src = nullptr;
-		_localVideoStream.config = Media::Video::SourceConfig();
+		_localVideoStream.config = SourceConfig();
 
 		_localVideoStream.connectors.clear();
 	}
@@ -415,13 +415,13 @@ bool Handle::hasAudio()
 	return _controller->hasAudio(this);
 
 }
-QFuture<void> Handle::openAudio(Media::Audio::StreamSource* source)
+QFuture<void> Handle::openAudio(Audio::StreamSource* source)
 {
 	return _controller->openAudio(this, source);
 }
-QFuture<void> Controller::openVideo(Handle* h, Media::Video::StreamSource* st)
+QFuture<void> Controller::openVideo(Handle* h, StreamSource* st)
 {
-	return st->open().then([this, st, h](Media::Video::SourceConfig&& config){
+	return st->open().then([this, st, h](SourceConfig&& config){
 		int currentUser = _manager->currentUser();
 		{
 			std::lock_guard g(_localVideoStream.mutex);
@@ -456,9 +456,9 @@ QFuture<void> Controller::openVideo(Handle* h, Media::Video::StreamSource* st)
 	});
 
 }
-QFuture<void> Controller::openAudio(Handle* h, Media::Audio::StreamSource* st)
+QFuture<void> Controller::openAudio(Handle* h, Audio::StreamSource* st)
 {
-	return st->open().then([this, st, h](Media::Audio::SourceConfig&& config) {
+	return st->open().then([this, st, h](Audio::SourceConfig&& config) {
 		int currentUser = _manager->currentUser();
 		{
 			std::lock_guard g(_localAudioStream.mutex);

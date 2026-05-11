@@ -23,10 +23,10 @@ namespace rtc
 	{
 	public:
 		explicit Service(std::shared_ptr<NetworkCoordinator>, rtc::Configuration config);
-		void openLocalVideo(int userID,std::shared_ptr<Media::FramePipe> input, Media::Video::SourceConfig config);
-		void openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config);
-		std::shared_ptr<Media::FramePipe> getRemoteVideo(int userID);
-		std::shared_ptr<Media::FramePipe> getRemoteAudio(int userID);
+		void openLocalVideo(int userID,std::shared_ptr<FramePipe> input, SourceConfig config);
+		void openLocalAudio(int userID, std::shared_ptr<FramePipe> input, Audio::SourceConfig config);
+		std::shared_ptr<FramePipe> getRemoteVideo(int userID);
+		std::shared_ptr<FramePipe> getRemoteAudio(int userID);
 		void closeLocalVideo(int userID);
 		void closeLocalAudio(int userID);
 		void flushRemoteVideo(int userID);
@@ -39,9 +39,9 @@ namespace rtc
 		struct RemoteAudioContext
 		{
 			std::shared_ptr<rtc::Track> track;
-			std::shared_ptr<Media::AbstractDecoder> decoder;
-			std::array<std::vector<std::byte>, Media::PacketPipe::getSize()> packets;
-			std::shared_ptr<Media::PacketPipe> packetPipe;
+			std::shared_ptr<AbstractDecoder> decoder;
+			std::array<std::vector<std::byte>, PacketPipe::getSize()> packets;
+			std::shared_ptr<PacketPipe> packetPipe;
 			std::shared_ptr<rtc::RtcpSrReporter> rtcp;
 			///std::shared_ptr<rtc::RtpPacketizationConfig> audioConfig;
 			std::optional<int> encoderListener;
@@ -50,23 +50,23 @@ namespace rtc
 		struct RemoteVideoContext
 		{
 			std::shared_ptr<rtc::Track> track;
-			std::array<std::vector<std::byte>, Media::PacketPipe::getSize()> packets;
-			std::shared_ptr<Media::AbstractDecoder> decoder;
-			std::shared_ptr<Media::PacketPipe> packetPipe;
+			std::array<std::vector<std::byte>, PacketPipe::getSize()> packets;
+			std::shared_ptr<AbstractDecoder> decoder;
+			std::shared_ptr<PacketPipe> packetPipe;
 			std::optional<int> packetizerListener;
 			std::mutex mutex;
 
 		};
 		struct LocalVideoContext
 		{
-			std::shared_ptr<Media::Video::Encoder> encoder;
-			std::shared_ptr<Media::RtpPacketizer> packetizer;
+			std::shared_ptr<Encoder> encoder;
+			std::shared_ptr<RtpPacketizer> packetizer;
 			std::mutex mutex;
 
 		};
 		struct LocalAudioContext
 		{
-			std::shared_ptr<Media::Audio::Encoder> encoder;
+			std::shared_ptr<Audio::Encoder> encoder;
 			std::mutex mutex;
 
 		};

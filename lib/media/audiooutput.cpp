@@ -1,5 +1,5 @@
 #include "audiooutput.h"
-using namespace Media::Audio;
+using namespace Audio;
 Q_LOGGING_CATEGORY(LC_AUDIO_OUTPUT, "AudioOutput");
 
 Output::Output()
@@ -64,7 +64,7 @@ void Output::setVolume(qreal other)
 		_sink->setVolume(other);
 
 }
-bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
+bool Output::start(const QString& devName,std::shared_ptr<FramePipe>pipe)
 {
 	if (isStarted())
 		close();
@@ -81,7 +81,7 @@ bool Output::start(const QString& devName,std::shared_ptr<Media::FramePipe>pipe)
 			QAudioFormat format;
 			format.setSampleRate(frame->sample_rate);
 			format.setChannelCount(frame->ch_layout.nb_channels);
-			format.setSampleFormat(Media::Audio::toQtFormat((AVSampleFormat)frame->format));
+			format.setSampleFormat(Audio::toQtFormat((AVSampleFormat)frame->format));
 			if (!_device.isFormatSupported(format)) {
 				qCWarning(LC_AUDIO_OUTPUT) << "Raw audio format not supported by backend, cannot play audio.";
 				_input->unmapReading(index);

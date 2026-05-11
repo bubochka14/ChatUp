@@ -18,7 +18,7 @@ extern "C"
 #include <qiodevice.h>
 #include <deque>
 Q_DECLARE_LOGGING_CATEGORY(LC_AUDIO_OUTPUT)
-namespace Media::Audio {
+namespace Audio {
 	class CC_MEDIA_EXPORT PipeAudioBuffer : public QIODevice
 	{
 	public:
@@ -44,7 +44,7 @@ namespace Media::Audio {
 		Q_PROPERTY(QAudioSink* sink READ sink NOTIFY sinkChanged);
 	public:
 		Output();
-		Q_INVOKABLE bool start(const QString& dev, std::shared_ptr<Media::FramePipe>pipe);
+		Q_INVOKABLE bool start(const QString& dev, std::shared_ptr<FramePipe>pipe);
 		Q_INVOKABLE void close();
 		bool isStarted();
 		Q_INVOKABLE void setVolume(qreal other);
@@ -62,7 +62,7 @@ namespace Media::Audio {
 		QtEventLoopEmplacer* _emp;
 		QAudioSink* _sink;
 		std::atomic<bool> _isStarted = {false};
-		std::shared_ptr<Media::FramePipe> _input;
+		std::shared_ptr<FramePipe> _input;
 		std::optional<int> _listenerIndex;
 		std::mutex _mutex;
 	};

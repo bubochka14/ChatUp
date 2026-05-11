@@ -9,32 +9,29 @@ extern "C"
 #include <optional>
 #include <media.h>
 #include <qloggingcategory.h>
-namespace Media {
+namespace chatup {
 	class CC_MEDIA_EXPORT AbstractFilter
 	{
 	public:
-		std::shared_ptr<Media::FramePipe> output();
+		std::shared_ptr<FramePipe> output();
 		virtual void close();
 		virtual ~AbstractFilter() = default;
 	protected:
 		AbstractFilter();
 	private:
-		std::shared_ptr<Media::FramePipe> _out;
-		std::shared_ptr<Media::FramePipe> _input;
+		std::shared_ptr<FramePipe> _out;
+		std::shared_ptr<FramePipe> _input;
 	};
-}
 Q_DECLARE_LOGGING_CATEGORY(LC_NOISE_REDUCTION_FILTER)
 
-namespace Media::Audio
-{
 	class CC_MEDIA_EXPORT Filter : public AbstractFilter
 	{
 	public:
-		virtual std::optional<SourceConfig> open(std::shared_ptr<Media::FramePipe> input);
-		std::shared_ptr<Media::FramePipe> input();
+		virtual std::optional<SourceConfig> open(std::shared_ptr<FramePipe> input);
+		std::shared_ptr<FramePipe> input();
 
 	private:
-		std::shared_ptr<Media::FramePipe> _input;
+		std::shared_ptr<FramePipe> _input;
 	};
 
 	class CC_MEDIA_EXPORT FilterFactory
@@ -53,7 +50,7 @@ namespace Media::Audio
 			float noiseFloor = 0.3;
 		};
 		NoiseReductionFilter(Description desc, SourceConfig config);
-		std::optional<SourceConfig> open(std::shared_ptr<Media::FramePipe> input) override;
+		std::optional<SourceConfig> open(std::shared_ptr<FramePipe> input) override;
 	private:
 		Description _desc;
 		SourceConfig _inputConfig;

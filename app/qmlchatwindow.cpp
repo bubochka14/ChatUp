@@ -75,10 +75,10 @@ QFuture<void> QmlChatWindow::initialize()
 		MessageControllerWrapper::singletonInstance			= _manager->messageController();
 
 		if(!CameraPipelineWrapper::singletonInstance)
-			CameraPipelineWrapper::singletonInstance		= new Media::Video::CameraPipeline();
+			CameraPipelineWrapper::singletonInstance		= new CameraPipeline();
 
 		if(!MicrophonePipelineWrapper::singletonInstance)
-			MicrophonePipelineWrapper::singletonInstance	= new Media::Audio::MicrophonePipeline;
+			MicrophonePipelineWrapper::singletonInstance	= new Audio::MicrophonePipeline;
 		qCDebug(LC_QML_CHAT_WINDOW) << "Current user:" << CurrentUserWrapper::singletonInstance->id() << "received";
 			//loading component from app module
 			_comp.loadFromModule("app", "ChatWindow", QQmlComponent::Asynchronous);

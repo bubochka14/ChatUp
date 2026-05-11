@@ -18,6 +18,7 @@ set(LIB_SOURCES
 	"core.h"
 	"data.cpp"
 	"taskqueue.h"
+	"Buffer.h"
 	"taskqueue.cpp"
 	"core_include.h"
 	"models/groupmodel.h"

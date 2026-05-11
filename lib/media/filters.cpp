@@ -1,13 +1,13 @@
 #include "filters.h"
 Q_LOGGING_CATEGORY(LC_NOISE_REDUCTION_FILTER, "NoiseReductionFilter")
-using namespace Media;
+using namespace chatup;
 AbstractFilter::AbstractFilter()
-	:_out(Media::createFramePipe())
+	:_out(createFramePipe())
 {
 
 }
 
-std::shared_ptr<Media::FramePipe> AbstractFilter::output()
+std::shared_ptr<FramePipe> AbstractFilter::output()
 {
 	return _out;
 }
@@ -23,12 +23,12 @@ std::shared_ptr<Audio::Filter> Audio::NoiseReductionFilterFactory::createFilter(
 {
 	return std::make_shared<NoiseReductionFilter>(_desc, std::move(config));
 }
-std::optional<Audio::SourceConfig>  Audio::Filter::open(std::shared_ptr<Media::FramePipe> input)
+std::optional<Audio::SourceConfig>  Audio::Filter::open(std::shared_ptr<FramePipe> input)
 {
 	_input = input;
 	return std::nullopt;
 }
-std::shared_ptr<Media::FramePipe>  Audio::Filter::input()
+std::shared_ptr<FramePipe>  Audio::Filter::input()
 {
 	return _input;
 }
@@ -39,7 +39,7 @@ Audio::NoiseReductionFilter::NoiseReductionFilter(Description desc, SourceConfig
 
 }
 
-std::optional<Audio::SourceConfig> Audio::NoiseReductionFilter::open(std::shared_ptr<Media::FramePipe> input)
+std::optional<Audio::SourceConfig> Audio::NoiseReductionFilter::open(std::shared_ptr<FramePipe> input)
 {
 	AVFilterGraph* filter_graph;
 	AVFilterContext* abuffer_ctx;
@@ -73,7 +73,7 @@ std::optional<Audio::SourceConfig> Audio::NoiseReductionFilter::open(std::shared
 	ret = av_dict_set(&options_dict, "nf", buffer, 0);
 	if (ret < 0)
 	{
-		qCCritical(LC_NOISE_REDUCTION_FILTER) << "Setting option error:"<<Media::av_err2string(ret);
+		qCCritical(LC_NOISE_REDUCTION_FILTER) << "Setting option error:"<<av_err2string(ret);
 		return std::nullopt;
 	}
 	ret = snprintf(buffer, sizeof buffer, "%f", 0.1 + _desc.noiseReduction * 96);
@@ -86,13 +86,13 @@ std::optional<Audio::SourceConfig> Audio::NoiseReductionFilter::open(std::shared
 	ret = av_dict_set(&options_dict, "nr", buffer, 0);
 	if (ret < 0)
 	{
-		qCCritical(LC_NOISE_REDUCTION_FILTER) << "Setting option error:" << Media::av_err2string(ret);
+		qCCritical(LC_NOISE_REDUCTION_FILTER) << "Setting option error:" << av_err2string(ret);
 		return std::nullopt;
 	}
 	ret = avfilter_init_dict(afftdn_ctx, &options_dict);
 	if (ret < 0)
 	{
-		qCCritical(LC_NOISE_REDUCTION_FILTER) << "Setting option error:" << Media::av_err2string(ret);
+		qCCritical(LC_NOISE_REDUCTION_FILTER) << "Setting option error:" << av_err2string(ret);
 		return std::nullopt;
 	}
 	av_dict_free(&options_dict);
@@ -111,9 +111,8 @@ std::optional<Audio::SourceConfig> Audio::NoiseReductionFilter::open(std::shared
 	avfilter_link(arnndn_ctx, 0, afftdn_ctx, 0);
 	avfilter_link(afftdn_ctx, 0, abuffersink_ctx, 0);
 	avfilter_graph_config(filter_graph, NULL);
-	input->onDataChanged([this, abuffersink_ctx, abuffer_ctx, input](auto frame, size_t index) {
-		av_buffersrc_add_frame(abuffer_ctx, frame.get());
-		input->unmapReading(index);
+	input->AddUploadListener([this, abuffersink_ctx, abuffer_ctx, input](auto frameHandle) {
+		av_buffersrc_add_frame(abuffer_ctx, frameHandle.Get());
 		auto out = output();
 		auto pipeData = out->holdForWriting();
 		while (av_buffersink_get_frame(abuffersink_ctx, pipeData.ptr.get()) >= 0) {

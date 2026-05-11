@@ -7,7 +7,7 @@ extern "C"
 #include <libavcodec/avcodec.h>
 }
 Q_DECLARE_LOGGING_CATEGORY(LC_ABSTRACT_CODEC)
-namespace Media {
+namespace chatup {
 	class CC_MEDIA_EXPORT AbstractCodec
 	{
 	public:

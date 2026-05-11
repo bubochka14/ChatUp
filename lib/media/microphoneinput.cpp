@@ -1,5 +1,5 @@
 #include "microphoneinput.h"
-using namespace Media::Audio;
+using namespace chatup;
 Q_LOGGING_CATEGORY(LC_MICROPHONE, "Microphone");
 
 Microphone::Microphone(std::string dev)
@@ -9,7 +9,7 @@ Microphone::Microphone(std::string dev)
 {
 
 }
-std::shared_ptr<Media::PacketPipe> Microphone::output()
+std::shared_ptr<PacketPipe> Microphone::output()
 {
 	return out;
 }
@@ -18,7 +18,7 @@ std::optional<SourceConfig> Microphone::open()
     if (isOpened())
         return std::nullopt;
     std::string devicestr = "audio=" + device;;
-    if (avformat_open_input(&ctx, devicestr.c_str(), av_find_input_format(Media::getPlatformDeviceName()), nullptr) != 0) {
+    if (avformat_open_input(&ctx, devicestr.c_str(), av_find_input_format(getPlatformDeviceName()), nullptr) != 0) {
         qCWarning(LC_MICROPHONE) << "Couldn't open input:" << device;
         return std::nullopt;
     }
@@ -68,13 +68,13 @@ void Microphone::close()
 }
 std::vector<std::string> Microphone::availableDevices()
 {
-    Media::Init();
+    Init();
     std::vector<std::string> out;
 
-    const AVInputFormat* ifmt = av_find_input_format(Media::getPlatformDeviceName());
+    const AVInputFormat* ifmt = av_find_input_format(getPlatformDeviceName());
     if (!ifmt)
     {
-        qCCritical(LC_MICROPHONE) << "Cannot find platform device: " << Media::getPlatformDeviceName();
+        qCCritical(LC_MICROPHONE) << "Cannot find platform device: " << getPlatformDeviceName();
         return out;
     }
     AVDeviceInfoList* dlist = nullptr;
@@ -111,7 +111,7 @@ void Microphone::threadFunc()
 {
     while (active.load(std::memory_order_relaxed))
     {
-        auto packet = out->tryHoldForWriting();
+        auto packet = out->TryHoldForUploading();
         if (!packet.has_value())
         {
             qCWarning(LC_MICROPHONE) << "Output pipe overflow";
@@ -121,7 +121,7 @@ void Microphone::threadFunc()
         if (int ret = av_read_frame(ctx, packet->ptr.get()) < 0)
         {
             out->unmapWriting(packet->subpipe, false);
-            qCWarning(LC_MICROPHONE) << "Packet read error:" << Media::av_err2string(ret);
+            qCWarning(LC_MICROPHONE) << "Packet read error:" << av_err2string(ret);
 
             return;
         }

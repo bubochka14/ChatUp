@@ -141,13 +141,13 @@ private:
 struct CameraPipelineWrapper
 {
 	Q_GADGET;
-	QML_FOREIGN(Media::Video::CameraPipeline);
+	QML_FOREIGN(CameraPipeline);
 	QML_SINGLETON;
 	QML_NAMED_ELEMENT(CameraPipeline);
 public:
-	inline static Media::Video::CameraPipeline* singletonInstance = nullptr;
+	inline static CameraPipeline* singletonInstance = nullptr;
 
-	static Media::Video::CameraPipeline* create(QQmlEngine*, QJSEngine* engine)
+	static CameraPipeline* create(QQmlEngine*, QJSEngine* engine)
 	{
 		if (s_engine)
 		{
@@ -166,12 +166,12 @@ private:
 struct AudioOutputWrapper
 {
 	Q_GADGET;
-	QML_FOREIGN(Media::Audio::Output);
+	QML_FOREIGN(Audio::Output);
 	QML_NAMED_ELEMENT(MyAudioOutput);
 public:
-	inline static Media::Audio::Output* singletonInstance = nullptr;
+	inline static Audio::Output* singletonInstance = nullptr;
 
-	static Media::Audio::Output* create(QQmlEngine*, QJSEngine* engine)
+	static Audio::Output* create(QQmlEngine*, QJSEngine* engine)
 	{
 		if (s_engine)
 		{
@@ -190,13 +190,13 @@ private:
 struct MicrophonePipelineWrapper
 {
 	Q_GADGET;
-	QML_FOREIGN(Media::Audio::MicrophonePipeline);
+	QML_FOREIGN(Audio::MicrophonePipeline);
 	QML_SINGLETON;
 	QML_NAMED_ELEMENT(MicrophonePipeline);
 public:
-	inline static Media::Audio::MicrophonePipeline* singletonInstance = nullptr;
+	inline static Audio::MicrophonePipeline* singletonInstance = nullptr;
 
-	static Media::Audio::MicrophonePipeline* create(QQmlEngine*, QJSEngine* engine)
+	static Audio::MicrophonePipeline* create(QQmlEngine*, QJSEngine* engine)
 	{
 		if (s_engine)
 		{

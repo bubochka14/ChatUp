@@ -1,84 +1,136 @@
 #include "encoder.h"
-using namespace Media;
+using namespace chatup;
 Q_LOGGING_CATEGORY(LC_ENCODER, "Encoder");
-AbstractEncoder::AbstractEncoder(const AVCodec* cdc)
-	:_cdc(cdc)
-	,_cCtx(nullptr)
-	,_out(Media::createPacketPipe())
+FFmpegEncoder::FFmpegEncoder(const AVCodec* codec)
+	:m_codec(codec)
+	,m_encodedOutput(createPacketPipe())
 	,_pts(0)
 	,_dts(0)
 {
 
 }
-void AbstractEncoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
+void FFmpegEncoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
 {
 }
-Video::Encoder::Encoder( Media::Video::SourceConfig config, const AVCodec* cdc)
-    :AbstractEncoder(cdc)
-	,_sws(nullptr)
-	,_rescaledFrame(nullptr)
-	,_config(std::move(config))
+
+bool FFmpegEncoder::IsEncoding() const
 {
+	return m_isEncoding;
 }
-bool AbstractEncoder::isStarted()
-{
-	return _isStarted;
-}
-const AVCodec* AbstractEncoder::codec()
-{
-	return _cdc;
-}
-void AbstractEncoder::setCodecContext(std::shared_ptr<AVCodecContext> other)
+void FFmpegEncoder::setCodecContext(std::shared_ptr<AVCodecContext> other)
 {
 	_cCtx = other;
 }
-bool AbstractEncoder::start(std::shared_ptr<Media::FramePipe> input)
+bool FFmpegEncoder::Encode(std::shared_ptr<AVCodecParameters> codecParameters, std::shared_ptr<FramePipe> input)
 {
-	_isStarted = true;
-	return true;
+	if (IsEncoding())
+		Close();
+	const auto codecContext= createCodecContext(m_codec);
+	if (!codecContext)
+	{
+		//qCCritical(LC_ENCODER) << "Cannot create codec context";
+		return false;
+	}
+	int ret = 0;
+	avcodec_parameters_to_context(codecContext.get(), codecParameters.get());
+	if (m_codec->type == AVMEDIA_TYPE_VIDEO)
+	{
+		std::unordered_set<AVPixelFormat> supportedFormats;
+		for (auto* format= codec()->pix_fmts; *format != -1; ++format)
+		{
+			supportedFormats.emplace(*format);
+		}
+		m_processing.SetSupportedPixelFormats(std::move(supportedFormats));
+	}
+	if ((ret = avcodec_open2(codecContext.get(), codec(), nullptr)) < 0)
+	{
+		//qCCritical(LC_ENCODER) << "Cannot open encoder" << av_err2string(ret);
+		return false;
+	}
+	m_frameLister = input->AddUploadListener([this](auto frameHandle) {
+		m_processing.ProcessFrame(frameHandle.Get(), m_transformedFrame, m_codec->type);
+		if (_sws)
+		{
+			sws_scale(_sws.get(), (const uint8_t* const*)frame->data,
+				frame->linesize, 0, frame->height, _rescaledFrame->data, _rescaledFrame->linesize);
+			response = avcodec_send_frame(cCtx.get(), _rescaledFrame.get());
+		}
+		else
+			response = avcodec_send_frame(cCtx.get(), frame.get());
+		_input->unmapReading(index);
+		if (response < 0)
+			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << av_err2string(response);
+		while (response >= 0 /*|| response == AVERROR(EAGAIN)*/) {
+			auto outPacket = EncodedOutput()->tryHoldForWriting();
+			if (!outPacket.has_value())
+			{
+				qCWarning(LC_ENCODER) << "Output pipe overflow";
+				return;
+			}
+			response = avcodec_receive_packet(cCtx.get(), outPacket->ptr.get());
+			if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
+				EncodedOutput()->unmapWriting(outPacket->subpipe, false);
+				break;
+			}
+			else if (response < 0) {
+				qCWarning(LC_ENCODER) << "Error while receiving packet from encoder:" << av_err2string(response);
+				EncodedOutput()->unmapWriting(outPacket->subpipe, false);
+				break;
+			}
+			outPacket->ptr->stream_index = 0;
+			setPTS(pts() + 1);
+			setDTS(dts() + 1);
+			outPacket->ptr->pts = pts();
+			outPacket->ptr->dts = dts();
+			outPacket->ptr->time_base.num = 1;
+			outPacket->ptr->time_base.den = 30;
+			EncodedOutput()->unmapWriting(outPacket->subpipe, true);
+		}
+		});
+	return FFmpegEncoder::start(input);
 }
-AbstractEncoder::~AbstractEncoder()
+FFmpegEncoder::~FFmpegEncoder()
 {
-	close();
+	Close();
 }
-uint64_t AbstractEncoder::dts()
+uint64_t FFmpegEncoder::dts()
 {
 	return _dts;
 }
-uint64_t AbstractEncoder::pts()
+uint64_t FFmpegEncoder::pts()
 {
 	return _pts;
 }
-void AbstractEncoder::setPTS(uint64_t other)
+void FFmpegEncoder::setPTS(uint64_t other)
 {
 	_dts = other;
 }
-void AbstractEncoder::setDTS(uint64_t other)
+void FFmpegEncoder::setDTS(uint64_t other)
 {
 	_pts = other;
 }
 
-std::shared_ptr<Media::PacketPipe> AbstractEncoder::output()
+std::shared_ptr<PacketPipe> FFmpegEncoder::EncodedOutput()
 {
     return _out;
 }
-void AbstractEncoder::close()
+void FFmpegEncoder::Close()
 {
 	//resets codecContext
 	setCodecContext(nullptr);
-	_isStarted = false;
+	m_isEncoding = false;
 }
-std::shared_ptr<AVCodecContext> AbstractEncoder::codecContext()
+std::shared_ptr<AVCodecContext> FFmpegEncoder::codecContext()
 {
 	return _cCtx;
 }
-std::shared_ptr<Media::FramePipe> Video::Encoder::input()
+std::shared_ptr<FramePipe> AudioEncoder::input()
 {
 	return _input;	
 }
-void Video::Encoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
+void AudioEncoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
 {
-	AbstractEncoder::fillContext(ctx);
+	FFmpegEncoder::fillContext(ctx);
 	AVCodecParameters* codecPar = avcodec_parameters_alloc();
 	auto g = qScopeGuard([codecPar]() mutable {	avcodec_parameters_free(&codecPar); });
 	AVPixelFormat requiredFormat = _config.format;
@@ -95,15 +147,15 @@ void Video::Encoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
 	ctx->time_base = av_make_q(1, 30);
 	avcodec_parameters_to_context(ctx.get(), codecPar);
 }
-Video::SourceConfig Video::Encoder::config()
+SourceConfig AudioEncoder::config()
 {
 	return _config;
 }
-bool Video::Encoder::start(std::shared_ptr<Media::FramePipe> input)
+bool AudioEncoder::start(std::shared_ptr<FramePipe> input)
 {
-	if (isStarted())
-		close();
-	auto cCtx = Media::createCodecContext(codec());
+	if (IsEncoding())
+		Close();
+	auto cCtx = createCodecContext(codec());
 	if (!cCtx)
 	{
 		qCCritical(LC_ENCODER) << "Cannot create codec context";
@@ -112,7 +164,7 @@ bool Video::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 	int ret = 0;
 	setCodecContext(cCtx);
 	fillContext(cCtx);
-	Video::SourceConfig sourceConfig = config();
+	SourceConfig sourceConfig = config();
 	if (cCtx->pix_fmt != _config.format)
 	{
 		_sws = std::shared_ptr<SwsContext>(sws_getContext(sourceConfig.width,
@@ -139,14 +191,14 @@ bool Video::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 		_rescaledFrame->format = cCtx->pix_fmt;
 		if ((ret = av_frame_get_buffer(_rescaledFrame.get(), 32)) < 0)
 		{
-			qCCritical(LC_ENCODER) << "Error while creating rescaled frame buffer:" << Media::av_err2string(ret);
+			qCCritical(LC_ENCODER) << "Error while creating rescaled frame buffer:" << av_err2string(ret);
 			return false;
 		}
 
 	}
 	if ((ret = avcodec_open2(cCtx.get(), codec(), nullptr)) < 0)
 	{
-		qCCritical(LC_ENCODER) << "Cannot open encoder" << Media::av_err2string(ret);
+		qCCritical(LC_ENCODER) << "Cannot open encoder" << av_err2string(ret);
 		return false;
 	}
 	
@@ -167,9 +219,9 @@ bool Video::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 			response = avcodec_send_frame(cCtx.get(), frame.get());
 		_input->unmapReading(index);
 		if (response < 0)
-			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
+			qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << av_err2string(response);
 		while (response >= 0 /*|| response == AVERROR(EAGAIN)*/) {
-			auto outPacket = output()->tryHoldForWriting();
+			auto outPacket = EncodedOutput()->tryHoldForWriting();
 			if (!outPacket.has_value())
 			{
 				qCWarning(LC_ENCODER) << "Output pipe overflow";
@@ -177,12 +229,12 @@ bool Video::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 			}
 			response = avcodec_receive_packet(cCtx.get(), outPacket->ptr.get());
 			if (response == AVERROR(EAGAIN) || response == AVERROR_EOF) {
-				output()->unmapWriting(outPacket->subpipe, false);
+				EncodedOutput()->unmapWriting(outPacket->subpipe, false);
 				break;
 			}
 			else if (response < 0) {
-				qCWarning(LC_ENCODER) << "Error while receiving packet from encoder:" << Media::av_err2string(response);
-				output()->unmapWriting(outPacket->subpipe, false);
+				qCWarning(LC_ENCODER) << "Error while receiving packet from encoder:" << av_err2string(response);
+				EncodedOutput()->unmapWriting(outPacket->subpipe, false);
 				break;
 			}
 			outPacket->ptr->stream_index = 0;
@@ -192,19 +244,19 @@ bool Video::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 			outPacket->ptr->dts = dts();
 			outPacket->ptr->time_base.num = 1;
 			outPacket->ptr->time_base.den = 30;
-			output()->unmapWriting(outPacket->subpipe, true);
+			EncodedOutput()->unmapWriting(outPacket->subpipe, true);
 		}
 	});
-	return AbstractEncoder::start(input);
+	return FFmpegEncoder::start(input);
 }
-void Video::Encoder::close()
+void AudioEncoder::Close()
 {
 	if (_input && _listenerIndex.has_value())
 	{
 		_input->removeListener(_listenerIndex.value());
 		_listenerIndex = std::nullopt;
 	}
-	AbstractEncoder::close();
+	FFmpegEncoder::Close();
 }
 Audio::Encoder::Encoder(SourceConfig config, const AVCodec* cdc)
 	:AbstractEncoder(cdc)
@@ -247,9 +299,9 @@ void Audio::Encoder::close()
 		_input.reset();
 	}
 	_samplesConverted = 0;
-	AbstractEncoder::close();
+	FFmpegEncoder::Close();
 }
-bool Video::Encoder::checkPixelFormat(AVPixelFormat check)
+bool AudioEncoder::checkPixelFormat(AVPixelFormat check)
 {
 	if (!codec())
 		return false;
@@ -261,7 +313,7 @@ bool Video::Encoder::checkPixelFormat(AVPixelFormat check)
 	return false;
 }
 void Audio::Encoder::fillContext(std::shared_ptr<AVCodecContext> ctx) {
-	AbstractEncoder::fillContext(ctx);
+	FFmpegEncoder::fillContext(ctx);
 	int requiredSampleRate = 48000;
 	AVChannelLayout requiredLayout;
 	av_channel_layout_from_string(&requiredLayout, "mono");
@@ -291,7 +343,7 @@ bool Audio::Encoder::encodeFrame(AVFrame* fr)
 
 	response = avcodec_send_frame(ctx.get(), fr);
 	if (response < 0)
-		qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
+		qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << av_err2string(response);
 	while (response >= 0) {
 		auto outPacket = output()->tryHoldForWriting();
 		if (!outPacket.has_value())
@@ -321,11 +373,11 @@ bool Audio::Encoder::encodeFrame(AVFrame* fr)
 	}
 	return true;
 }
-bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
+bool Audio::Encoder::start(std::shared_ptr<FramePipe> input)
 {
 	if (isStarted())
 		close();
-	auto ctx = Media::createCodecContext(codec());
+	auto ctx = createCodecContext(codec());
 	if (!ctx)
 	{
 		qCCritical(LC_ENCODER) << "Cannot create codec context";
@@ -349,13 +401,13 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 		);
 		if (ret < 0)
 		{
-			qCCritical(LC_ENCODER) << "Cannot alloc SwrContext:" << Media::av_err2string(ret);
+			qCCritical(LC_ENCODER) << "Cannot alloc SwrContext:" << av_err2string(ret);
 			return false;
 		}
 		ret = swr_init(swr);
 		if (ret < 0)
 		{
-			qCCritical(LC_ENCODER) << "Cannot init SwrContext:" << Media::av_err2string(ret);
+			qCCritical(LC_ENCODER) << "Cannot init SwrContext:" << av_err2string(ret);
 			swr_free(&swr);
 			return false;
 		}
@@ -363,7 +415,7 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 	//}
 	ret = avcodec_open2(ctx.get(), codec(), nullptr);
 	if (ret < 0) {
-		qCCritical(LC_ENCODER) << "Cannot start encoder: " << Media::av_err2string(ret);
+		qCCritical(LC_ENCODER) << "Cannot start encoder: " << av_err2string(ret);
 		return false;
 	}
 	AVFrame* chunk		= av_frame_alloc();
@@ -373,13 +425,13 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 	chunk->nb_samples	= ctx->frame_size;
 	if ((ret = av_frame_get_buffer(chunk, 0)) < 0)
 	{
-		qCCritical(LC_ENCODER) << "Cannot allocate chunk frame: " << Media::av_err2string(ret);
+		qCCritical(LC_ENCODER) << "Cannot allocate chunk frame: " << av_err2string(ret);
 		return false;
 	}
 	_input = input;
 	chunkOffset = 0;
 	_listenerIndex= input->onDataChanged([this, input,chunk](std::shared_ptr<AVFrame> frame, size_t index) {
-		std::shared_ptr<AVCodecContext> cCtx = AbstractEncoder::codecContext();
+		std::shared_ptr<AVCodecContext> cCtx = FFmpegEncoder::codecContext();
 		if (!cCtx)
 		{
 			qCWarning(LC_ENCODER) << "Invalid codec context received";
@@ -424,7 +476,7 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 
 			if (response < 0)
 			{
-				qCWarning(LC_ENCODER) << "Cannot convert audio frame:" << Media::av_err2string(response);
+				qCWarning(LC_ENCODER) << "Cannot convert audio frame:" << av_err2string(response);
 				break;
 			}
 			if (chunkOffset == cCtx->frame_size)
@@ -464,7 +516,7 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 		//);
 		//if(response <0)
 		//{
-		//	qCWarning(LC_ENCODER) << "Cannot convert audio frame:" << Media::av_err2string(response);
+		//	qCWarning(LC_ENCODER) << "Cannot convert audio frame:" << av_err2string(response);
 		//	return;
 		//}
 		//_samplesConverted += std::min(cCtx->frame_size, frame->nb_samples);
@@ -479,7 +531,7 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 		//	samplesEncoded += convertSamples;
 
 		//	if (response < 0)
-		//		qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << Media::av_err2string(response);
+		//		qCWarning(LC_ENCODER) << "Cannot send packet to encoder: " << av_err2string(response);
 		//	while (response >= 0) {
 		//		auto outPacket = output()->tryHoldForWriting();
 		//		if (!outPacket.has_value())
@@ -513,7 +565,7 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 		//		response = swr_convert(_swr.get(), chunk->data, convertSamples, nullptr, 0);
 
 		//		if (response < 0) {
-		//			qCWarning(LC_ENCODER) << "Failed to convert audio frame:" << Media::av_err2string(response);
+		//			qCWarning(LC_ENCODER) << "Failed to convert audio frame:" << av_err2string(response);
 		//			input->unmapReading(index);//????
 		//			return;
 		//		}
@@ -521,22 +573,22 @@ bool Audio::Encoder::start(std::shared_ptr<Media::FramePipe> input)
 		//} while (samplesEncoded < frame->nb_samples);
 		//	
 	});
-	return AbstractEncoder::start(input);
+	return FFmpegEncoder::start(input);
 }
-void Video::H264Encoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
+void H264Encoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
 {
-	Encoder::fillContext(ctx);
+	AudioEncoder::fillContext(ctx);
 	av_opt_set(ctx->priv_data, "profile", "high422", 0); 
 	av_opt_set(ctx->priv_data, "preset", "ultrafast", 0);// скорость кодирования. обратна пропорциональна качеству
 	av_opt_set(ctx->priv_data, "tune", "zerolatency", 0);
 }
-Video::H264Encoder::H264Encoder(Media::Video::SourceConfig config)
-	:Encoder(std::move(config), avcodec_find_encoder(AV_CODEC_ID_H264))
+H264Encoder::H264Encoder(SourceConfig config)
+	:AudioEncoder(std::move(config), avcodec_find_encoder(AV_CODEC_ID_H264))
 {
 }
 void Audio::AACEncoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
 {
-	Encoder::fillContext(ctx);
+	AudioEncoder::fillContext(ctx);
 	ctx->time_base = av_make_q(1, 30);
 	ctx->bit_rate = 20 * 1000 * 1000;
 	//ctx->rc_buffer_size = 4 * 1000 * 1000;
@@ -554,7 +606,7 @@ Audio::AACEncoder::AACEncoder(SourceConfig config)
 }
 void Audio::OpusEncoder::fillContext(std::shared_ptr<AVCodecContext> ctx)
 {
-	Encoder::fillContext(ctx);
+	AudioEncoder::fillContext(ctx);
 	av_opt_set(ctx->priv_data, "application", "voip", 0);
 	//av_opt_set(ctx->priv_data, "frame_duration", "60", 0);
 	//ctx->bit_rate = 256000;

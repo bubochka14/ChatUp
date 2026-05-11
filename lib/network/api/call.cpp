@@ -50,7 +50,7 @@ void Disconnect::handle(std::shared_ptr<NetworkCoordinator> h,
 		handler(Participate::Data(std::move(in)));
 	});
 }
-void UpdateCallMedia::handle(std::shared_ptr<NetworkCoordinator> h,
+void UpdateCallhandle(std::shared_ptr<NetworkCoordinator> h,
 	std::function<void(MediaUpdate&&)> cb)
 {
 	h->addClientHandler(callName, [handler = std::move(cb)](json&& in) {
@@ -68,7 +68,7 @@ void UpdateCallMedia::handle(std::shared_ptr<NetworkCoordinator> h,
 		}
 		});
 }
-QFuture<void> UpdateCallMedia::exec(std::shared_ptr<NetworkCoordinator> h)
+QFuture<void> UpdateCallexec(std::shared_ptr<NetworkCoordinator> h)
 {
 	json out;
 	if(video.has_value())

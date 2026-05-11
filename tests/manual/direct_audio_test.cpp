@@ -9,8 +9,8 @@ int _argc;
 char** _argv;
 //TEST(AudioTetst, DirectAudioPipeline) {
 //	QApplication app(_argc,_argv);
-//	Media::Audio::MicrophonePipeline mic;
-//	Media::Audio::Output out;
+//	Audio::MicrophonePipeline mic;
+//	Audio::Output out;
 //	auto config = mic.open();
 //	EXPECT_NO_THROW(config.waitForFinished());
 //	EXPECT_EQ(config.resultCount(), 1);
@@ -20,15 +20,15 @@ char** _argv;
 //}
 TEST(AudioTetst, OpuAudioPipeline) {
 	QApplication app(_argc, _argv);
-	Media::Audio::MicrophonePipeline mic;
-	//mic.setFilterFactory(std::make_shared<Media::Audio::NoiseReductionFilterFactory>());
+	Audio::MicrophonePipeline mic;
+	//mic.setFilterFactory(std::make_shared<Audio::NoiseReductionFilterFactory>());
 
-	Media::Audio::Output out;
+	Audio::Output out;
 	auto config = mic.open();
 	EXPECT_NO_THROW(config.waitForFinished());
 	EXPECT_EQ(config.resultCount(), 1);
-	Media::Audio::OpusEncoder enc(config.result());
-	Media::Audio::OpusDecoder dec;
+	Audio::OpusEncoder enc(config.result());
+	Audio::OpusDecoder dec;
 	enc.start(mic.frameOutput());
 	dec.open(enc.output());
 	out.start(out.availableDevices().first(), dec.output());

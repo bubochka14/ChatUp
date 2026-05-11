@@ -20,7 +20,7 @@ extern "C"
 #include <QtConcurrent/qtconcurrentrun.h>
 #include "scopeguard.h"
 #include "filters.h"
-namespace Media::Video {
+namespace Video {
     class CC_MEDIA_EXPORT CameraPipeline : public  StreamSource
     {
         Q_OBJECT;
@@ -29,7 +29,7 @@ namespace Media::Video {
     public:
         CameraPipeline();
         virtual QStringList availableDevices() const;
-        std::shared_ptr<Media::FramePipe> frameOutput() override;
+        std::shared_ptr<FramePipe> frameOutput() override;
         QFuture<SourceConfig> open() override;
 
         QString currentDevice();
@@ -56,20 +56,20 @@ namespace Media::Video {
     public:
 
         TestCameraPipeline();
-        TestCameraPipeline(Media::Video::SourceConfig sr);
+        TestCameraPipeline(SourceConfig sr);
         QStringList availableDevices() const override;
-        std::shared_ptr<Media::FramePipe> frameOutput() override;
+        std::shared_ptr<FramePipe> frameOutput() override;
         QFuture<SourceConfig> open() override;
         void close() override;
         bool isOpen() override;
     private:
         inline static QString TestDeviceName = QString("Test");
-        Media::Video::SourceConfig _sourceConfig;
-        std::shared_ptr<Media::FramePipe> _framePipe;
+        SourceConfig _sourceConfig;
+        std::shared_ptr<FramePipe> _framePipe;
 
     };
-}// Media::Video
-namespace Media::Audio {
+}// Video
+namespace Audio {
     class CC_MEDIA_EXPORT MicrophonePipeline : public  StreamSource
     {
         Q_OBJECT;
@@ -78,7 +78,7 @@ namespace Media::Audio {
     public:
         MicrophonePipeline();
         virtual QStringList availableDevices() const;
-        std::shared_ptr<Media::FramePipe> frameOutput() override;
+        std::shared_ptr<FramePipe> frameOutput() override;
         QFuture<SourceConfig> open() override;
         void setFilterFactory(std::shared_ptr<FilterFactory> other);
         QString currentDevice();
@@ -99,7 +99,7 @@ namespace Media::Audio {
         std::mutex mutex;
         std::optional<SourceConfig> config;
         std::optional<QFuture<SourceConfig>> _openingFuture;
-        std::shared_ptr<Media::FramePipe> _out;
+        std::shared_ptr<FramePipe> _out;
         QString _dev;
        
     };

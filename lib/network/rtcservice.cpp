@@ -1,7 +1,7 @@
 #include "rtcservice.h"
 using namespace rtc;
 using namespace std;
-using namespace Media;
+using namespace chatup;
 Q_LOGGING_CATEGORY(LC_RTC_SERVICE, "RTCService");
 uint32_t generate_ssrc()
 {
@@ -18,7 +18,7 @@ std::chrono::system_clock::rep time_since_epoch() {
 	auto now = std::chrono::system_clock::now().time_since_epoch();
 	return std::chrono::duration_cast<std::chrono::seconds>(now).count();
 }
-void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media::Video::SourceConfig config)
+void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, SourceConfig config)
 {
 	std::shared_ptr<PeerContext> ctx;
 	{
@@ -28,7 +28,7 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 	std::scoped_lock lck{ _localVideo.mutex, ctx->video.mutex};
 	if(!_localVideo.encoder)
 	{
-		_localVideo.encoder = std::make_shared<Media::Video::H264Encoder>(std::move(config));
+		_localVideo.encoder = std::make_shared<H264Encoder>(std::move(config));
 	}
 	if(_localVideo.encoder->input() != input)
 		_localVideo.encoder->start(input);
@@ -37,14 +37,14 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 	pConfig.ecnCtx = _localVideo.encoder->codecContext();
 	if(!_localVideo.packetizer)
 	{
-		_localVideo.packetizer = std::make_shared<Media::RtpPacketizer>(pConfig);
+		_localVideo.packetizer = std::make_shared<RtpPacketizer>(pConfig);
 	}
 	if (!_localVideo.packetizer->isStarted())
 	{
 		_localVideo.packetizer->start(_localVideo.encoder->output());
 	}
 
-	auto packetizerRawHandler = [this,userID,wCtx = std::weak_ptr(ctx)](std::shared_ptr<Media::Raw> raw, size_t index) {
+	auto packetizerRawHandler = [this,userID,wCtx = std::weak_ptr(ctx)](std::shared_ptr<Raw> raw, size_t index) {
 		auto ctx = wCtx.lock();
 		if (!ctx)
 		{
@@ -106,7 +106,7 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 				ctx->video.packetPipe = createNullBufferPacketPipe();
 			if (!ctx->video.decoder)
 			{
-				auto newDecoder = std::make_shared<Video::H264Decoder>();
+				auto newDecoder = std::make_shared<H264Decoder>();
 				newDecoder->open(ctx->video.packetPipe);
 				ctx->video.decoder = newDecoder;
 			}
@@ -118,7 +118,7 @@ void Service::openLocalVideo(int userID,std::shared_ptr<FramePipe> input, Media:
 			}
 			ctx->video.packets[pipeData->subpipe] = std::move(data);
 
-			if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->video.packets[pipeData->subpipe].data(),
+			if (!fillPacket(pipeData->ptr, (uint8_t*)ctx->video.packets[pipeData->subpipe].data(),
 				ctx->video.packets[pipeData->subpipe].size())) 
 			{
 				qCWarning(LC_RTC_SERVICE) << "Cannot fill video packet";
@@ -235,7 +235,7 @@ void Service::flushRemoteAudio(int userID)
 		ctx->audio.decoder.reset();
 	}
 }
-std::shared_ptr<Media::FramePipe> Service::getRemoteAudio(int userID)
+std::shared_ptr<FramePipe> Service::getRemoteAudio(int userID)
 {
 	std::shared_ptr<PeerContext> ctx;
 	{
@@ -254,7 +254,7 @@ std::shared_ptr<Media::FramePipe> Service::getRemoteAudio(int userID)
 	}
 	return ctx->audio.decoder->output();
 }
-void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input, Media::Audio::SourceConfig config)
+void Service::openLocalAudio(int userID, std::shared_ptr<FramePipe> input, Audio::SourceConfig config)
 {
 	std::shared_ptr<PeerContext> ctx;
 	{
@@ -264,7 +264,7 @@ void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input
 	std::scoped_lock lck{ _localAudio.mutex, ctx->audio.mutex };
 	if(!_localAudio.encoder)
 	{
-		_localAudio.encoder = std::make_shared<Media::Audio::OpusEncoder>(std::move(config));
+		_localAudio.encoder = std::make_shared<Audio::OpusEncoder>(std::move(config));
 	}
 	_localAudio.encoder->start(input);
 	auto encHandler = [this, userID,wCtx = std::weak_ptr(ctx)](std::shared_ptr<AVPacket> packet, size_t index) {
@@ -358,7 +358,7 @@ void Service::openLocalAudio(int userID, std::shared_ptr<Media::FramePipe> input
 			}
 			ctx->audio.packets[pipeData->subpipe] = std::move(data);
 
-			if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->audio.packets[pipeData->subpipe].data(),
+			if (!fillPacket(pipeData->ptr, (uint8_t*)ctx->audio.packets[pipeData->subpipe].data(),
 				ctx->audio.packets[pipeData->subpipe].size()))
 			{
 				qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
@@ -481,7 +481,7 @@ void Service::createPeerContext(int id)
 				}
 				ctx->video.packets[pipeData->subpipe] = std::move(data);
 
-				if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->video.packets[pipeData->subpipe].data(),
+				if (!fillPacket(pipeData->ptr, (uint8_t*)ctx->video.packets[pipeData->subpipe].data(),
 					ctx->video.packets[pipeData->subpipe].size()))
 				{
 					qCWarning(LC_RTC_SERVICE) << "Cannot fill video packet";
@@ -545,7 +545,7 @@ void Service::createPeerContext(int id)
 					}
 					ctx->audio.packets[pipeData->subpipe] = std::move(data);
 
-					if (!Media::fillPacket(pipeData->ptr, (uint8_t*)ctx->audio.packets[pipeData->subpipe].data(),
+					if (!fillPacket(pipeData->ptr, (uint8_t*)ctx->audio.packets[pipeData->subpipe].data(),
 						ctx->audio.packets[pipeData->subpipe].size()))
 					{
 						qCWarning(LC_RTC_SERVICE) << "Cannot fill audio packet";
@@ -561,7 +561,7 @@ void Service::createPeerContext(int id)
 		}
 	});
 }
-std::shared_ptr<Media::FramePipe> Service::getRemoteVideo(int userID)
+std::shared_ptr<FramePipe> Service::getRemoteVideo(int userID)
 {
 	std::shared_ptr<PeerContext> ctx;
 	{
@@ -573,7 +573,7 @@ std::shared_ptr<Media::FramePipe> Service::getRemoteVideo(int userID)
 		ctx->video.packetPipe = createNullBufferPacketPipe();
 	if (!ctx->video.decoder)
 	{
-		auto newDecoder = std::make_shared<Video::H264Decoder>();
+		auto newDecoder = std::make_shared<H264Decoder>();
 		newDecoder->open(ctx->video.packetPipe);
 		ctx->video.decoder = newDecoder;
 	}

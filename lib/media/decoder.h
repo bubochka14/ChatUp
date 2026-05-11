@@ -11,7 +11,7 @@
 #include "QtConcurrent/qtconcurrentrun.h"
 #include <qloggingcategory.h>
 Q_DECLARE_LOGGING_CATEGORY(LC_DECODER)
-namespace Media {
+namespace chatup {
 	class CC_MEDIA_EXPORT AbstractDecoder : protected AbstractCodec
 	{
 	public:

@@ -13,7 +13,7 @@ extern "C"
 
 Q_DECLARE_LOGGING_CATEGORY(LC_MICROPHONE);
 
-namespace Media::Audio 
+namespace chatup 
 {
     class CC_MEDIA_EXPORT Microphone
     {

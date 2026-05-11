@@ -46,9 +46,9 @@ namespace Call {
 		int roomID() const;
 		bool hasVideo();
 		bool hasAudio();
-		Q_INVOKABLE QFuture<void> openVideo(Media::Video::StreamSource* source);
-		Q_INVOKABLE QFuture<void> openAudio(Media::Audio::StreamSource* source);
-		Q_INVOKABLE void connectAudioOutput(int userID, Media::Audio::Output*);
+		Q_INVOKABLE QFuture<void> openVideo(StreamSource* source);
+		Q_INVOKABLE QFuture<void> openAudio(Audio::StreamSource* source);
+		Q_INVOKABLE void connectAudioOutput(int userID, Audio::Output*);
 		Q_INVOKABLE QFuture<void> disconnect();
 		Q_INVOKABLE void closeVideo();
 		Q_INVOKABLE void closeAudio();
@@ -84,16 +84,16 @@ namespace Call {
 	};
 	struct AudioStreamContext
 	{
-		Media::Audio::StreamSource* src = nullptr;
+		Audio::StreamSource* src = nullptr;
 		std::mutex mutex;
-		Media::Audio::SourceConfig config;
+		Audio::SourceConfig config;
 	};
 	struct VideoStreamContext
 	{
-		Media::Video::StreamSource* src = nullptr;
+		StreamSource* src = nullptr;
 		std::mutex mutex;
-		Media::Video::SourceConfig config;
-		std::unordered_map<int, std::shared_ptr<Media::Video::SinkConnector>> connectors;
+		SourceConfig config;
+		std::unordered_map<int, std::shared_ptr<SinkConnector>> connectors;
 
 
 	};
@@ -111,12 +111,12 @@ namespace Call {
 
 		QFuture<void> disconnect(Handle* h);
 		QFuture<void> join(Handle* h);
-		QFuture<void> openVideo(Handle* h, Media::Video::StreamSource* st);
-		QFuture<void> openAudio(Handle* h, Media::Audio::StreamSource* st);
+		QFuture<void> openVideo(Handle* h, StreamSource* st);
+		QFuture<void> openAudio(Handle* h, Audio::StreamSource* st);
 		void closeVideo(Handle* h);
 		void closeAudio(Handle* h);
 		void connectVideoSink(Handle* h,int userID, QVideoSink*);
-		void connectAudioOutput(Handle* h,int userID, Media::Audio::Output*);
+		void connectAudioOutput(Handle* h,int userID, Audio::Output*);
 		void setAudio(bool st, Handle* h);
 		void setVideo(bool st, Handle* h);
 		bool hasAudio(Handle* h);

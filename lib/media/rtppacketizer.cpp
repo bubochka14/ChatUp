@@ -1,13 +1,13 @@
 #include "rtppacketizer.h"
-using namespace Media;
+using namespace chatup;
 Q_LOGGING_CATEGORY(LC_RTP_PACKETIZER, "RtpPacketizer");
 static int write_packaged(void* op,const uint8_t* cbuf, int size)
 {
 	uint8_t* buf = const_cast<uint8_t*>(cbuf);
 
 	RtpPacketizer* pipeline = (RtpPacketizer*)op;
-	std::shared_ptr<Media::RawPipe> out = pipeline->output();
-	std::optional<Media::RawPipe::PipeData> raw = out->tryHoldForWriting();
+	std::shared_ptr<RawPipe> out = pipeline->output();
+	std::optional<RawPipe::PipeData> raw = out->tryHoldForWriting();
 	if (raw.has_value())
 	{
 		raw->ptr->raw = buf;
@@ -36,7 +36,7 @@ RtpPacketizer::RtpPacketizer(PacketizationConfig config)
 	_packetizationCxt = avformat_alloc_context();
 	int ret = avformat_alloc_output_context2(&_packetizationCxt, nullptr, "rtp", 0);
 	if (!_packetizationCxt || ret < 0) {
-		qCCritical(LC_RTP_PACKETIZER) << "Cannot create output context:" << Media::av_err2string(ret);
+		qCCritical(LC_RTP_PACKETIZER) << "Cannot create output context:" << av_err2string(ret);
 		return;
 	}
 	uint8_t* avio_ctx_buffer = (uint8_t*)av_malloc(_config.bufferSize);
@@ -63,7 +63,7 @@ RtpPacketizer::RtpPacketizer(PacketizationConfig config)
 	ret = avcodec_parameters_from_context(out_stream->codecpar, _config.ecnCtx.get());
 	if (ret < 0)
 	{
-		qCCritical(LC_RTP_PACKETIZER) << "Cannot initialize output stream:" << Media::av_err2string(ret);
+		qCCritical(LC_RTP_PACKETIZER) << "Cannot initialize output stream:" << av_err2string(ret);
 	}
 	out_stream->time_base = _config.ecnCtx->time_base;
 
@@ -76,7 +76,7 @@ bool RtpPacketizer::start(std::shared_ptr<PacketPipe> input)
 {
 	int ret = avformat_write_header(_packetizationCxt, NULL);
 	if (ret < 0) {
-		qCCritical(LC_RTP_PACKETIZER) << "Error occurred when starting packetizer" << Media::av_err2string(ret);
+		qCCritical(LC_RTP_PACKETIZER) << "Error occurred when starting packetizer" << av_err2string(ret);
 		return false;
 	}
 	_input = input;
@@ -89,7 +89,7 @@ bool RtpPacketizer::start(std::shared_ptr<PacketPipe> input)
 				return;
 			int ret = av_interleaved_write_frame(_packetizationCxt, pack.get());
 			if (ret < 0)
-				qCWarning(LC_RTP_PACKETIZER) << "Cannot write packet:" << Media::av_err2string(ret);
+				qCWarning(LC_RTP_PACKETIZER) << "Cannot write packet:" << av_err2string(ret);
 			input->unmapReading(index);
 			//qCDebug(LC_RTP_PACKETIZER) << "Finish reading" << index;
 
